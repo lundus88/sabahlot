@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import "leaflet/dist/leaflet.css";
+import * as turf from "@turf/turf";
 
 export default function Map() {
   const mapRef = useRef<HTMLDivElement>(null);
@@ -31,15 +32,56 @@ export default function Map() {
         attribution: "&copy; OpenStreetMap contributors",
       }).addTo(map);
 
+      const points: [number, number][] = [];
+      const markers: import("leaflet").Marker[] = [];
+      let polygon: import("leaflet").Polygon | null = null;
+
+      function updatePolygon() {
+        if (!map) return;
+
+        if (polygon) {
+          map.removeLayer(polygon);
+        }
+
+        if (points.length >= 3) {
+          polygon = L.polygon(points, {
+            color: "blue",
+            weight: 3,
+            fillColor: "blue",
+            fillOpacity: 0.2,
+          }).addTo(map);
+
+          const turfCoords = points.map(([lat, lng]) => [lng, lat]);
+          turfCoords.push(turfCoords[0]);
+
+          const turfPolygon = turf.polygon([turfCoords]);
+          const areaSqm = turf.area(turfPolygon);
+          const areaHa = areaSqm / 10000;
+          const areaAcre = areaSqm / 4046.8564224;
+
+          polygon.bindPopup(`
+            <b>Keluasan Lot</b><br>
+            ${areaSqm.toFixed(2)} m²<br>
+            ${areaHa.toFixed(4)} hektar<br>
+            ${areaAcre.toFixed(4)} ekar
+          `).openPopup();
+        }
+      }
+
       map.on("click", (e) => {
         const { lat, lng } = e.latlng;
+        points.push([lat, lng]);
 
-        L.marker([lat, lng])
+        const marker = L.marker([lat, lng])
           .addTo(map!)
           .bindPopup(
-            `Latitude: ${lat.toFixed(6)}<br>Longitude: ${lng.toFixed(6)}`
-          )
-          .openPopup();
+            `Titik ${points.length}<br>Latitude: ${lat.toFixed(
+              6
+            )}<br>Longitude: ${lng.toFixed(6)}`
+          );
+
+        markers.push(marker);
+        updatePolygon();
       });
     }
 
