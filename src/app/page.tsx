@@ -8,6 +8,7 @@ import {
 
 import Map, {
   formatAreaDisplay,
+  type ManualPointExport,
 } from "./components/Map";
 
 import {
@@ -17,6 +18,7 @@ import {
 import {
   deleteLocalLot,
   getLocalLots,
+  LOCAL_LOT_SCHEMA_VERSION,
   type LocalLotRecord,
   markLocalLotSynced,
   saveLocalLot,
@@ -29,6 +31,10 @@ import type {
   PolygonResult,
 } from "./components/Map";
 
+import type {
+  DrawingObject,
+} from "@/lib/drawing-types";
+
 interface LotFormData {
   ownerName: string;
   lotNumber: string;
@@ -37,17 +43,27 @@ interface LotFormData {
 }
 
 interface SavedLotRecord extends LotFormData {
+  projectId?: string | null;
   polygon: PolygonResult | null;
+  drawingObjects?: DrawingObject[];
+  activeObjectId?: string | null;
+  pdfIdentities?: PdfIdentityFields;
+  schemaVersion?: number;
   savedAt: string;
 }
 
 interface PreviousSavedLotRecord {
+  projectId?: string | null;
   ownerName?: string;
   lotName?: string;
   lotNumber?: string;
   village?: string;
   district?: string;
   polygon?: PolygonResult | null;
+  drawingObjects?: DrawingObject[];
+  activeObjectId?: string | null;
+  pdfIdentities?: PreviousPdfIdentityFields;
+  schemaVersion?: number;
   savedAt?: string;
 }
 
@@ -90,22 +106,30 @@ type IdentityDisplayMode =
   | "masked"
   | "hidden";
 
-interface PdfIdentityFields {
-  surveyor: string;
-  witness: string;
-  villageHead: string;
-  applicant: string;
+interface PdfIdentityPerson {
+  name: string;
+  idNo: string;
 }
+
+interface PdfIdentityFields {
+  surveyor: PdfIdentityPerson;
+  witness: PdfIdentityPerson;
+  villageHead: PdfIdentityPerson;
+  applicant: PdfIdentityPerson;
+}
+
+type PreviousPdfIdentityFields =
+  | Partial<
+      Record<
+        keyof PdfIdentityFields,
+        string | Partial<PdfIdentityPerson>
+      >
+    >
+  | null
+  | undefined;
 
 const STORAGE_KEY =
   "sabahlot-alpha-record";
-
-const IS_DEVELOPMENT =
-  process.env.NODE_ENV ===
-  "development";
-
-const DEVELOPMENT_DEMO_USER_ID =
-  "00000000-0000-4000-8000-000000000001";
 
 const EMPTY_FORM: LotFormData = {
   ownerName: "",
@@ -115,10 +139,22 @@ const EMPTY_FORM: LotFormData = {
 };
 
 const EMPTY_PDF_IDENTITIES: PdfIdentityFields = {
-  surveyor: "",
-  witness: "",
-  villageHead: "",
-  applicant: "",
+  surveyor: {
+    name: "",
+    idNo: "",
+  },
+  witness: {
+    name: "",
+    idNo: "",
+  },
+  villageHead: {
+    name: "",
+    idNo: "",
+  },
+  applicant: {
+    name: "",
+    idNo: "",
+  },
 };
 
 const PAGE_TEXT = {
@@ -163,10 +199,13 @@ const PAGE_TEXT = {
       "Lot successfully saved on this device.",
 
     savedSuccessfully:
-      "Lot saved successfully.",
+      "Lot saved locally and synced to cloud.",
 
     cloudSyncFailed:
-      "Saved locally. Cloud sync failed.",
+      "Lot saved locally. Cloud sync is currently unavailable.",
+
+    savedLocalSignIn:
+      "Project saved locally.",
 
     polygonRequired:
       "Complete the polygon first.",
@@ -312,10 +351,13 @@ const PAGE_TEXT = {
       "Lot berjaya disimpan dalam peranti.",
 
     savedSuccessfully:
-      "Lot saved successfully.",
+      "Lot saved locally and synced to cloud.",
 
     cloudSyncFailed:
-      "Saved locally. Cloud sync failed.",
+      "Lot saved locally. Cloud sync is currently unavailable.",
+
+    savedLocalSignIn:
+      "Project saved locally.",
 
     polygonRequired:
       "Lengkapkan polygon dahulu.",
@@ -478,6 +520,46 @@ function maskIdentityNumber(
     : "";
 }
 
+function normalizePdfIdentities(
+  value: PreviousPdfIdentityFields,
+): PdfIdentityFields {
+  const normalizePerson = (
+    person:
+      | string
+      | Partial<PdfIdentityPerson>
+      | undefined,
+  ): PdfIdentityPerson => {
+    if (typeof person === "string") {
+      return {
+        name: "",
+        idNo: person,
+      };
+    }
+
+    return {
+      name:
+        typeof person?.name === "string"
+          ? person.name
+          : "",
+      idNo:
+        typeof person?.idNo === "string"
+          ? person.idNo
+          : "",
+    };
+  };
+
+  return {
+    surveyor:
+      normalizePerson(value?.surveyor),
+    witness:
+      normalizePerson(value?.witness),
+    villageHead:
+      normalizePerson(value?.villageHead),
+    applicant:
+      normalizePerson(value?.applicant),
+  };
+}
+
 export default function HomePage() {
   const [
     language,
@@ -502,6 +584,31 @@ export default function HomePage() {
   ] = useState<PolygonResult | null>(
     null,
   );
+
+  const [
+    drawingObjects,
+    setDrawingObjects,
+  ] = useState<DrawingObject[]>([]);
+
+  const [
+    manualPoints,
+    setManualPoints,
+  ] = useState<ManualPointExport[]>([]);
+
+  const [
+    activeObjectId,
+    setActiveObjectId,
+  ] = useState<string | null>(null);
+
+  const [
+    currentProjectId,
+    setCurrentProjectId,
+  ] = useState<string | null>(null);
+
+  const [
+    hasUnsavedChanges,
+    setHasUnsavedChanges,
+  ] = useState(false);
 
   const [
     saveMessage,
@@ -596,6 +703,12 @@ export default function HomePage() {
   const planTemplateLabel =
     "Preliminary Lot Plan";
 
+  const canSaveLot =
+    Boolean(
+      polygon &&
+        polygon.coordinates.length >= 3,
+    );
+
   const displayArea = (
     areaM2: number,
     displayLanguage:
@@ -608,6 +721,96 @@ export default function HomePage() {
     );
 
     return `${area.text} ${area.symbol}`;
+  };
+
+  const cloudSyncWarning = (
+    error: unknown,
+  ) => {
+    const fallback = {
+      code: null as string | null,
+      message:
+        "Unknown cloud sync error",
+      details: null as string | null,
+      hint: null as string | null,
+    };
+
+    if (
+      error &&
+      typeof error === "object"
+    ) {
+      const record =
+        error as Record<
+          string,
+          unknown
+        >;
+
+      return {
+        code:
+          typeof record.code ===
+          "string"
+            ? record.code
+            : typeof record.status ===
+                "number"
+              ? String(record.status)
+              : fallback.code,
+        message:
+          typeof record.message ===
+          "string"
+            ? record.message
+            : fallback.message,
+        details:
+          typeof record.details ===
+          "string"
+            ? record.details
+            : fallback.details,
+        hint:
+          typeof record.hint ===
+          "string"
+            ? record.hint
+            : fallback.hint,
+      };
+    }
+
+    if (
+      typeof error === "string" &&
+      error.trim()
+    ) {
+      return {
+        ...fallback,
+        message: error,
+      };
+    }
+
+    return fallback;
+  };
+
+  const withCloudTimeout = async <T,>(
+    operation: PromiseLike<T>,
+  ): Promise<T> =>
+    Promise.race([
+      Promise.resolve(operation),
+      new Promise<never>(
+        (_, reject) => {
+          window.setTimeout(
+            () =>
+              reject(
+                new Error(
+                  "Cloud sync timed out.",
+                ),
+              ),
+            12000,
+          );
+        },
+      ),
+    ]);
+
+  const warnCloudSyncFailure = (
+    error: unknown,
+  ) => {
+    console.warn(
+      "SabahLot cloud sync unavailable:",
+      cloudSyncWarning(error),
+    );
   };
 
   const visibleCloudLots =
@@ -666,6 +869,29 @@ export default function HomePage() {
           null,
       );
 
+      setCurrentProjectId(
+        parsedRecord.projectId ??
+          null,
+      );
+
+      setDrawingObjects(
+        parsedRecord.drawingObjects ??
+          [],
+      );
+
+      setActiveObjectId(
+        parsedRecord.activeObjectId ??
+          parsedRecord.drawingObjects?.[0]
+            ?.id ??
+          null,
+      );
+
+      setPdfIdentities(
+        normalizePdfIdentities(
+          parsedRecord.pdfIdentities,
+        ),
+      );
+
       if (
         parsedRecord.polygon?.coordinates
       ) {
@@ -677,6 +903,7 @@ export default function HomePage() {
       setSaveMessage(
         PAGE_TEXT.en.restored,
       );
+      setHasUnsavedChanges(false);
     } catch {
       window.localStorage.removeItem(
         STORAGE_KEY,
@@ -704,8 +931,15 @@ export default function HomePage() {
 
     try {
       const draft: SavedLotRecord = {
+        projectId:
+          currentProjectId,
         ...formData,
         polygon,
+        drawingObjects,
+        activeObjectId,
+        pdfIdentities,
+        schemaVersion:
+          LOCAL_LOT_SCHEMA_VERSION,
         savedAt: new Date().toISOString(),
       };
 
@@ -716,7 +950,14 @@ export default function HomePage() {
     } catch {
       // Explicit Save reports storage failures to the user.
     }
-  }, [formData, polygon]);
+  }, [
+    activeObjectId,
+    currentProjectId,
+    formData,
+    polygon,
+    drawingObjects,
+    pdfIdentities,
+  ]);
 
   useEffect(() => {
     if (!saveMessage) {
@@ -742,6 +983,7 @@ export default function HomePage() {
     field: keyof LotFormData,
     value: string,
   ) => {
+    setHasUnsavedChanges(true);
     setFormData(
       (current) => ({
         ...current,
@@ -752,14 +994,19 @@ export default function HomePage() {
 
   const updatePdfIdentity = (
     field: keyof PdfIdentityFields,
+    key: keyof PdfIdentityPerson,
     value: string,
   ) => {
     setPdfIdentities(
       (current) => ({
         ...current,
-        [field]: value,
+        [field]: {
+          ...current[field],
+          [key]: value,
+        },
       }),
     );
+    setHasUnsavedChanges(true);
   };
 
   const openLotPanel =
@@ -771,6 +1018,21 @@ export default function HomePage() {
     () => {
       setLotPanelOpen(false);
     };
+
+  const handleDrawingObjectsChange = (
+    objects: DrawingObject[],
+    options?: {
+      markUnsaved?: boolean;
+    },
+  ) => {
+    setDrawingObjects(objects);
+
+    if (
+      options?.markUnsaved !== false
+    ) {
+      setHasUnsavedChanges(true);
+    }
+  };
 
   const saveLotRecord = (
     event?:
@@ -789,9 +1051,8 @@ export default function HomePage() {
           );
 
         if (
-          !polygon ||
-          polygon.coordinates.length <
-            3
+          !canSaveLot ||
+          !polygon
         ) {
           setSaveMessage(
             text.polygonRequired,
@@ -806,6 +1067,8 @@ export default function HomePage() {
 
         try {
           localRecord = saveLocalLot({
+            projectId:
+              currentProjectId,
             lotName,
             lotNumber:
               formData.lotNumber,
@@ -816,23 +1079,19 @@ export default function HomePage() {
             district:
               formData.district,
             polygon,
+            drawingObjects,
+            activeObjectId,
+            pdfIdentities,
           });
 
+          setCurrentProjectId(
+            localRecord.id,
+          );
           setLocalLots(getLocalLots());
+          setHasUnsavedChanges(false);
         } catch {
           setSaveMessage(
             text.saveFailed,
-          );
-          setIsSaving(false);
-          return;
-        }
-
-        if (
-          localRecord.sync_status ===
-          "synced"
-        ) {
-          setSaveMessage(
-            text.savedSuccessfully,
           );
           setIsSaving(false);
           return;
@@ -848,28 +1107,21 @@ export default function HomePage() {
             },
             error: userError,
           } =
-            await supabase.auth.getUser();
+            await withCloudTimeout(
+              supabase.auth.getUser(),
+            );
 
           const userId =
-            user?.id ??
-            (
-              IS_DEVELOPMENT
-                ? DEVELOPMENT_DEMO_USER_ID
-                : null
-            );
+            user?.id ?? null;
 
           if (!userId) {
-            console.error(
-              "SabahLot cloud sync failed: authenticated user is unavailable.",
-              userError
-                ? {
-                    message:
-                      userError.message,
-                  }
-                : undefined,
-            );
+            if (userError) {
+              warnCloudSyncFailure(
+                userError,
+              );
+            }
             setSaveMessage(
-              text.cloudSyncFailed,
+              text.savedLocalSignIn,
             );
             return;
           }
@@ -895,41 +1147,35 @@ export default function HomePage() {
           const {
             error,
           } =
-            await supabase
-              .from("lots")
-              .insert({
-                user_id:
-                  userId,
-                lot_name:
-                  lotName,
-                polygon_geojson: {
-                  type:
-                    "Polygon",
-                  coordinates: [
-                    ring,
-                  ],
-                },
-                area_m2:
-                  polygon.areaM2,
-                area_ha:
-                  polygon.areaHa,
-                area_acre:
-                  polygon.areaAcre,
-                created_at:
-                  createdAt,
-              });
+            await withCloudTimeout(
+              supabase
+                .from("lots")
+                .insert({
+                  user_id:
+                    userId,
+                  lot_name:
+                    lotName,
+                  polygon_geojson: {
+                    type:
+                      "Polygon",
+                    coordinates: [
+                      ring,
+                    ],
+                  },
+                  area_m2:
+                    polygon.areaM2,
+                  area_ha:
+                    polygon.areaHa,
+                  area_acre:
+                    polygon.areaAcre,
+                  created_at:
+                    createdAt,
+                }),
+            );
 
           if (error) {
-            console.error(
-              "SabahLot cloud sync failed:",
-              {
-                code: error.code,
-                message:
-                  error.message,
-                details:
-                  error.details,
-                hint: error.hint,
-              },
+            warnCloudSyncFailure(
+              error,
             );
             setSaveMessage(
               text.cloudSyncFailed,
@@ -939,8 +1185,15 @@ export default function HomePage() {
 
           const record:
             SavedLotRecord = {
+              projectId:
+                localRecord.id,
               ...formData,
               polygon,
+              drawingObjects,
+              activeObjectId,
+              pdfIdentities,
+              schemaVersion:
+                LOCAL_LOT_SCHEMA_VERSION,
               savedAt:
                 createdAt,
             };
@@ -967,8 +1220,7 @@ export default function HomePage() {
             await loadSavedLots();
           }
         } catch (error) {
-          console.error(
-            "SabahLot cloud sync failed:",
+          warnCloudSyncFailure(
             error,
           );
           setSaveMessage(
@@ -1090,17 +1342,24 @@ export default function HomePage() {
       }),
     );
 
-    setLoadedCoordinates(
-      coordinates,
-    );
+      setLoadedCoordinates(
+        coordinates,
+      );
+      setCurrentProjectId(
+        null,
+      );
+      setDrawingObjects([]);
+      setActiveObjectId(null);
+      setHasUnsavedChanges(false);
 
-    setSaveMessage(text.loaded);
-  };
+      setSaveMessage(text.loaded);
+    };
 
   const loadLocalLot = (
     lot: LocalLotRecord,
   ) => {
     try {
+      setCurrentProjectId(lot.id);
       setFormData({
         ownerName: lot.owner_name ?? "",
         lotNumber:
@@ -1115,6 +1374,20 @@ export default function HomePage() {
           }),
         ),
       );
+      setDrawingObjects(
+        lot.drawing_objects ?? [],
+      );
+      setActiveObjectId(
+        lot.active_object_id ??
+          lot.drawing_objects?.[0]?.id ??
+          null,
+      );
+      setPdfIdentities(
+        normalizePdfIdentities(
+          lot.pdf_identities,
+        ),
+      );
+      setHasUnsavedChanges(false);
       setSaveMessage(text.loaded);
     } catch {
       setSaveMessage(text.loadFailed);
@@ -1226,6 +1499,17 @@ export default function HomePage() {
         null,
       );
 
+      setCurrentProjectId(
+        null,
+      );
+
+      setActiveObjectId(
+        null,
+      );
+
+      setDrawingObjects([]);
+      setHasUnsavedChanges(false);
+
       setSaveMessage("");
     };
 
@@ -1234,6 +1518,29 @@ export default function HomePage() {
       if (!polygon) {
         setSaveMessage(
           text.polygonRequired,
+        );
+
+        return;
+      }
+
+      const visiblePdfObjects =
+        drawingObjects.filter(
+          (object) =>
+            object.isVisible &&
+            object.coordinates.length >=
+              (
+                object.geometryType ===
+                "polygon"
+                  ? 3
+                  : 2
+              ),
+        );
+
+      if (
+        visiblePdfObjects.length === 0
+      ) {
+        setSaveMessage(
+          "No visible drawing objects to export.",
         );
 
         return;
@@ -1321,7 +1628,7 @@ export default function HomePage() {
             mapElementWidth,
             mapElementHeight,
           ) *
-          0.2;
+          0.1;
         const cropPaddingX =
           Math.max(
             0,
@@ -1350,6 +1657,7 @@ export default function HomePage() {
             paddingY?: number;
             overviewZoom?: number;
             overviewOnly?: boolean;
+            baseOnly?: boolean;
           },
         ) =>
           new Promise<void>(
@@ -1368,6 +1676,51 @@ export default function HomePage() {
               );
             },
           );
+
+        interface PdfOverlayPoint {
+          x: number;
+          y: number;
+          lat: number;
+          lng: number;
+        }
+
+        interface PdfOverlaySegment {
+          start: PdfOverlayPoint;
+          end: PdfOverlayPoint;
+          midpoint: {
+            x: number;
+            y: number;
+          };
+          angle: number;
+          distanceText: string;
+          unitText: string;
+          bearing: string;
+        }
+
+        interface PdfOverlayGeometry {
+          width: number;
+          height: number;
+          vertices: PdfOverlayPoint[];
+          segments: PdfOverlaySegment[];
+        }
+
+        const getPdfOverlayGeometry =
+          () =>
+            new Promise<PdfOverlayGeometry | null>(
+              (resolve) => {
+                window.dispatchEvent(
+                  new CustomEvent(
+                    "sabahlot:get-pdf-overlay-geometry",
+                    {
+                      detail: {
+                        onReady:
+                          resolve,
+                      },
+                    },
+                  ),
+                );
+              },
+            );
 
         await prepareMapSnapshot({
           paddingRatio:
@@ -1485,20 +1838,25 @@ export default function HomePage() {
 
         await prepareMapSnapshot({
           paddingRatio:
-            0.2,
+            0.1,
           paddingX:
             Math.max(
-              48,
+              24,
               snapshotPadding +
                 cropPaddingX,
             ),
           paddingY:
             Math.max(
-              48,
+              24,
               snapshotPadding +
                 cropPaddingY,
             ),
+          baseOnly:
+            true,
         });
+
+        const mapOverlayGeometry =
+          await getPdfOverlayGeometry();
 
         const mapCanvas =
           await html2canvas(
@@ -1590,6 +1948,8 @@ export default function HomePage() {
 
         const coordinateSystem =
           "WGS 84 / EPSG:4326";
+        const datum =
+          "WGS 84";
 
         const scaleDistanceM =
           Math.max(
@@ -1605,13 +1965,13 @@ export default function HomePage() {
           `${scaleDistanceM.toLocaleString("en-MY")} m`;
 
         const disclaimer =
-          "DISCLAIMER: This preliminary plan is provided for reference, discussion and early planning purposes only. It is not an official survey plan, does not confirm legal or cadastral boundaries, and must not be used for title registration, legal proceedings or construction without verification by the relevant authorities and qualified professionals.";
+          "This preliminary plan is provided for reference, discussion and early planning purposes only. It is not an official survey plan, cadastral plan, Registered Survey Plan, SP Plan or legal proof of boundary. All measurements, coordinates and areas must be verified through a proper land survey and by the relevant authorities or qualified professionals.";
 
         const preliminaryAcknowledgement =
-          "The signatories acknowledge that the boundaries, areas and arrangement shown are for preliminary discussion and planning only. Signing does not constitute official boundary confirmation, cadastral approval, transfer of ownership or legal consent.";
+          "Pending Official Verification";
 
         const preliminaryNotice =
-          "PRELIMINARY PLAN \u2014 NOT FOR LEGAL OR CADASTRAL USE.";
+          "Pending Official Verification";
 
         const reportText =
           {
@@ -1685,30 +2045,6 @@ export default function HomePage() {
           () => {
             pdf.setFont(
               "helvetica",
-              "bold",
-            );
-            pdf.setFontSize(
-              7,
-            );
-            pdf.setTextColor(
-              185,
-              28,
-              28,
-            );
-            pdf.text(
-              preliminaryNotice,
-              pageWidth /
-                2,
-              pageHeight -
-                12,
-              {
-                align:
-                  "center",
-              },
-            );
-
-            pdf.setFont(
-              "helvetica",
               "normal",
             );
             pdf.setFontSize(
@@ -1742,6 +2078,664 @@ export default function HomePage() {
               },
             );
           };
+
+        const drawPanelTitle = (
+          title: string,
+          x: number,
+          y: number,
+          width: number,
+        ) => {
+          pdf.setFillColor(
+            241,
+            245,
+            249,
+          );
+          pdf.setDrawColor(
+            15,
+            23,
+            42,
+          );
+          pdf.rect(
+            x,
+            y,
+            width,
+            5,
+            "FD",
+          );
+          pdf.setFont(
+            "helvetica",
+            "bold",
+          );
+          pdf.setFontSize(
+            6.8,
+          );
+          pdf.setTextColor(
+            15,
+            23,
+            42,
+          );
+          pdf.text(
+            title.toUpperCase(),
+            x +
+              2,
+            y +
+              3.5,
+          );
+        };
+
+        const addPlanInfoPanel = (
+          x: number,
+          y: number,
+          width: number,
+          height: number,
+        ) => {
+          pdf.setDrawColor(
+            15,
+            23,
+            42,
+          );
+          pdf.setLineWidth(
+            0.3,
+          );
+          pdf.rect(
+            x,
+            y,
+            width,
+            height,
+          );
+          drawPanelTitle(
+            "Plan Information",
+            x,
+            y,
+            width,
+          );
+
+          const rows = [
+            [
+              "Negeri",
+              "Sabah",
+            ],
+            [
+              "Daerah",
+              formData.district.trim() ||
+                "-",
+            ],
+            [
+              "Mukim/Bandar/Kampung",
+              formData.village.trim() ||
+                "-",
+            ],
+            [
+              "No. lot/rujukan",
+              formData.lotNumber.trim() ||
+                lotName,
+            ],
+            [
+              "Sistem koordinat",
+              coordinateSystem,
+            ],
+            [
+              "Datum",
+              datum,
+            ],
+            [
+              "Skala angka",
+              "Diagrammatic",
+            ],
+          ];
+          const rowHeight =
+            9.2;
+          let rowY =
+            y +
+            6;
+
+          rows.forEach(
+            ([label, value]) => {
+              pdf.setDrawColor(
+                203,
+                213,
+                225,
+              );
+              pdf.rect(
+                x,
+                rowY,
+                width,
+                rowHeight,
+              );
+              pdf.setFont(
+                "helvetica",
+                "normal",
+              );
+              pdf.setFontSize(
+                5.6,
+              );
+              pdf.setTextColor(
+                71,
+                85,
+                105,
+              );
+              pdf.text(
+                label,
+                x +
+                  2,
+                rowY +
+                  3,
+                {
+                  maxWidth:
+                    width -
+                    4,
+                },
+              );
+              pdf.setFont(
+                "helvetica",
+                "bold",
+              );
+              pdf.setFontSize(
+                6.2,
+              );
+              pdf.setTextColor(
+                15,
+                23,
+                42,
+              );
+              pdf.text(
+                pdf
+                  .splitTextToSize(
+                    value,
+                    width -
+                      4,
+                  )
+                  .slice(
+                    0,
+                    2,
+                  ),
+                x +
+                  2,
+                rowY +
+                  6.4,
+              );
+              rowY +=
+                rowHeight;
+            },
+          );
+
+          pdf.setFont(
+            "helvetica",
+            "bold",
+          );
+          pdf.setFontSize(
+            6.2,
+          );
+          pdf.setTextColor(
+            15,
+            23,
+            42,
+          );
+          pdf.text(
+            "Skala grafik",
+            x +
+              2,
+            rowY +
+              3.5,
+          );
+          addScaleBar(
+            x +
+              5,
+            rowY +
+              9,
+          );
+        };
+
+        const addStationSchedulePanel = (
+          x: number,
+          y: number,
+          width: number,
+          height: number,
+        ) => {
+          pdf.setDrawColor(
+            15,
+            23,
+            42,
+          );
+          pdf.setLineWidth(
+            0.3,
+          );
+          pdf.rect(
+            x,
+            y,
+            width,
+            height,
+          );
+          drawPanelTitle(
+            "Station Schedule",
+            x,
+            y,
+            width,
+          );
+
+          const tableTop =
+            y +
+            6;
+          const rowHeight =
+            5.5;
+          const columns = [
+            0,
+            0.1,
+            0.28,
+            0.46,
+            0.64,
+            0.8,
+          ].map(
+            (ratio) =>
+              x +
+              width *
+                ratio,
+          );
+          const headings = [
+            "Stn",
+            "Northing",
+            "Easting",
+            "Bearing",
+            "Jarak",
+            "Keluasan",
+          ];
+
+          pdf.setFillColor(
+            226,
+            232,
+            240,
+          );
+          pdf.rect(
+            x,
+            tableTop,
+            width,
+            rowHeight,
+            "F",
+          );
+          pdf.setFont(
+            "helvetica",
+            "bold",
+          );
+          pdf.setFontSize(
+            5,
+          );
+          pdf.setTextColor(
+            15,
+            23,
+            42,
+          );
+          headings.forEach(
+            (
+              heading,
+              index,
+            ) => {
+              pdf.text(
+                heading,
+                columns[index] +
+                  0.7,
+                tableTop +
+                  3.6,
+                {
+                  maxWidth:
+                    width *
+                    0.18,
+                },
+              );
+            },
+          );
+
+          let rowY =
+            tableTop +
+            rowHeight;
+          const maxRows =
+            Math.min(
+              10,
+              Math.max(
+                1,
+                Math.floor(
+                  (
+                    y +
+                    height -
+                    rowY -
+                    8
+                  ) /
+                    rowHeight,
+                ),
+              ),
+            );
+
+          polygon.coordinates
+            .slice(
+              0,
+              maxRows,
+            )
+            .forEach(
+              (
+                coordinate,
+                index,
+              ) => {
+                const segment =
+                  polygon.segments[index];
+                const values = [
+                  String(index + 1),
+                  coordinate.lat.toFixed(6),
+                  coordinate.lng.toFixed(6),
+                  segment?.bearingDms ??
+                    "-",
+                  segment
+                    ? segment.distanceM.toFixed(
+                        2,
+                      )
+                    : "-",
+                  index === 0
+                    ? displayArea(
+                        polygon.areaM2,
+                        "en",
+                      )
+                    : "",
+                ];
+
+                pdf.setDrawColor(
+                  203,
+                  213,
+                  225,
+                );
+                pdf.rect(
+                  x,
+                  rowY,
+                  width,
+                  rowHeight,
+                );
+                pdf.setFont(
+                  "helvetica",
+                  "normal",
+                );
+                pdf.setFontSize(
+                  4.8,
+                );
+                pdf.setTextColor(
+                  51,
+                  65,
+                  85,
+                );
+                values.forEach(
+                  (
+                    value,
+                    valueIndex,
+                  ) => {
+                    pdf.text(
+                      value,
+                      columns[valueIndex] +
+                        0.7,
+                      rowY +
+                        3.5,
+                      {
+                        maxWidth:
+                          width *
+                          0.18,
+                      },
+                    );
+                  },
+                );
+                rowY +=
+                  rowHeight;
+              },
+            );
+
+          if (
+            polygon.coordinates.length >
+            maxRows
+          ) {
+            pdf.setFont(
+              "helvetica",
+              "italic",
+            );
+            pdf.setFontSize(
+              5.2,
+            );
+            pdf.setTextColor(
+              71,
+              85,
+              105,
+            );
+            pdf.text(
+              "Additional stations continue on the coordinate table page.",
+              x +
+                2,
+              y +
+                height -
+                3,
+              {
+                maxWidth:
+                  width -
+                  4,
+              },
+            );
+          }
+        };
+
+        const addBottomTitleBlock = (
+          x: number,
+          y: number,
+          width: number,
+          height: number,
+        ) => {
+          pdf.setDrawColor(
+            15,
+            23,
+            42,
+          );
+          pdf.setLineWidth(
+            0.3,
+          );
+          pdf.rect(
+            x,
+            y,
+            width,
+            height,
+          );
+
+          const detailHeight =
+            Math.max(
+              17,
+              Math.min(
+                21,
+                height *
+                  0.42,
+              ),
+            );
+          const disclaimerHeight =
+            height -
+            detailHeight;
+          const columnWidth =
+            width / 6;
+          const rows = [
+            [
+              "Tajuk pelan",
+              planTemplateLabel,
+            ],
+            [
+              "Status",
+              preliminaryNotice,
+            ],
+            [
+              "Kod lukisan",
+              planCode,
+            ],
+            [
+              "Tarikh / Revisi",
+              `${generatedAt.toLocaleDateString(
+                "en-MY",
+              )} / Rev 0`,
+            ],
+            [
+              "Disediakan oleh",
+              jobTitle === "-"
+                ? "SabahLot Alpha"
+                : jobTitle,
+            ],
+            [
+              "Powered by",
+              "SabahLot powered by Myukur",
+            ],
+          ];
+
+          rows.forEach(
+            (
+              [label, value],
+              index,
+            ) => {
+              const cellX =
+                x +
+                columnWidth *
+                  index;
+              pdf.setDrawColor(
+                148,
+                163,
+                184,
+              );
+              pdf.rect(
+                cellX,
+                y,
+                columnWidth,
+                detailHeight,
+              );
+              pdf.setFont(
+                "helvetica",
+                "normal",
+              );
+              pdf.setFontSize(
+                5.6,
+              );
+              pdf.setTextColor(
+                71,
+                85,
+                105,
+              );
+              pdf.text(
+                label,
+                cellX +
+                  2,
+                y +
+                  5,
+                {
+                  maxWidth:
+                    columnWidth -
+                    4,
+                },
+              );
+              pdf.setFont(
+                "helvetica",
+                "bold",
+              );
+              pdf.setFontSize(
+                7,
+              );
+              pdf.setTextColor(
+                15,
+                23,
+                42,
+              );
+              pdf.text(
+                pdf
+                  .splitTextToSize(
+                    value,
+                    columnWidth -
+                      4,
+                  )
+                  .slice(
+                    0,
+                    2,
+                  ),
+                cellX +
+                  2,
+                y +
+                  11,
+              );
+            },
+          );
+
+          const disclaimerTop =
+            y +
+            detailHeight;
+          pdf.setDrawColor(
+            148,
+            163,
+            184,
+          );
+          pdf.rect(
+            x,
+            disclaimerTop,
+            width,
+            disclaimerHeight,
+          );
+          pdf.setFont(
+            "helvetica",
+            "bold",
+          );
+          pdf.setFontSize(
+            5.8,
+          );
+          pdf.setTextColor(
+            185,
+            28,
+            28,
+          );
+          pdf.text(
+            "Disclaimer",
+            x +
+              2,
+            disclaimerTop +
+              4,
+          );
+          pdf.setFont(
+            "helvetica",
+            "normal",
+          );
+          pdf.setFontSize(
+            pdfPaperSize ===
+            "a4"
+              ? 5.2
+              : 6,
+          );
+          pdf.setTextColor(
+            15,
+            23,
+            42,
+          );
+          const disclaimerLines =
+            pdf
+              .splitTextToSize(
+                disclaimer,
+                width -
+                  28,
+              )
+              .slice(
+                0,
+                Math.max(
+                  2,
+                  Math.floor(
+                    (
+                      disclaimerHeight -
+                      5
+                    ) /
+                      3.4,
+                  ),
+                ),
+              );
+          pdf.text(
+            disclaimerLines,
+            x +
+              24,
+            disclaimerTop +
+              4,
+            {
+              maxWidth:
+                width -
+                28,
+            },
+          );
+        };
 
         const addNorthArrow = (
           x: number,
@@ -1799,7 +2793,7 @@ export default function HomePage() {
           y: number,
         ) => {
           const barWidth =
-            42;
+            36;
           const segmentWidth =
             barWidth /
             4;
@@ -1820,8 +2814,8 @@ export default function HomePage() {
             y -
               3,
             barWidth +
-              9,
-            18,
+              8,
+            16,
             1.5,
             1.5,
             "FD",
@@ -1890,7 +2884,7 @@ export default function HomePage() {
             "Scale: Diagrammatic",
             x,
             y +
-              12,
+              11,
           );
         };
 
@@ -1899,32 +2893,109 @@ export default function HomePage() {
           y: number,
           width: number,
           height: number,
-          snapshotData: string | null,
+          _snapshotData: string | null,
         ) => {
-          const centre =
-            polygon.coordinates.reduce(
-              (
-                total,
-                coordinate,
-              ) => ({
+          const calculateSiteCentre =
+            () => {
+              let signedArea =
+                0;
+              let centroidLng =
+                0;
+              let centroidLat =
+                0;
+
+              polygon.coordinates.forEach(
+                (
+                  coordinate,
+                  index,
+                ) => {
+                  const next =
+                    polygon.coordinates[
+                      (
+                        index +
+                        1
+                      ) %
+                        polygon.coordinates
+                          .length
+                    ];
+                  const factor =
+                    coordinate.lng *
+                      next.lat -
+                    next.lng *
+                      coordinate.lat;
+
+                  signedArea +=
+                    factor;
+                  centroidLng +=
+                    (
+                      coordinate.lng +
+                      next.lng
+                    ) *
+                    factor;
+                  centroidLat +=
+                    (
+                      coordinate.lat +
+                      next.lat
+                    ) *
+                    factor;
+                },
+              );
+
+              if (
+                Math.abs(
+                  signedArea,
+                ) > 1e-10
+              ) {
+                const divisor =
+                  3 *
+                  signedArea;
+
+                return {
+                  lat:
+                    centroidLat /
+                    divisor,
+                  lng:
+                    centroidLng /
+                    divisor,
+                };
+              }
+
+              const average =
+                polygon.coordinates.reduce(
+                  (
+                    total,
+                    coordinate,
+                  ) => ({
+                    lat:
+                      total.lat +
+                      coordinate.lat,
+                    lng:
+                      total.lng +
+                      coordinate.lng,
+                  }),
+                  {
+                    lat: 0,
+                    lng: 0,
+                  },
+                );
+
+              return {
                 lat:
-                  total.lat +
-                  coordinate.lat,
+                  average.lat /
+                  polygon.coordinates
+                    .length,
                 lng:
-                  total.lng +
-                  coordinate.lng,
-              }),
-              {
-                lat: 0,
-                lng: 0,
-              },
-            );
+                  average.lng /
+                  polygon.coordinates
+                    .length,
+              };
+            };
+          const siteCentre =
+            calculateSiteCentre();
           const centreLat =
-            centre.lat /
-            polygon.coordinates.length;
+            siteCentre.lat;
           const centreLng =
-            centre.lng /
-            polygon.coordinates.length;
+            siteCentre.lng;
           const mapLeft =
             x +
             2;
@@ -1937,6 +3008,172 @@ export default function HomePage() {
           const mapHeight =
             height -
             13;
+          const footerTop =
+            y +
+            height -
+            6;
+          const sabahOutline: Coordinate[] = [
+            { lat: 7.33, lng: 116.72 },
+            { lat: 7.28, lng: 117.18 },
+            { lat: 7.08, lng: 117.74 },
+            { lat: 6.86, lng: 118.2 },
+            { lat: 6.53, lng: 118.72 },
+            { lat: 6.07, lng: 119.25 },
+            { lat: 5.48, lng: 119.34 },
+            { lat: 5.03, lng: 118.88 },
+            { lat: 4.64, lng: 118.17 },
+            { lat: 4.24, lng: 117.42 },
+            { lat: 4.03, lng: 116.78 },
+            { lat: 4.2, lng: 116.18 },
+            { lat: 4.64, lng: 115.76 },
+            { lat: 5.18, lng: 115.38 },
+            { lat: 5.78, lng: 115.26 },
+            { lat: 6.28, lng: 115.62 },
+            { lat: 6.75, lng: 116.08 },
+            { lat: 7.12, lng: 116.38 },
+          ];
+          const outlineBounds =
+            sabahOutline.reduce(
+              (
+                bounds,
+                point,
+              ) => ({
+                minLat:
+                  Math.min(
+                    bounds.minLat,
+                    point.lat,
+                  ),
+                maxLat:
+                  Math.max(
+                    bounds.maxLat,
+                    point.lat,
+                  ),
+                minLng:
+                  Math.min(
+                    bounds.minLng,
+                    point.lng,
+                  ),
+                maxLng:
+                  Math.max(
+                    bounds.maxLng,
+                    point.lng,
+                  ),
+              }),
+              {
+                minLat:
+                  Number.POSITIVE_INFINITY,
+                maxLat:
+                  Number.NEGATIVE_INFINITY,
+                minLng:
+                  Number.POSITIVE_INFINITY,
+                maxLng:
+                  Number.NEGATIVE_INFINITY,
+              },
+            );
+          const baseLatPadding =
+            0.22;
+          const baseLngPadding =
+            0.24;
+          let viewMinLat =
+            Math.min(
+              outlineBounds.minLat,
+              centreLat,
+            ) -
+            baseLatPadding;
+          let viewMaxLat =
+            Math.max(
+              outlineBounds.maxLat,
+              centreLat,
+            ) +
+            baseLatPadding;
+          let viewMinLng =
+            Math.min(
+              outlineBounds.minLng,
+              centreLng,
+            ) -
+            baseLngPadding;
+          let viewMaxLng =
+            Math.max(
+              outlineBounds.maxLng,
+              centreLng,
+            ) +
+            baseLngPadding;
+          const mapAspect =
+            mapWidth /
+            Math.max(
+              1,
+              mapHeight,
+            );
+          const boundsAspect =
+            (
+              viewMaxLng -
+              viewMinLng
+            ) /
+            Math.max(
+              0.0001,
+              viewMaxLat -
+                viewMinLat,
+            );
+
+          if (
+            boundsAspect >
+            mapAspect
+          ) {
+            const requiredLatSpan =
+              (
+                viewMaxLng -
+                viewMinLng
+              ) /
+              mapAspect;
+            const latCentre =
+              (
+                viewMinLat +
+                viewMaxLat
+              ) /
+              2;
+
+            viewMinLat =
+              latCentre -
+              requiredLatSpan / 2;
+            viewMaxLat =
+              latCentre +
+              requiredLatSpan / 2;
+          } else {
+            const requiredLngSpan =
+              (
+                viewMaxLat -
+                viewMinLat
+              ) *
+              mapAspect;
+            const lngCentre =
+              (
+                viewMinLng +
+                viewMaxLng
+              ) /
+              2;
+
+            viewMinLng =
+              lngCentre -
+              requiredLngSpan / 2;
+            viewMaxLng =
+              lngCentre +
+              requiredLngSpan / 2;
+          }
+          const project = (
+            longitude: number,
+            latitude: number,
+          ) => ({
+            x:
+              mapLeft +
+              ((longitude - viewMinLng) /
+                (viewMaxLng - viewMinLng)) *
+                mapWidth,
+            y:
+              mapTop +
+              ((viewMaxLat - latitude) /
+                (viewMaxLat - viewMinLat)) *
+                mapHeight,
+          });
 
           pdf.setDrawColor(
             100,
@@ -2005,131 +3242,141 @@ export default function HomePage() {
             mapHeight,
           );
 
-          let markerX =
-            mapLeft +
-            mapWidth /
-              2;
-          let markerY =
+          pdf.setFillColor(
+            219,
+            234,
+            254,
+          );
+          pdf.rect(
+            mapLeft,
+            mapTop,
+            mapWidth,
+            mapHeight,
+            "F",
+          );
+          pdf.setFillColor(
+            226,
+            232,
+            240,
+          );
+          pdf.rect(
+            mapLeft,
             mapTop +
-            mapHeight /
-              2;
+              mapHeight *
+                0.66,
+            mapWidth,
+            mapHeight *
+              0.34,
+            "F",
+          );
+          pdf.setFillColor(
+            187,
+            247,
+            208,
+          );
+          pdf.setDrawColor(
+            22,
+            101,
+            52,
+          );
+          pdf.setLineWidth(
+            0.45,
+          );
 
-          if (snapshotData) {
-            pdf.addImage(
-              snapshotData,
-              "PNG",
-              mapLeft,
-              mapTop,
-              mapWidth,
-              mapHeight,
-              undefined,
-              "FAST",
-            );
-          } else {
-            const lonMin =
-              115;
-            const lonMax =
-              119.45;
-            const latMin =
-              3.85;
-            const latMax =
-              7.45;
-            const project = (
-              longitude: number,
-              latitude: number,
-            ) => ({
-              x:
-                mapLeft +
-                ((longitude - lonMin) /
-                  (lonMax - lonMin)) *
-                  mapWidth,
-              y:
-                mapTop +
-                ((latMax - latitude) /
-                  (latMax - latMin)) *
-                  mapHeight,
-            });
-            const sabahOutline: Coordinate[] = [
-              { lat: 7.25, lng: 116.75 },
-              { lat: 7.1, lng: 117.45 },
-              { lat: 6.8, lng: 118.15 },
-              { lat: 6.45, lng: 118.75 },
-              { lat: 5.95, lng: 119.25 },
-              { lat: 5.35, lng: 119.1 },
-              { lat: 4.85, lng: 118.55 },
-              { lat: 4.45, lng: 117.75 },
-              { lat: 4.1, lng: 117.05 },
-              { lat: 4.2, lng: 116.35 },
-              { lat: 4.7, lng: 115.85 },
-              { lat: 5.35, lng: 115.45 },
-              { lat: 6.0, lng: 115.35 },
-              { lat: 6.55, lng: 115.85 },
-              { lat: 7.0, lng: 116.35 },
-            ];
+          sabahOutline.forEach(
+            (
+              point,
+              index,
+            ) => {
+              const current =
+                project(
+                  point.lng,
+                  point.lat,
+                );
 
-            pdf.setFillColor(
-              219,
-              234,
-              254,
-            );
-            pdf.rect(
-              mapLeft,
-              mapTop,
-              mapWidth,
-              mapHeight,
-              "F",
-            );
-            pdf.setDrawColor(
-              37,
-              99,
-              235,
-            );
-            pdf.setLineWidth(
-              0.45,
-            );
-            sabahOutline.forEach(
-              (
-                point,
-                index,
-              ) => {
-                const current =
-                  project(
-                    point.lng,
-                    point.lat,
-                  );
-                const nextPoint =
-                  sabahOutline[
-                    (
-                      index +
-                      1
-                    ) %
-                      sabahOutline.length
-                  ];
-                const next =
-                  project(
-                    nextPoint.lng,
-                    nextPoint.lat,
-                  );
-
-                pdf.line(
+              if (
+                index === 0
+              ) {
+                pdf.moveTo(
                   current.x,
                   current.y,
-                  next.x,
-                  next.y,
                 );
-              },
-            );
-            const fallbackMarker =
-              project(
-                centreLng,
-                centreLat,
-              );
-            markerX =
-              fallbackMarker.x;
-            markerY =
-              fallbackMarker.y;
-          }
+              } else {
+                pdf.lineTo(
+                  current.x,
+                  current.y,
+                );
+              }
+            },
+          );
+          pdf.close();
+          pdf.fillStroke();
 
+          pdf.setDrawColor(
+            134,
+            239,
+            172,
+          );
+          pdf.setLineWidth(
+            0.18,
+          );
+          [
+            [115.3, 6.7, 118.9, 6.05],
+            [115.7, 5.25, 118.6, 4.75],
+            [116.05, 4.28, 117.25, 7.05],
+          ].forEach(
+            (line) => {
+              const start =
+                project(
+                  line[0],
+                  line[1],
+                );
+              const end =
+                project(
+                  line[2],
+                  line[3],
+                );
+
+              pdf.line(
+                start.x,
+                start.y,
+                end.x,
+                end.y,
+              );
+            },
+          );
+
+          const siteMarker =
+            project(
+              centreLng,
+              centreLat,
+            );
+          const markerX =
+            Math.max(
+              mapLeft + 2.5,
+              Math.min(
+                mapLeft +
+                  mapWidth -
+                  2.5,
+                siteMarker.x,
+              ),
+            );
+          const markerY =
+            Math.max(
+              mapTop + 2.5,
+              Math.min(
+                mapTop +
+                  mapHeight -
+                  2.5,
+                siteMarker.y,
+              ),
+            );
+
+          pdf.setDrawColor(
+            255,
+            255,
+            255,
+          );
           pdf.setFillColor(
             220,
             38,
@@ -2138,10 +3385,21 @@ export default function HomePage() {
           pdf.circle(
             markerX,
             markerY,
-            2.2,
+            2.8,
+            "FD",
+          );
+          pdf.setFillColor(
+            220,
+            38,
+            38,
+          );
+          pdf.circle(
+            markerX,
+            markerY,
+            1.35,
             "F",
           );
-          pdf.setDrawColor(
+          pdf.setFillColor(
             255,
             255,
             255,
@@ -2149,8 +3407,74 @@ export default function HomePage() {
           pdf.circle(
             markerX,
             markerY,
-            2.8,
+            0.45,
+            "F",
           );
+          pdf.setFont(
+            "helvetica",
+            "bold",
+          );
+          pdf.setFontSize(
+            5.8,
+          );
+          pdf.setTextColor(
+            185,
+            28,
+            28,
+          );
+          pdf.text(
+            "SITE",
+            Math.min(
+              markerX + 4,
+              mapLeft +
+                mapWidth -
+                2,
+            ),
+            Math.max(
+              markerY - 2,
+              mapTop + 4,
+            ),
+            {
+              maxWidth:
+                mapWidth *
+                0.34,
+            },
+          );
+          const districtLabel =
+            formData.district.trim();
+
+          if (districtLabel) {
+            pdf.setFont(
+              "helvetica",
+              "normal",
+            );
+            pdf.setFontSize(
+              5,
+            );
+            pdf.setTextColor(
+              51,
+              65,
+              85,
+            );
+            pdf.text(
+              districtLabel,
+              Math.min(
+                markerX + 4,
+                mapLeft +
+                  mapWidth -
+                  2,
+              ),
+              Math.max(
+                markerY + 2.2,
+                mapTop + 7,
+              ),
+              {
+                maxWidth:
+                  mapWidth *
+                  0.44,
+              },
+            );
+          }
           pdf.setFont(
             "helvetica",
             "normal",
@@ -2171,16 +3495,14 @@ export default function HomePage() {
           pdf.rect(
             x +
               1,
-            y +
-              height -
-              6,
+            footerTop,
             width -
               2,
             5,
             "F",
           );
           pdf.text(
-            `${centreLat.toFixed(5)}, ${centreLng.toFixed(5)}`,
+            `Site centre: ${centreLat.toFixed(5)}, ${centreLng.toFixed(5)}`,
             x +
               3,
             y +
@@ -2199,7 +3521,7 @@ export default function HomePage() {
           pdf.text(
             formData.district.trim() ||
               formData.village.trim() ||
-              "General location",
+              "Sabah overview",
             x +
               width -
               3,
@@ -2222,12 +3544,12 @@ export default function HomePage() {
           height: number,
         ) => {
           const sectionHeight =
-            4;
+            4.4;
           const smallFont =
             pdfPaperSize ===
             "a4"
-              ? 5.2
-              : 6;
+              ? 5.6
+              : 6.2;
           let cursorY =
             y;
 
@@ -2305,13 +3627,15 @@ export default function HomePage() {
             pdf.text(
               label,
               x +
-                2,
+                2.4,
               cursorY +
-                2.7,
+                rowHeight /
+                2 +
+                0.6,
               {
                 maxWidth:
                   width *
-                  0.34,
+                  0.33,
               },
             );
             pdf.setFont(
@@ -2327,7 +3651,7 @@ export default function HomePage() {
               pdf.splitTextToSize(
                 value,
                 width *
-                  0.58,
+                  0.55,
               ).slice(
                 0,
                 rowHeight >= 8
@@ -2338,13 +3662,15 @@ export default function HomePage() {
               valueLines,
               x +
                 width *
-                  0.39,
+                  0.42,
               cursorY +
-                2.7,
+                rowHeight /
+                2 +
+                0.6,
               {
                 maxWidth:
                   width *
-                  0.58,
+                  0.55,
               },
             );
             cursorY +=
@@ -2357,7 +3683,7 @@ export default function HomePage() {
             cellWidth: number,
             cellHeight: number,
             title: string,
-            fields: string[],
+            nameValue: string,
             idValue: string,
           ) => {
             pdf.setDrawColor(
@@ -2386,134 +3712,136 @@ export default function HomePage() {
             pdf.text(
               title,
               cellX +
-                1.5,
+                cellWidth /
+                2,
               cellY +
                 2.8,
               {
+                align:
+                  "center",
                 maxWidth:
-                  cellWidth -
-                  3,
+                cellWidth -
+                3,
               },
             );
 
             pdf.setFont(
               "helvetica",
+              "bold",
+            );
+            pdf.setFontSize(
+              smallFont,
+            );
+            pdf.setTextColor(
+              15,
+              23,
+              42,
+            );
+            const trimmedName =
+              nameValue.trim();
+            const nameY =
+              cellY +
+              cellHeight -
+              12.2;
+
+            if (trimmedName) {
+              pdf.text(
+                trimmedName,
+                cellX +
+                  cellWidth /
+                  2,
+                nameY,
+                {
+                  align:
+                    "center",
+                  maxWidth:
+                    cellWidth -
+                    6,
+                },
+              );
+            }
+
+            pdf.setFont(
+              "helvetica",
               "normal",
+            );
+            pdf.setFontSize(
+              smallFont,
             );
             pdf.setTextColor(
               71,
               85,
               105,
             );
-            const fieldRows = [
-              ...fields,
-              `ID No.: ${idValue || ""}`,
-            ];
-            const fieldStartY =
-              cellY +
-              6.7;
-            const fieldGap =
-              Math.max(
+            const trimmedId =
+              idValue.trim();
+
+            pdf.text(
+              trimmedId
+                ? `IC / ID No.: ${trimmedId}`
+                : "IC / ID No.:",
+              cellX +
+                cellWidth /
+                2,
+              nameY +
                 3.6,
-                Math.min(
-                  4.6,
-                  (cellHeight -
-                    13) /
-                    Math.max(
-                      fieldRows.length,
-                      1,
-                    ),
-                ),
-              );
-            fieldRows.forEach(
-              (
-                field,
-                index,
-              ) => {
-                const [
-                  label,
-                  ...valueParts
-                ] =
-                  field.split(
-                    ":",
-                  );
-                const value =
-                  valueParts
-                    .join(
-                      ":",
-                    )
-                    .trim();
-                const fieldY =
-                  fieldStartY +
-                  index *
-                    fieldGap;
-                const lineStartX =
-                  cellX +
-                  Math.min(
-                    cellWidth *
-                      0.42,
-                    18,
-                  );
-                pdf.text(
-                  `${label}:`,
-                  cellX +
-                    1.5,
-                  fieldY,
-                  {
-                    maxWidth:
-                      lineStartX -
-                      cellX -
-                      2.2,
-                  },
-                );
-                pdf.line(
-                  lineStartX,
-                  fieldY +
-                    0.4,
-                  cellX +
-                    cellWidth -
-                    1.8,
-                  fieldY +
-                    0.4,
-                );
-                if (value) {
-                  pdf.text(
-                    value,
-                    lineStartX +
-                      1,
-                    fieldY -
-                      0.4,
-                    {
-                      maxWidth:
-                        cellX +
-                        cellWidth -
-                        lineStartX -
-                        3,
-                    },
-                  );
-                }
+              {
+                align:
+                  "center",
+                maxWidth:
+                  cellWidth -
+                  6,
               },
+            );
+
+            const signatureLineY =
+              cellY +
+              cellHeight -
+              5.7;
+            pdf.setDrawColor(
+              100,
+              116,
+              139,
+            );
+            pdf.setLineDashPattern(
+              [
+                0.8,
+                1.2,
+              ],
+              0,
+            );
+            pdf.line(
+              cellX +
+                4,
+              signatureLineY,
+              cellX +
+                cellWidth -
+                4,
+              signatureLineY,
+            );
+            pdf.setLineDashPattern(
+              [],
+              0,
             );
 
             const lineY =
               cellY +
               cellHeight -
-              5;
-            pdf.line(
-              cellX +
-                1.5,
-              lineY,
-              cellX +
-                cellWidth -
-                1.5,
-              lineY,
-            );
+              2.7;
             pdf.text(
               "Signature / Date",
               cellX +
-                1.5,
+                cellWidth /
+                2,
               lineY +
-                3,
+                2.8,
+              {
+                align:
+                  "center",
+                maxWidth:
+                  cellWidth -
+                  3,
+              },
             );
           };
 
@@ -2668,53 +3996,121 @@ export default function HomePage() {
             "Coordinate / boundary table",
           );
           const coordinateRowHeight =
-            3.8;
-          const columns = [
+            4.6;
+          const columnEdges = [
             0,
             0.08,
-            0.29,
-            0.49,
-            0.58,
-            0.79,
+            0.28,
+            0.47,
+            0.68,
+            0.88,
+            1,
           ].map(
             (ratio) =>
               x +
               width *
                 ratio,
           );
-          [
+          const columnLabels = [
             "Pt",
             "Longitude",
             "Latitude",
             "Bearing",
             "Distance",
             "Z",
-          ].forEach(
-            (
-              heading,
-              index,
-            ) => {
-              pdf.setFont(
-                "helvetica",
-                "bold",
-              );
-          pdf.setFontSize(
-                5.5,
-              );
-              pdf.text(
-                heading,
-                columns[index] +
-                  0.6,
-                cursorY +
-                  2.6,
-              );
-            },
+          ];
+          const drawCoordinateCell = (
+            cellIndex: number,
+            rowY: number,
+            value: string,
+            bold = false,
+          ) => {
+            const cellX =
+              columnEdges[cellIndex];
+            const cellWidth =
+              columnEdges[
+                cellIndex + 1
+              ] -
+              cellX;
+            pdf.setDrawColor(
+              100,
+              116,
+              139,
+            );
+            pdf.rect(
+              cellX,
+              rowY,
+              cellWidth,
+              coordinateRowHeight,
+            );
+            pdf.setFont(
+              "helvetica",
+              bold
+                ? "bold"
+                : "normal",
+            );
+            pdf.setFontSize(
+              bold
+                ? 5.2
+                : 5,
+            );
+            pdf.setTextColor(
+              15,
+              23,
+              42,
+            );
+            pdf.text(
+              pdf
+                .splitTextToSize(
+                  value,
+                  cellWidth -
+                    1.4,
+                )
+                .slice(
+                  0,
+                  1,
+                ),
+              cellX +
+                cellWidth /
+                2,
+              rowY +
+                coordinateRowHeight /
+                2 +
+                0.65,
+              {
+                align:
+                  "center",
+                maxWidth:
+                  cellWidth -
+                  1.8,
+              },
+            );
+          };
+
+          pdf.setFillColor(
+            226,
+            232,
+            240,
           );
           pdf.rect(
             x,
             cursorY,
             width,
             coordinateRowHeight,
+            "F",
+          );
+          columnLabels.forEach(
+            (
+              heading,
+              index,
+            ) => {
+              drawCoordinateCell(
+                index,
+                cursorY,
+                heading,
+                true,
+              );
+            },
           );
           cursorY +=
             coordinateRowHeight;
@@ -2736,38 +4132,18 @@ export default function HomePage() {
                   polygon.segments[index]
                     ?.bearingDms ?? "-",
                   polygon.segments[index]
-                    ?.distanceM.toFixed(1) ?? "-",
+                    ?.distanceM.toFixed(2) ?? "-",
                   "-",
                 ];
-                pdf.rect(
-                  x,
-                  cursorY,
-                  width,
-                  coordinateRowHeight,
-                );
-                pdf.setFont(
-                  "helvetica",
-                  "normal",
-                );
-                pdf.setFontSize(
-                  5.4,
-                );
                 values.forEach(
                   (
                     value,
                     valueIndex,
                   ) => {
-                    pdf.text(
+                    drawCoordinateCell(
+                      valueIndex,
+                      cursorY,
                       value,
-                      columns[valueIndex] +
-                        0.6,
-                      cursorY +
-                        2.6,
-                      {
-                        maxWidth:
-                          width *
-                          0.19,
-                      },
                     );
                   },
                 );
@@ -2810,9 +4186,9 @@ export default function HomePage() {
             cursorY;
           const signatureHeight =
             Math.min(
-              62,
+              48,
               Math.max(
-                50,
+                42,
                 height -
                   (
                     cursorY -
@@ -2833,12 +4209,9 @@ export default function HomePage() {
             cellWidth,
             cellHeight,
             "Surveyor / Plotter",
-            [
-              "Name:",
-              "Role:",
-            ],
+            pdfIdentities.surveyor.name,
             visibleIdentity(
-              pdfIdentities.surveyor,
+              pdfIdentities.surveyor.idNo,
             ),
           );
           drawSignatureCell(
@@ -2848,11 +4221,9 @@ export default function HomePage() {
             cellWidth,
             cellHeight,
             "Witness",
-            [
-              "Name:",
-            ],
+            pdfIdentities.witness.name,
             visibleIdentity(
-              pdfIdentities.witness,
+              pdfIdentities.witness.idNo,
             ),
           );
           drawSignatureCell(
@@ -2862,13 +4233,9 @@ export default function HomePage() {
             cellWidth,
             cellHeight,
             "Village Head / JPKK",
-            [
-              "Name:",
-              "Position:",
-              "Village / JPKK:",
-            ],
+            pdfIdentities.villageHead.name,
             visibleIdentity(
-              pdfIdentities.villageHead,
+              pdfIdentities.villageHead.idNo,
             ),
           );
           drawSignatureCell(
@@ -2879,11 +4246,10 @@ export default function HomePage() {
             cellWidth,
             cellHeight,
             "Applicant / Landowner",
-            [
-              `Name: ${formData.ownerName.trim()}`,
-            ],
+            pdfIdentities.applicant.name.trim() ||
+              formData.ownerName.trim(),
             visibleIdentity(
-              pdfIdentities.applicant,
+              pdfIdentities.applicant.idNo,
             ),
           );
           cursorY +=
@@ -2987,10 +4353,6 @@ export default function HomePage() {
           margin *
             2;
 
-        const titleBlockWidth =
-          contentWidth *
-          0.31;
-
         const sheetGap =
           Math.max(
             2,
@@ -2998,8 +4360,12 @@ export default function HomePage() {
               4,
               contentWidth *
                 0.012,
-            ),
+              ),
           );
+
+        const titleBlockWidth =
+          contentWidth *
+          0.31;
 
         const mainMapAreaWidth =
           contentWidth -
@@ -3093,19 +4459,285 @@ export default function HomePage() {
           cropWidth;
         croppedMapCanvas.height =
           cropHeight;
-        croppedMapCanvas
-          .getContext("2d")
-          ?.drawImage(
-            mapCanvas,
-            cropX,
-            cropY,
-            cropWidth,
-            cropHeight,
+        const croppedMapContext =
+          croppedMapCanvas.getContext(
+            "2d",
+          );
+        croppedMapContext?.drawImage(
+          mapCanvas,
+          cropX,
+          cropY,
+          cropWidth,
+          cropHeight,
+          0,
+          0,
+          cropWidth,
+          cropHeight,
+        );
+
+        if (
+          croppedMapContext &&
+          mapOverlayGeometry &&
+          mapOverlayGeometry.vertices
+            .length >= 3
+        ) {
+          const scaleX =
+            mapCanvas.width /
+            Math.max(
+              1,
+              mapOverlayGeometry.width,
+            );
+          const scaleY =
+            mapCanvas.height /
+            Math.max(
+              1,
+              mapOverlayGeometry.height,
+            );
+          const overlayScale =
+            (
+              scaleX +
+              scaleY
+            ) /
+            2;
+          const toCanvasPoint = (
+            point: {
+              x: number;
+              y: number;
+            },
+          ) => ({
+            x:
+              point.x *
+                scaleX -
+              cropX,
+            y:
+              point.y *
+                scaleY -
+              cropY,
+          });
+          const drawLabelLine = (
+            textValue: string,
+            yOffset: number,
+            fontSize: number,
+          ) => {
+            croppedMapContext.lineWidth =
+              Math.max(
+                2,
+                2.5 *
+                  overlayScale,
+              );
+            croppedMapContext.strokeStyle =
+              "rgba(15, 23, 42, 0.92)";
+            croppedMapContext.strokeText(
+              textValue,
+              0,
+              yOffset +
+                fontSize *
+                  0.34,
+            );
+            croppedMapContext.fillStyle =
+              "#ffffff";
+            croppedMapContext.fillText(
+              textValue,
+              0,
+              yOffset +
+                fontSize *
+                  0.34,
+            );
+          };
+
+          croppedMapContext.save();
+          croppedMapContext.beginPath();
+          croppedMapContext.rect(
             0,
             0,
             cropWidth,
             cropHeight,
           );
+          croppedMapContext.clip();
+
+          const vertices =
+            mapOverlayGeometry.vertices.map(
+              toCanvasPoint,
+            );
+
+          croppedMapContext.beginPath();
+          vertices.forEach(
+            (
+              point,
+              index,
+            ) => {
+              if (
+                index === 0
+              ) {
+                croppedMapContext.moveTo(
+                  point.x,
+                  point.y,
+                );
+              } else {
+                croppedMapContext.lineTo(
+                  point.x,
+                  point.y,
+                );
+              }
+            },
+          );
+          croppedMapContext.closePath();
+          croppedMapContext.fillStyle =
+            "rgba(56, 189, 248, 0.14)";
+          croppedMapContext.fill();
+
+          croppedMapContext.strokeStyle =
+            "#000000";
+          croppedMapContext.lineWidth =
+            3 *
+            overlayScale;
+          croppedMapContext.lineCap =
+            "butt";
+          croppedMapContext.lineJoin =
+            "bevel";
+
+          mapOverlayGeometry.segments.forEach(
+            (segment) => {
+              const start =
+                toCanvasPoint(
+                  segment.start,
+                );
+              const end =
+                toCanvasPoint(
+                  segment.end,
+                );
+
+              croppedMapContext.beginPath();
+              croppedMapContext.moveTo(
+                start.x,
+                start.y,
+              );
+              croppedMapContext.lineTo(
+                end.x,
+                end.y,
+              );
+              croppedMapContext.stroke();
+            },
+          );
+
+          vertices.forEach(
+            (
+              point,
+              index,
+            ) => {
+              const markerRadius =
+                11 *
+                overlayScale;
+
+              croppedMapContext.beginPath();
+              croppedMapContext.arc(
+                point.x,
+                point.y,
+                5 *
+                  overlayScale,
+                0,
+                Math.PI * 2,
+              );
+              croppedMapContext.fillStyle =
+                "#ffffff";
+              croppedMapContext.fill();
+              croppedMapContext.lineWidth =
+                2 *
+                overlayScale;
+              croppedMapContext.strokeStyle =
+                "#000000";
+              croppedMapContext.stroke();
+
+              croppedMapContext.beginPath();
+              croppedMapContext.arc(
+                point.x,
+                point.y,
+                markerRadius *
+                  0.72,
+                0,
+                Math.PI * 2,
+              );
+              croppedMapContext.fillStyle =
+                "#ffffff";
+              croppedMapContext.fill();
+              croppedMapContext.lineWidth =
+                1.8 *
+                overlayScale;
+              croppedMapContext.strokeStyle =
+                "#000000";
+              croppedMapContext.stroke();
+              croppedMapContext.fillStyle =
+                "#000000";
+              croppedMapContext.font =
+                `${Math.max(
+                  9,
+                  9 *
+                    overlayScale,
+                )}px Arial, sans-serif`;
+              croppedMapContext.textAlign =
+                "center";
+              croppedMapContext.textBaseline =
+                "middle";
+              croppedMapContext.fillText(
+                String(
+                  index + 1,
+                ),
+                point.x,
+                point.y,
+              );
+            },
+          );
+
+          mapOverlayGeometry.segments.forEach(
+            (segment) => {
+              const midpoint =
+                toCanvasPoint(
+                  segment.midpoint,
+                );
+              const fontSize =
+                Math.max(
+                  10,
+                  10 *
+                    overlayScale,
+                );
+              const lineGap =
+                fontSize *
+                1.4;
+
+              croppedMapContext.save();
+              croppedMapContext.translate(
+                midpoint.x,
+                midpoint.y,
+              );
+              croppedMapContext.rotate(
+                (
+                  segment.angle *
+                  Math.PI
+                ) /
+                  180,
+              );
+              croppedMapContext.font =
+                `800 ${fontSize}px Arial, sans-serif`;
+              croppedMapContext.textAlign =
+                "center";
+              croppedMapContext.textBaseline =
+                "middle";
+              drawLabelLine(
+                segment.bearing,
+                -lineGap / 2,
+                fontSize,
+              );
+              drawLabelLine(
+                `${segment.distanceText} ${segment.unitText}`,
+                lineGap / 2,
+                fontSize,
+              );
+              croppedMapContext.restore();
+            },
+          );
+
+          croppedMapContext.restore();
+        }
 
         const planMapImageData =
           croppedMapCanvas.toDataURL(
@@ -3235,7 +4867,7 @@ export default function HomePage() {
         pdf.rect(
           mapX,
           mapY,
-          mainMapAreaWidth,
+          mapWidth,
           sheetContentHeight,
         );
 
@@ -3287,15 +4919,15 @@ export default function HomePage() {
 
         const keyPlanWidth =
           Math.min(
-            78,
+            62,
             mapWidth *
-              0.28,
+              0.24,
           );
         const keyPlanHeight =
           Math.min(
-            54,
+            42,
             mapHeight *
-              0.34,
+              0.28,
           );
         const keyPlanGap =
           7;
@@ -3382,16 +5014,7 @@ export default function HomePage() {
             overlapHeight;
         };
         const keyPlanPosition =
-          keyPlanCandidates.reduce(
-            (
-              best,
-              candidate,
-            ) =>
-              overlapArea(candidate) <
-              overlapArea(best)
-                ? candidate
-                : best,
-          );
+          keyPlanCandidates[0];
 
         addKeyPlan(
           keyPlanPosition.x,
@@ -3432,30 +5055,97 @@ export default function HomePage() {
           18,
         );
 
-        const columns = [
-          margin,
-          margin +
+        const columnEdges = [
+          0,
+          0.08,
+          0.27,
+          0.46,
+          0.66,
+          0.86,
+          1,
+        ].map(
+          (ratio) =>
+            margin +
             contentWidth *
-              0.08,
-          margin +
-            contentWidth *
-              0.28,
-          margin +
-            contentWidth *
-              0.48,
-          margin +
-            contentWidth *
-              0.58,
-          margin +
-            contentWidth *
-              0.76,
-        ];
+              ratio,
+        );
 
         const rowHeight =
           7;
 
         let rowY =
           28;
+
+        const drawContinuationCell = (
+          cellIndex: number,
+          cellY: number,
+          value: string,
+          bold = false,
+        ) => {
+          const cellX =
+            columnEdges[cellIndex];
+          const cellWidth =
+            columnEdges[
+              cellIndex + 1
+            ] - cellX;
+
+          pdf.setDrawColor(
+            100,
+            116,
+            139,
+          );
+          pdf.setLineWidth(
+            0.2,
+          );
+          pdf.rect(
+            cellX,
+            cellY,
+            cellWidth,
+            rowHeight,
+          );
+          pdf.setFont(
+            "helvetica",
+            bold
+              ? "bold"
+              : "normal",
+          );
+          pdf.setFontSize(
+            bold
+              ? 7.2
+              : 7,
+          );
+          pdf.setTextColor(
+            15,
+            23,
+            42,
+          );
+          pdf.text(
+            pdf
+              .splitTextToSize(
+                value,
+                cellWidth -
+                  2.4,
+              )
+              .slice(
+                0,
+                1,
+              ),
+            cellX +
+              cellWidth /
+              2,
+            cellY +
+              rowHeight /
+              2 +
+              0.9,
+            {
+              align:
+                "center",
+              maxWidth:
+                cellWidth -
+                3,
+            },
+          );
+        };
 
         const drawTableHeader =
           () => {
@@ -3476,55 +5166,25 @@ export default function HomePage() {
               "F",
             );
 
-            pdf.setFont(
-              "helvetica",
-              "bold",
-            );
-
-            pdf.setFontSize(
-              8,
-            );
-
-            pdf.setTextColor(
-              15,
-              23,
-              42,
-            );
-
-            pdf.text(
+            [
               reportText.point,
-              columns[0],
-              rowY,
-            );
-
-            pdf.text(
               reportText.longitude,
-              columns[1],
-              rowY,
-            );
-
-            pdf.text(
               reportText.latitude,
-              columns[2],
-              rowY,
-            );
-
-            pdf.text(
               reportText.bearing,
-              columns[3],
-              rowY,
-            );
-
-            pdf.text(
               reportText.distance,
-              columns[4],
-              rowY,
-            );
-
-            pdf.text(
               reportText.z,
-              columns[5],
-              rowY,
+            ].forEach(
+              (
+                heading,
+                headingIndex,
+              ) => {
+                drawContinuationCell(
+                  headingIndex,
+                  rowY - 5,
+                  heading,
+                  true,
+                );
+              },
             );
 
             rowY +=
@@ -3559,70 +5219,39 @@ export default function HomePage() {
               drawTableHeader();
             }
 
-            pdf.setFont(
-              "helvetica",
-              "normal",
-            );
-
-            pdf.setFontSize(
-              8,
-            );
-
-            pdf.setTextColor(
-              51,
-              65,
-              85,
-            );
-
-            pdf.text(
+            [
               String(
                 pointIndex +
                   1,
               ),
-              columns[0],
-              rowY,
-            );
-
-            pdf.text(
               coordinate.lng.toFixed(
                 6,
               ),
-              columns[1],
-              rowY,
-            );
-
-            pdf.text(
               coordinate.lat.toFixed(
                 6,
               ),
-              columns[2],
-              rowY,
-            );
-
-            pdf.text(
               polygon.segments[
                 pointIndex
               ]?.bearingDms ??
                 "-",
-              columns[3],
-              rowY,
-            );
-
-            pdf.text(
               polygon.segments[
                 pointIndex
               ]?.distanceM.toFixed(
                 2,
               ) ??
                 "-",
-              columns[4],
-              rowY,
-            );
-
-            pdf.text(
               "-",
-              columns[5],
-              rowY,
+            ].forEach(
+              (
+                value,
+                valueIndex,
+              ) => {
+                drawContinuationCell(
+                  valueIndex,
+                  rowY - 5,
+                  value,
+                );
+              },
             );
 
             rowY +=
@@ -3744,25 +5373,248 @@ export default function HomePage() {
           character,
         );
 
-      const coordinates = [
-        ...polygon.coordinates,
-        polygon.coordinates[0],
-      ]
-        .map(
-          (
-            coordinate,
-          ) =>
-            `${coordinate.lng},${coordinate.lat},0`,
-        )
-        .join(" ");
+      const escapeKml =
+        (value: string) =>
+          value.replace(
+            /[&<>"']/g,
+            (
+              character,
+            ) => ({
+              "&":
+                "&amp;",
+              "<":
+                "&lt;",
+              ">":
+                "&gt;",
+              '"':
+                "&quot;",
+              "'":
+                "&apos;",
+            })[
+              character
+            ] ??
+            character,
+          );
+
+      const categoryLabel =
+        (value: string) =>
+          value
+            .split("_")
+            .map(
+              (part) =>
+                part.charAt(0).toUpperCase() +
+                part.slice(1),
+            )
+            .join(" ");
+
+      const coordinateText =
+        (
+          coordinates: Array<{
+            lat: number;
+            lng: number;
+          }>,
+        ) =>
+          coordinates
+            .map(
+              (
+                coordinate,
+              ) =>
+                `${coordinate.lng},${coordinate.lat},0`,
+            )
+            .join(" ");
+
+      const closedCoordinates =
+        (
+          coordinates: Array<{
+            lat: number;
+            lng: number;
+          }>,
+        ) => {
+          const first =
+            coordinates[0];
+          const last =
+            coordinates[
+              coordinates.length - 1
+            ];
+
+          if (
+            first &&
+            last &&
+            first.lat === last.lat &&
+            first.lng === last.lng
+          ) {
+            return coordinates;
+          }
+
+          return first
+            ? [
+                ...coordinates,
+                first,
+              ]
+            : coordinates;
+        };
+
+      const description = (
+        rows: Array<[string, string]>,
+      ) =>
+        `<description><![CDATA[${rows
+          .map(
+            ([label, value]) =>
+              `<strong>${escapeKml(label)}</strong>: ${escapeKml(value)}`,
+          )
+          .join("<br/>")}]]></description>`;
+
+      const visibleObjects =
+        drawingObjects.filter(
+          (object) =>
+            object.isVisible,
+        );
+
+      const placemarks =
+        [
+          ...manualPoints.map(
+            (point) =>
+              `<Placemark>` +
+              `<name>${escapeKml(
+                point.pointName.trim() ||
+                  point.pointCode,
+              )}</name>` +
+              `<styleUrl>#sabahlot-point-style</styleUrl>` +
+              description([
+                [
+                  "ID",
+                  point.id,
+                ],
+                [
+                  "Category",
+                  categoryLabel(
+                    point.category,
+                  ),
+                ],
+                [
+                  "Status",
+                  "Preliminary",
+                ],
+              ]) +
+              `<Point><coordinates>${coordinateText([
+                point.coordinate,
+              ])}</coordinates></Point>` +
+              `</Placemark>`,
+          ),
+          ...visibleObjects.flatMap(
+            (object) => {
+              if (
+                object.geometryType ===
+                "polygon"
+              ) {
+                const coordinates =
+                  coordinateText(
+                    closedCoordinates(
+                      object.coordinates,
+                    ),
+                  );
+
+                return [
+                  `<Placemark>` +
+                    `<name>${escapeKml(
+                      object.name,
+                    )}</name>` +
+                    `<styleUrl>#sabahlot-boundary-style</styleUrl>` +
+                    description([
+                      [
+                        "ID",
+                        object.id,
+                      ],
+                      [
+                        "Category",
+                        categoryLabel(
+                          object.category,
+                        ),
+                      ],
+                      [
+                        "Status",
+                        "Preliminary",
+                      ],
+                    ]) +
+                    `<MultiGeometry>` +
+                    `<Polygon><extrude>0</extrude><tessellate>1</tessellate>` +
+                    `<outerBoundaryIs><LinearRing><coordinates>` +
+                    `${coordinates}</coordinates></LinearRing></outerBoundaryIs>` +
+                    `</Polygon>` +
+                    `<LineString><tessellate>1</tessellate><coordinates>` +
+                    `${coordinates}</coordinates></LineString>` +
+                    `</MultiGeometry>` +
+                    `</Placemark>`,
+                ];
+              }
+
+              const lineKind =
+                object.lineStyle ===
+                "dashed"
+                  ? "Dashed Line"
+                  : "Solid Line";
+
+              return [
+                `<Placemark>` +
+                  `<name>${escapeKml(
+                    object.name,
+                  )}</name>` +
+                  `<styleUrl>#sabahlot-line-style</styleUrl>` +
+                  description([
+                    [
+                      "ID",
+                      object.id,
+                    ],
+                    [
+                      "Category",
+                      categoryLabel(
+                        object.category,
+                      ),
+                    ],
+                    [
+                      "Line Type",
+                      lineKind,
+                    ],
+                    [
+                      "Status",
+                      "Preliminary",
+                    ],
+                  ]) +
+                  `<LineString><tessellate>1</tessellate><coordinates>` +
+                  `${coordinateText(
+                    object.coordinates,
+                  )}</coordinates></LineString>` +
+                  `</Placemark>`,
+              ];
+            },
+          ),
+        ];
+
+      if (
+        placemarks.length === 0
+      ) {
+        setSaveMessage(
+          "No visible objects to export.",
+        );
+
+        return;
+      }
 
       downloadTextFile(
         `<?xml version="1.0" encoding="UTF-8"?>\n` +
           `<kml xmlns="http://www.opengis.net/kml/2.2"><Document>` +
-          `<name>${safeLotName}</name><Placemark><name>${safeLotName}</name>` +
-          `<Polygon><outerBoundaryIs><LinearRing><coordinates>` +
-          `${coordinates}</coordinates></LinearRing></outerBoundaryIs></Polygon>` +
-          `</Placemark></Document></kml>`,
+          `<name>${safeLotName}</name>` +
+          `<Style id="sabahlot-boundary-style">` +
+          `<LineStyle><color>ff00ffff</color><width>3</width></LineStyle>` +
+          `<PolyStyle><color>0000ffff</color><fill>0</fill><outline>1</outline></PolyStyle>` +
+          `</Style>` +
+          `<Style id="sabahlot-line-style">` +
+          `<LineStyle><color>ff00ffff</color><width>3</width></LineStyle>` +
+          `</Style>` +
+          `<Style id="sabahlot-point-style">` +
+          `<IconStyle><scale>1</scale><Icon><href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href></Icon></IconStyle>` +
+          `</Style>` +
+          `${placemarks.join("")}</Document></kml>`,
         `${lotName.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.kml`,
         "application/vnd.google-earth.kml+xml",
       );
@@ -3774,33 +5626,223 @@ export default function HomePage() {
 
   const exportDxf =
     () => {
-      if (!polygon) {
+      const visibleObjects =
+        drawingObjects.filter(
+          (object) =>
+            object.isVisible,
+        );
+
+      if (
+        visibleObjects.length === 0 &&
+        manualPoints.length === 0
+      ) {
         setSaveMessage(
-          text.polygonRequired,
+          "No visible objects to export.",
         );
 
         return;
       }
 
-      const vertices =
-        polygon.coordinates
-          .map(
-            (
-              coordinate,
-            ) =>
-              `10\n${coordinate.lng}\n20\n${coordinate.lat}\n`,
-          )
-          .join("");
-
       const lotName =
         formData.lotNumber.trim() ||
         "sabahlot";
+      const safeFileName =
+        lotName
+          .replace(
+            /[^a-z0-9]+/gi,
+            "-",
+          )
+          .toLowerCase();
+      const sanitizeDxfText =
+        (value: string) =>
+          value
+            .replace(
+              /[\r\n]+/g,
+              " ",
+            )
+            .trim();
+      const layerNameForObject =
+        (object: DrawingObject) => {
+          if (
+            object.geometryType ===
+            "polygon"
+          ) {
+            return "LOT_BOUNDARY";
+          }
+
+          if (
+            object.lineStyle ===
+            "dashed"
+          ) {
+            return object.category ===
+              "proposed_boundary" ||
+              object.category ===
+                "proposed_access" ||
+              object.category ===
+                "road_reserve" ||
+              object.category ===
+                "setback" ||
+              object.category ===
+                "reference_line"
+              ? object.category.toUpperCase()
+              : "DASHED_LINE";
+          }
+
+          return "LINE";
+        };
+      const closeCoordinates =
+        (
+          coordinates: Coordinate[],
+        ) => {
+          const first =
+            coordinates[0];
+          const last =
+            coordinates[
+              coordinates.length - 1
+            ];
+
+          if (
+            first &&
+            last &&
+            first.lat === last.lat &&
+            first.lng === last.lng
+          ) {
+            return coordinates;
+          }
+
+          return first
+            ? [
+                ...coordinates,
+                first,
+              ]
+            : coordinates;
+        };
+      const pointText =
+        (
+          coordinate: Coordinate,
+        ) =>
+          `10\n${coordinate.lng}\n20\n${coordinate.lat}\n30\n0\n`;
+      const lwPolylineEntity =
+        (
+          layer: string,
+          coordinates: Coordinate[],
+          closed: boolean,
+        ) =>
+          `0\nLWPOLYLINE\n8\n${layer}\n90\n${coordinates.length}\n70\n${
+            closed
+              ? 1
+              : 0
+          }\n` +
+          coordinates
+            .map(
+              (coordinate) =>
+                `10\n${coordinate.lng}\n20\n${coordinate.lat}\n`,
+            )
+            .join("");
+      const pointEntity =
+        (
+          coordinate: Coordinate,
+          label: string,
+        ) =>
+          `0\nPOINT\n8\nPOINT\n${pointText(
+            coordinate,
+          )}` +
+          (
+            label
+              ? `0\nTEXT\n8\nTEXT_LABEL\n10\n${coordinate.lng}\n20\n${coordinate.lat}\n30\n0\n40\n0.00002\n1\n${sanitizeDxfText(
+                  label,
+                )}\n`
+              : ""
+          );
+      const dxfLayers = [
+        "LOT_BOUNDARY",
+        "LINE",
+        "DASHED_LINE",
+        "PROPOSED_BOUNDARY",
+        "PROPOSED_ACCESS",
+        "ROAD_RESERVE",
+        "SETBACK",
+        "REFERENCE_LINE",
+        "POINT",
+        "TEXT_LABEL",
+      ];
+      const layerTable =
+        `0\nTABLE\n2\nLAYER\n70\n${dxfLayers.length}\n` +
+        dxfLayers
+          .map(
+            (
+              layer,
+              index,
+            ) =>
+              `0\nLAYER\n2\n${layer}\n70\n0\n62\n${
+                index === 0
+                  ? 1
+                  : index === 1
+                    ? 3
+                    : index ===
+                        dxfLayers.length - 1
+                      ? 7
+                      : 1
+              }\n6\nCONTINUOUS\n`,
+          )
+          .join("") +
+        `0\nENDTAB\n`;
+      const objectEntities =
+        visibleObjects
+          .map((object) => {
+            if (
+              object.geometryType ===
+              "polygon"
+            ) {
+              return (
+                `999\n${sanitizeDxfText(
+                  object.name,
+                )}\n` +
+                lwPolylineEntity(
+                  "LOT_BOUNDARY",
+                  closeCoordinates(
+                    object.coordinates,
+                  ),
+                  true,
+                )
+              );
+            }
+
+            return (
+              `999\n${sanitizeDxfText(
+                `${object.name} (${object.lineStyle})`,
+              )}\n` +
+              lwPolylineEntity(
+                layerNameForObject(
+                  object,
+                ),
+                object.coordinates,
+                false,
+              )
+            );
+          })
+          .join("");
+      const pointEntities =
+        manualPoints
+          .map((point) =>
+            pointEntity(
+              point.coordinate,
+              point.pointName.trim() ||
+                point.pointCode,
+            ),
+          )
+          .join("");
 
       downloadTextFile(
-        `0\nSECTION\n2\nENTITIES\n0\nLWPOLYLINE\n8\nSabahLot\n90\n` +
-          `${polygon.coordinates.length}\n70\n1\n${vertices}` +
+        `0\nSECTION\n2\nHEADER\n` +
+          `999\nSabahLot preliminary DXF export. Coordinates are WGS84 longitude/latitude; no projected meter transform has been applied.\n` +
+          `9\n$INSUNITS\n70\n0\n` +
+          `0\nENDSEC\n` +
+          `0\nSECTION\n2\nTABLES\n${layerTable}0\nENDSEC\n` +
+          `0\nSECTION\n2\nENTITIES\n` +
+          `${objectEntities}${pointEntities}` +
           `0\nENDSEC\n0\nEOF\n`,
-        `${lotName.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.dxf`,
+        `${safeFileName}.dxf`,
         "application/dxf",
       );
 
@@ -3838,13 +5880,33 @@ export default function HomePage() {
         initialCoordinates={
           loadedCoordinates
         }
+        initialDrawingObjects={
+          drawingObjects
+        }
+        initialActiveObjectId={
+          activeObjectId
+        }
         onPolygonChange={setPolygon}
+        onDrawingObjectsChange={
+          handleDrawingObjectsChange
+        }
+        onManualPointsChange={
+          setManualPoints
+        }
+        onActiveObjectChange={
+          setActiveObjectId
+        }
+        hasUnsavedChanges={
+          hasUnsavedChanges
+        }
         onSaveLot={
           saveLotRecord
         }
         onExportPdf={
           exportPdfPlan
         }
+        onExportKml={exportKml}
+        onExportDxf={exportDxf}
         isSavingLot={
           isSaving
         }
@@ -4043,8 +6105,20 @@ export default function HomePage() {
 
             <button
               type="submit"
-              className="sl-save-button"
-              disabled={isSaving}
+              className={`sl-save-button ${
+                hasUnsavedChanges
+                  ? "is-unsaved"
+                  : ""
+              }`}
+              disabled={
+                isSaving ||
+                !canSaveLot
+              }
+              title={
+                canSaveLot
+                  ? text.save
+                  : text.polygonRequired
+              }
             >
               <span aria-hidden="true">
                 ✓
@@ -4238,7 +6312,7 @@ export default function HomePage() {
                       event.target.value,
                     )
                   }
-                  placeholder="Example: Preliminary Lot Arrangement for Discussion"
+                  placeholder="Example: Lot Arrangement for Discussion"
                   autoComplete="off"
                 />
               </label>
@@ -4271,17 +6345,19 @@ export default function HomePage() {
 
               <label>
                 <span>
-                  Surveyor ID No.
+                  Surveyor / Plotter Name
                 </span>
 
                 <input
                   type="text"
                   value={
                     pdfIdentities.surveyor
+                      .name
                   }
                   onChange={(event) =>
                     updatePdfIdentity(
                       "surveyor",
+                      "name",
                       event.target.value,
                     )
                   }
@@ -4292,17 +6368,42 @@ export default function HomePage() {
 
               <label>
                 <span>
-                  Witness ID No.
+                  Surveyor / Plotter IC / ID No.
+                </span>
+
+                <input
+                  type="text"
+                  value={
+                    pdfIdentities.surveyor
+                      .idNo
+                  }
+                  onChange={(event) =>
+                    updatePdfIdentity(
+                      "surveyor",
+                      "idNo",
+                      event.target.value,
+                    )
+                  }
+                  placeholder="Optional"
+                  autoComplete="off"
+                />
+              </label>
+
+              <label>
+                <span>
+                  Witness Name
                 </span>
 
                 <input
                   type="text"
                   value={
                     pdfIdentities.witness
+                      .name
                   }
                   onChange={(event) =>
                     updatePdfIdentity(
                       "witness",
+                      "name",
                       event.target.value,
                     )
                   }
@@ -4313,17 +6414,42 @@ export default function HomePage() {
 
               <label>
                 <span>
-                  JPKK ID No.
+                  Witness IC / ID No.
+                </span>
+
+                <input
+                  type="text"
+                  value={
+                    pdfIdentities.witness
+                      .idNo
+                  }
+                  onChange={(event) =>
+                    updatePdfIdentity(
+                      "witness",
+                      "idNo",
+                      event.target.value,
+                    )
+                  }
+                  placeholder="Optional"
+                  autoComplete="off"
+                />
+              </label>
+
+              <label>
+                <span>
+                  Village Head / JPKK Name
                 </span>
 
                 <input
                   type="text"
                   value={
                     pdfIdentities.villageHead
+                      .name
                   }
                   onChange={(event) =>
                     updatePdfIdentity(
                       "villageHead",
+                      "name",
                       event.target.value,
                     )
                   }
@@ -4334,17 +6460,65 @@ export default function HomePage() {
 
               <label>
                 <span>
-                  Applicant ID No.
+                  Village Head / JPKK IC / ID No.
+                </span>
+
+                <input
+                  type="text"
+                  value={
+                    pdfIdentities.villageHead
+                      .idNo
+                  }
+                  onChange={(event) =>
+                    updatePdfIdentity(
+                      "villageHead",
+                      "idNo",
+                      event.target.value,
+                    )
+                  }
+                  placeholder="Optional"
+                  autoComplete="off"
+                />
+              </label>
+
+              <label>
+                <span>
+                  Applicant / Landowner Name
                 </span>
 
                 <input
                   type="text"
                   value={
                     pdfIdentities.applicant
+                      .name
                   }
                   onChange={(event) =>
                     updatePdfIdentity(
                       "applicant",
+                      "name",
+                      event.target.value,
+                    )
+                  }
+                  placeholder="Optional"
+                  autoComplete="off"
+                />
+              </label>
+
+              <label>
+                <span>
+                  Applicant / Landowner IC / ID No.
+                </span>
+
+                <input
+                  type="text"
+                  value={
+                    pdfIdentities.applicant
+                      .idNo
+                  }
+                  onChange={(event) =>
+                    updatePdfIdentity(
+                      "applicant",
+                      "idNo",
                       event.target.value,
                     )
                   }

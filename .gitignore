@@ -29,6 +29,15 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+*.log
+
+# temporary QA and browser automation
+.tmp-edge-profile*/
+.tmp-next-dev*
+.tmp-qa-*
+.playwright/
+playwright-report/
+test-results/
 
 # env files (can opt-in for committing if needed)
 .env*

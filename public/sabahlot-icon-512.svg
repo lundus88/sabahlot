@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="SabahLot SL icon">
+  <rect width="512" height="512" rx="112" fill="#0F172A"/>
+  <path d="M112 352V160h123v48h-64v24h59c43 0 72 23 72 61 0 39-31 59-74 59H112Zm59-48h56c12 0 20-5 20-16s-8-16-20-16h-56v32Zm158 48V160h62v139h80v53H329Z" fill="#F8FAFC"/>
+  <path d="M90 405h332" stroke="#38BDF8" stroke-width="20" stroke-linecap="round"/>
+</svg>
