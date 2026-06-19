@@ -8803,7 +8803,7 @@ export default function Map({
         >
           <button
             type="button"
-            className={`sl-dock-button ${drawMenuOpen ? "is-active" : ""}`}
+            className={`sl-dock-button sl-tool-button ${drawMenuOpen ? "is-active" : ""}`}
             onClick={() => {
               setDrawMenuOpen((current) => !current);
               setEditMenuOpen(false);
@@ -8820,7 +8820,7 @@ export default function Map({
 
           <button
             type="button"
-            className={`sl-dock-button ${editMenuOpen ? "is-active" : ""}`}
+            className={`sl-dock-button sl-tool-button ${editMenuOpen ? "is-active" : ""}`}
             onClick={() => {
               setEditMenuOpen((current) => !current);
               setDrawMenuOpen(false);
@@ -8839,7 +8839,7 @@ export default function Map({
 
           <button
             type="button"
-            className={`sl-dock-button is-save ${hasUnsavedChanges ? "is-unsaved" : ""}`}
+            className={`sl-dock-button sl-tool-button is-save ${hasUnsavedChanges ? "is-unsaved" : ""}`}
             onClick={onSaveLot}
             disabled={!canSaveLot || isSavingLot}
           >
@@ -8852,7 +8852,7 @@ export default function Map({
 
           <button
             type="button"
-            className={`sl-dock-button ${exportMenuOpen ? "is-active" : ""}`}
+            className={`sl-dock-button sl-tool-button ${exportMenuOpen ? "is-active" : ""}`}
             onClick={() => {
               setExportMenuOpen((current) => !current);
               setDrawMenuOpen(false);
@@ -8871,7 +8871,7 @@ export default function Map({
       )}
 
       {drawMenuOpen && !isDrawing && !isAddPointMode && (
-        <aside className="sl-progressive-menu sl-draw-menu">
+        <aside className="sl-progressive-menu sl-tool-flyout sl-draw-menu">
           <strong>Draw</strong>
           <button type="button" onClick={startDrawing}>
             Draw Polygon
@@ -8892,7 +8892,7 @@ export default function Map({
       )}
 
       {editMenuOpen && !isDrawing && !isAddPointMode && (
-        <aside className="sl-progressive-menu sl-edit-menu">
+        <aside className="sl-progressive-menu sl-tool-flyout sl-edit-menu">
           <strong>Edit</strong>
           <button
             type="button"
@@ -8932,7 +8932,7 @@ export default function Map({
       )}
 
       {exportMenuOpen && !isDrawing && !isAddPointMode && (
-        <aside className="sl-progressive-menu sl-export-menu">
+        <aside className="sl-progressive-menu sl-tool-flyout sl-export-menu">
           <strong>Export</strong>
           <button
             type="button"

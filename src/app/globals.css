@@ -3954,3 +3954,57 @@ select:focus-visible {
     font-size: 10px;
   }
 }
+
+/* Mobile map controls: keep the map as the dominant surface. */
+@media (max-width: 768px) {
+  .sl-tool-dock {
+    position: fixed !important;
+    top: auto !important;
+    right: 12px !important;
+    bottom: 12px !important;
+    left: 12px !important;
+    display: flex !important;
+    width: auto !important;
+    max-height: 64px !important;
+    padding: 6px !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    gap: 6px !important;
+    transform: none !important;
+  }
+
+  .sl-tool-button {
+    height: 52px !important;
+    min-height: 0 !important;
+    max-height: 56px !important;
+    min-width: 0 !important;
+    flex: 1 1 0 !important;
+  }
+
+  .sl-tool-flyout {
+    position: fixed !important;
+    top: auto !important;
+    right: 12px !important;
+    bottom: 84px !important;
+    left: 12px !important;
+    width: auto !important;
+    max-height: 45vh !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+  }
+
+  .sl-floating-summary-card {
+    display: none;
+  }
+
+  .sl-context-toolbar {
+    position: fixed;
+    top: auto;
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
+    width: auto;
+    max-height: 64px;
+    transform: none;
+  }
+}
