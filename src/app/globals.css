@@ -4445,3 +4445,443 @@ select:focus-visible {
     transform: none;
   }
 }
+
+/* Sprint 03C: mobile readability pass. Keep map logic untouched. */
+@media (max-width: 768px) {
+  .sl-drawer-brand strong,
+  .sl-brand-chip strong {
+    font-size: 15px;
+    line-height: 1.25;
+  }
+
+  .sl-drawer-brand small,
+  .sl-brand-chip small {
+    font-size: 13px;
+    line-height: 1.25;
+  }
+
+  .sl-drawer-title h1 {
+    font-size: 24px;
+    line-height: 1.2;
+  }
+
+  .sl-drawer-title p,
+  .sl-drawer-title .sl-alpha-privacy-note,
+  .sl-empty-summary,
+  .sl-save-message,
+  .sl-local-storage-status {
+    font-size: 14px;
+    line-height: 1.55;
+  }
+
+  .sl-lot-form label > span,
+  .sl-record-checklist legend,
+  .sl-output-options-title,
+  .sl-output-options label > span,
+  .sl-output-preview span,
+  .sl-output-preview small,
+  .sl-summary-grid span,
+  .sl-setting-field > span,
+  .sl-dashed-line-options span,
+  .sl-dashed-line-options small,
+  .sl-field-point-options span,
+  .sl-field-point-options small {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  .sl-record-section > summary,
+  .sl-record-checklist label > span,
+  .sl-output-preview strong,
+  .sl-summary-grid strong,
+  .sl-saved-lot-card,
+  .sl-saved-lot-card small,
+  .sl-object-list-heading,
+  .sl-object-list-heading > span,
+  .sl-object-main span,
+  .sl-settings-heading p,
+  .sl-status-message,
+  .sl-location-status,
+  .sl-location-accuracy {
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  .sl-lot-form input,
+  .sl-record-section select,
+  .sl-record-section textarea,
+  .sl-output-options select,
+  .sl-output-options input,
+  .sl-setting-field select,
+  .sl-dashed-line-options select,
+  .sl-field-point-options select,
+  .sl-field-point-options input,
+  .sl-field-point-options textarea,
+  .sl-search input {
+    min-height: 44px;
+    font-size: 15px;
+    line-height: 1.45;
+  }
+
+  .sl-lot-form input::placeholder,
+  .sl-output-options input::placeholder,
+  .sl-search input::placeholder {
+    font-size: 14px;
+  }
+
+  .sl-save-button,
+  .sl-saved-lot-actions button,
+  .sl-object-row > button:not(.sl-object-main),
+  .sl-progressive-menu button,
+  .sl-context-button,
+  .sl-dock-button,
+  .sl-drawer-footer button {
+    min-height: 44px;
+    font-size: 14px;
+    line-height: 1.25;
+  }
+
+  .sl-tool-button {
+    height: 58px !important;
+    max-height: 62px !important;
+  }
+
+  .sl-tool-dock {
+    max-height: 74px !important;
+  }
+
+  .sl-context-toolbar {
+    max-height: 74px;
+  }
+
+  .sl-progressive-menu strong,
+  .sl-object-main strong,
+  .sl-saved-lot-heading strong,
+  .sl-settings-heading h2 {
+    font-size: 15px;
+    line-height: 1.3;
+  }
+
+  .sl-map-status {
+    min-height: 44px;
+    font-size: 14px;
+    line-height: 1.35;
+  }
+}
+
+@media (max-width: 390px) {
+  .sl-search input,
+  .sl-dock-button {
+    font-size: 13px;
+  }
+}
+
+/* Sprint 03D: mobile map-first workspace. */
+@media (max-width: 768px) {
+  .sl-app-shell,
+  .sl-map-shell,
+  .sl-map-canvas {
+    width: 100vw;
+    height: 100dvh;
+    min-height: 100dvh;
+  }
+
+  .sl-topbar {
+    top: max(6px, env(safe-area-inset-top));
+    right: 52px;
+    left: 8px;
+    display: grid;
+    grid-template-columns: 36px 34px minmax(0, 1fr);
+    align-items: center;
+    width: auto;
+    max-width: calc(100vw - 60px);
+    min-height: 42px;
+    box-sizing: border-box;
+    padding: 4px;
+    gap: 4px;
+    border-radius: 14px;
+    transform: none;
+  }
+
+  .sl-topbar .sl-icon-button {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+  }
+
+  .sl-menu-button {
+    grid-column: 1;
+  }
+
+  .sl-brand-chip {
+    display: flex;
+    grid-column: 2;
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+    padding: 0;
+  }
+
+  .sl-brand-chip > span:not(.sl-brand-mark) {
+    display: none;
+  }
+
+  .sl-search {
+    grid-column: 3;
+    height: 36px;
+    min-height: 36px;
+    width: auto;
+    max-width: none;
+    min-width: 0;
+    flex: 1 1 auto;
+    flex-basis: auto;
+    grid-template-columns: minmax(0, 1fr);
+    padding: 0 10px;
+  }
+
+  .sl-search input {
+    height: 36px;
+    min-height: 36px;
+    min-width: 0;
+    font-size: 14px;
+    line-height: 1.35;
+  }
+
+  .sl-search button {
+    display: none;
+  }
+
+  .sl-topbar-actions {
+    position: fixed;
+    top: max(6px, env(safe-area-inset-top));
+    right: 8px;
+    display: flex;
+    grid-column: auto;
+    width: 42px;
+    height: 42px;
+    min-width: 0;
+    align-items: center;
+    justify-content: center;
+    z-index: 7000;
+  }
+
+  .sl-object-list-tab {
+    top: calc(52px + env(safe-area-inset-top));
+    right: 8px;
+    min-height: 36px;
+    padding: 0 12px;
+    border-radius: 999px;
+    font-size: 13px;
+    line-height: 1.2;
+  }
+
+  .sl-object-list {
+    top: calc(52px + env(safe-area-inset-top));
+    right: 8px;
+    left: 8px;
+    width: auto;
+    max-height: min(30dvh, calc(100dvh - 170px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .sl-tool-dock {
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    right: 10px !important;
+    bottom: calc(8px + env(safe-area-inset-bottom)) !important;
+    left: 10px !important;
+    width: auto !important;
+    max-height: 64px !important;
+    min-height: 56px;
+    padding: 5px !important;
+    gap: 5px !important;
+    border-radius: 16px;
+  }
+
+  .sl-tool-button {
+    height: 52px !important;
+    min-height: 52px !important;
+    max-height: 56px !important;
+    padding: 4px 2px !important;
+    gap: 2px;
+    font-size: 13px;
+  }
+
+  .sl-dock-button {
+    min-width: 0 !important;
+    height: 52px;
+    min-height: 52px;
+    max-height: 56px;
+    flex: 1 1 0 !important;
+    padding: 4px 2px;
+    gap: 2px;
+    font-size: 12px;
+    line-height: 1.15;
+  }
+
+  .sl-context-toolbar {
+    right: 10px;
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    left: 10px;
+    max-height: 64px;
+  }
+
+  .sl-context-button {
+    min-height: 48px;
+    font-size: 14px;
+  }
+
+  .sl-tool-flyout {
+    right: 10px !important;
+    bottom: calc(78px + env(safe-area-inset-bottom)) !important;
+    left: 10px !important;
+    max-height: min(32dvh, calc(100dvh - 150px)) !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+  }
+
+  .sl-dashed-line-options,
+  .sl-field-point-options,
+  .sl-settings-card {
+    top: calc(52px + env(safe-area-inset-top));
+    max-height: min(32dvh, calc(100dvh - 150px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .sl-map-navigation {
+    right: 8px;
+    bottom: calc(78px + env(safe-area-inset-bottom));
+  }
+
+  .sl-map-status {
+    right: 8px;
+    bottom: calc(76px + env(safe-area-inset-bottom));
+    left: 8px;
+    min-height: 36px;
+    padding: 6px 10px;
+    font-size: 13px;
+    line-height: 1.35;
+  }
+}
+
+/* Sprint 03E: mobile +2px readability boost. */
+@media (max-width: 768px) {
+  .sl-drawer-brand strong,
+  .sl-brand-chip strong,
+  .sl-progressive-menu strong,
+  .sl-object-main strong,
+  .sl-saved-lot-heading strong,
+  .sl-settings-heading h2 {
+    font-size: 17px;
+    line-height: 1.35;
+  }
+
+  .sl-drawer-brand small,
+  .sl-brand-chip small,
+  .sl-lot-form label > span,
+  .sl-record-checklist legend,
+  .sl-output-options-title,
+  .sl-output-options label > span,
+  .sl-output-preview span,
+  .sl-output-preview small,
+  .sl-summary-grid span,
+  .sl-setting-field > span,
+  .sl-dashed-line-options span,
+  .sl-dashed-line-options small,
+  .sl-field-point-options span,
+  .sl-field-point-options small {
+    font-size: 15px;
+    line-height: 1.45;
+  }
+
+  .sl-drawer-title h1 {
+    font-size: 26px;
+    line-height: 1.2;
+  }
+
+  .sl-drawer-title p,
+  .sl-drawer-title .sl-alpha-privacy-note,
+  .sl-empty-summary,
+  .sl-save-message,
+  .sl-local-storage-status,
+  .sl-record-section > summary,
+  .sl-record-checklist label > span,
+  .sl-output-preview strong,
+  .sl-summary-grid strong,
+  .sl-saved-lot-card,
+  .sl-saved-lot-card small,
+  .sl-object-list-heading,
+  .sl-object-list-heading > span,
+  .sl-object-main span,
+  .sl-settings-heading p,
+  .sl-status-message,
+  .sl-location-status,
+  .sl-location-accuracy {
+    font-size: 16px;
+    line-height: 1.55;
+  }
+
+  .sl-lot-form input,
+  .sl-record-section select,
+  .sl-record-section textarea,
+  .sl-output-options select,
+  .sl-output-options input,
+  .sl-setting-field select,
+  .sl-dashed-line-options select,
+  .sl-field-point-options select,
+  .sl-field-point-options input,
+  .sl-field-point-options textarea {
+    font-size: 16px;
+    line-height: 1.45;
+  }
+
+  .sl-lot-form input::placeholder,
+  .sl-output-options input::placeholder,
+  .sl-search input::placeholder {
+    font-size: 15px;
+  }
+
+  .sl-search input {
+    font-size: 15px;
+    line-height: 1.4;
+  }
+
+  .sl-save-button,
+  .sl-saved-lot-actions button,
+  .sl-object-row > button:not(.sl-object-main),
+  .sl-progressive-menu button,
+  .sl-context-button,
+  .sl-drawer-footer button {
+    font-size: 16px;
+    line-height: 1.3;
+  }
+
+  .sl-object-list-tab,
+  .sl-map-status {
+    font-size: 15px;
+    line-height: 1.4;
+  }
+
+  .sl-object-list-tab {
+    position: fixed !important;
+    right: auto !important;
+    left: 8px !important;
+    width: auto;
+    max-width: calc(100vw - 16px);
+    white-space: nowrap;
+    transform: none !important;
+  }
+
+  .sl-tool-button {
+    font-size: 15px;
+    line-height: 1.15;
+  }
+
+  .sl-dock-button {
+    font-size: 14px;
+    line-height: 1.15;
+  }
+}

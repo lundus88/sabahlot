@@ -2602,7 +2602,7 @@ export default function Map({
     objectsPanelOpen,
     setObjectsPanelOpen,
   ] =
-    useState(true);
+    useState(false);
 
   const previousSavingRef =
     useRef(isSavingLot);
@@ -9167,7 +9167,7 @@ export default function Map({
           }
           aria-label="Open Objects"
         >
-          Objects
+          Objects ({drawingObjects.length})
         </button>
       )}
 
