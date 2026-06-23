@@ -91,6 +91,7 @@ export interface ManualPointExport {
   pointName: string;
   category: string;
   coordinate: Coordinate;
+  isVisible: boolean;
 }
 
 interface MapProps {
@@ -207,6 +208,7 @@ interface ManualFieldPoint {
   category: FieldPointCategory;
   notes: string;
   coordinate: CoordinatePair;
+  isVisible: boolean;
   createdAt: string;
 }
 
@@ -3360,6 +3362,8 @@ export default function Map({
               lng:
                 point.coordinate[1],
             },
+            isVisible:
+              point.isVisible,
           }),
         ),
       );
@@ -3390,6 +3394,10 @@ export default function Map({
 
       manualPointsRef.current.forEach(
         (point) => {
+          if (!point.isVisible) {
+            return;
+          }
+
           const isSelected =
             selectedManualPointId ===
             point.id;
@@ -3482,6 +3490,7 @@ export default function Map({
         | "pointName"
         | "category"
         | "notes"
+        | "isVisible"
       >
     >,
   ) => {
@@ -6276,6 +6285,7 @@ export default function Map({
                   event.latlng.lat,
                   event.latlng.lng,
                 ],
+                isVisible: true,
                 createdAt:
                   new Date().toISOString(),
               };
@@ -8516,14 +8526,6 @@ export default function Map({
       language,
     );
 
-  const canSaveLot =
-    Boolean(
-      getPrimaryPolygon(),
-    ) ||
-    (
-      polygonFinishedRef.current &&
-      pointCount >= 3
-    );
   const activeObjectForUi =
     activeObjectId
       ? drawingObjects.find(
@@ -8654,7 +8656,7 @@ export default function Map({
       <div
         ref={mapContainerRef}
         className="sl-map-canvas"
-        aria-label="SabahLot interactive map"
+        aria-label="SabahLot powered by Myukur interactive preliminary map"
       />
 
       <header className="sl-topbar">
@@ -8841,7 +8843,7 @@ export default function Map({
             type="button"
             className={`sl-dock-button sl-tool-button is-save ${hasUnsavedChanges ? "is-unsaved" : ""}`}
             onClick={onSaveLot}
-            disabled={!canSaveLot || isSavingLot}
+            disabled={isSavingLot}
           >
             <Icon>
               <path d="M5 4h12l2 2v14H5V4Z" />
@@ -9326,6 +9328,23 @@ export default function Map({
               <button
                 type="button"
                 onClick={() =>
+                  updateManualPoint(
+                    selectedManualPoint.id,
+                    {
+                      isVisible:
+                        !selectedManualPoint.isVisible,
+                    },
+                  )
+                }
+              >
+                {selectedManualPoint.isVisible
+                  ? "Hide point"
+                  : "Show point"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
                   deleteManualPoint(
                     selectedManualPoint.id,
                   )
@@ -9344,7 +9363,7 @@ export default function Map({
           aria-label="Lot summary"
         >
           <span>
-            <small>Lot Area</small>
+            <small>Estimated Area</small>
             <strong>{currentArea.text}</strong>
           </span>
           <span>

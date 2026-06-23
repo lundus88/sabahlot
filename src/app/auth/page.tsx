@@ -314,7 +314,7 @@ export default function AuthPage() {
 
         <div className={styles.intro}>
           <span className={styles.eyebrow}>
-            Sabah Land Lot Mapping System
+            SabahLot powered by Myukur
           </span>
 
           <h1>
@@ -322,9 +322,17 @@ export default function AuthPage() {
           </h1>
 
           <p>
-            Urus sesi anda dengan
-            selamat untuk fasa
-            autentikasi SabahLot.
+            Akses rekod awal SabahLot
+            untuk rujukan dan
+            perancangan sahaja.
+          </p>
+
+          <p>
+            Preliminary output only. This is not a legal survey plan,
+            not proof of land boundary, and not an official approval
+            by JTU, Land Office, or any authority. Final boundary
+            and land matters must be verified through the proper
+            Sabah land and survey procedures.
           </p>
         </div>
 
@@ -526,8 +534,7 @@ export default function AuthPage() {
         )}
 
         <footer className={styles.footer}>
-          SabahLot Alpha · Powered by
-          Lundus Surveyor
+          SabahLot powered by Myukur · Preliminary Alpha
         </footer>
       </section>
     </main>

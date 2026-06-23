@@ -14,13 +14,22 @@ import Map, {
 import {
   createClient,
 } from "@/lib/supabase/client";
+import {
+  buildDxfDocument,
+  buildKmlDocument,
+} from "@/lib/export-workflows";
 
 import {
   deleteLocalLot,
   getLocalLots,
+  EMPTY_LAND_RECORD,
   LOCAL_LOT_SCHEMA_VERSION,
   type LocalLotRecord,
+  type LandRecordDetails,
+  type AvailableRecord,
+  type LandIssueTag,
   markLocalLotSynced,
+  normalizeLandRecordDetails,
   saveLocalLot,
 } from "@/lib/local-lots";
 
@@ -40,6 +49,8 @@ interface LotFormData {
   lotNumber: string;
   village: string;
   district: string;
+  notes: string;
+  landRecord: LandRecordDetails;
 }
 
 interface SavedLotRecord extends LotFormData {
@@ -59,6 +70,8 @@ interface PreviousSavedLotRecord {
   lotNumber?: string;
   village?: string;
   district?: string;
+  notes?: string;
+  landRecord?: unknown;
   polygon?: PolygonResult | null;
   drawingObjects?: DrawingObject[];
   activeObjectId?: string | null;
@@ -131,12 +144,69 @@ type PreviousPdfIdentityFields =
 const STORAGE_KEY =
   "sabahlot-alpha-record";
 
+const PRELIMINARY_DISCLAIMER =
+  "Preliminary output only. This is not a legal survey plan, not proof of land boundary, and not an official approval by JTU, Land Office, or any authority. Final boundary and land matters must be verified through the proper Sabah land and survey procedures.";
+
+function createPolygonFingerprint(
+  coordinates: Coordinate[],
+): string {
+  return coordinates
+    .map(
+      ({ lat, lng }) =>
+        `${lat.toFixed(7)},${lng.toFixed(7)}`,
+    )
+    .join("|");
+}
+
 const EMPTY_FORM: LotFormData = {
   ownerName: "",
   lotNumber: "",
   village: "",
   district: "",
+  notes: "",
+  landRecord: {
+    ...EMPTY_LAND_RECORD,
+  },
 };
+
+const LAND_CASE_OPTIONS = [
+  ["land_application", "Permohonan tanah"],
+  ["inheritance_land", "Tanah pusaka"],
+  ["family_customary_land", "Tanah adat keluarga"],
+  ["titled_land", "Sudah mempunyai geran"],
+  ["unsure", "Tidak pasti"],
+] as const;
+
+const AVAILABLE_RECORD_OPTIONS: ReadonlyArray<readonly [AvailableRecord, string]> = [
+  ["title", "Geran"],
+  ["official_receipt", "Resit rasmi"],
+  ["application_letter", "Surat permohonan"],
+  ["plan_or_sketch", "Pelan/lakaran"],
+  ["gps_coordinates", "Koordinat GPS"],
+  ["site_photos", "Gambar lokasi"],
+  ["no_record", "Tiada rekod"],
+];
+
+const APPLICATION_AGE_OPTIONS = [
+  ["under_5_years", "Kurang 5 tahun"],
+  ["5_to_10_years", "5–10 tahun"],
+  ["10_to_20_years", "10–20 tahun"],
+  ["over_20_years", "Lebih 20 tahun"],
+  ["unsure", "Tidak pasti"],
+] as const;
+
+const ISSUE_TAG_OPTIONS: ReadonlyArray<readonly [LandIssueTag, string]> = [
+  ["unknown_application_status", "Tidak tahu status permohonan"],
+  ["difficult_to_get_information", "Sukar mendapatkan maklumat"],
+  ["lost_documents", "Dokumen hilang"],
+  ["unknown_land_location", "Tidak tahu lokasi tanah"],
+  ["unclear_land_process", "Tidak faham proses tanah"],
+  ["boundary_dispute", "Pertikaian sempadan"],
+  ["title_subdivision", "Pecah geran"],
+  ["customary_land_ncr", "Tanah adat / NCR"],
+  ["encroachment", "Pencerobohan"],
+  ["overlapping_land", "Tanah bertindih"],
+];
 
 const EMPTY_PDF_IDENTITIES: PdfIdentityFields = {
   surveyor: {
@@ -163,7 +233,7 @@ const PAGE_TEXT = {
       "Lot Information",
 
     panelDescription:
-      "Enter the lot details before drawing or saving the land record.",
+      "Create a preliminary user-created record for planning and reference only.",
 
     ownerName:
       "Owner name",
@@ -208,7 +278,19 @@ const PAGE_TEXT = {
       "Project saved locally.",
 
     polygonRequired:
-      "Complete the polygon first.",
+      "Please draw a land area before saving this preliminary record.",
+
+    titleRequired:
+      "Please enter a record name or lot reference before saving this preliminary record.",
+
+    areaRequired:
+      "Please draw a valid land area before saving this preliminary record.",
+
+    confirmUpdateExisting:
+      "Update the loaded preliminary record? Choose Cancel to save this as a new record instead.",
+
+    savedAsNew:
+      "Saved as a new preliminary record.",
 
     saveFailed:
       "Failed to save lot.",
@@ -268,7 +350,7 @@ const PAGE_TEXT = {
       "Points",
 
     area:
-      "Area",
+      "Estimated area",
 
     perimeter:
       "Perimeter",
@@ -315,7 +397,7 @@ const PAGE_TEXT = {
       "Maklumat Lot",
 
     panelDescription:
-      "Masukkan maklumat lot sebelum melukis atau menyimpan rekod tanah.",
+      "Cipta rekod awal pengguna untuk rujukan dan perancangan sahaja.",
 
     ownerName:
       "Nama pemilik",
@@ -360,7 +442,19 @@ const PAGE_TEXT = {
       "Project saved locally.",
 
     polygonRequired:
-      "Lengkapkan polygon dahulu.",
+      "Sila lukis kawasan tanah sebelum menyimpan rekod awal ini.",
+
+    titleRequired:
+      "Sila masukkan nama rekod atau rujukan lot sebelum menyimpan rekod awal ini.",
+
+    areaRequired:
+      "Sila lukis kawasan tanah yang sah sebelum menyimpan rekod awal ini.",
+
+    confirmUpdateExisting:
+      "Kemas kini rekod awal yang dimuatkan? Pilih Cancel untuk simpan sebagai rekod baharu.",
+
+    savedAsNew:
+      "Disimpan sebagai rekod awal baharu.",
 
     saveFailed:
       "Gagal menyimpan lot.",
@@ -420,7 +514,7 @@ const PAGE_TEXT = {
       "Titik",
 
     area:
-      "Keluasan",
+      "Anggaran keluasan",
 
     perimeter:
       "Perimeter",
@@ -701,13 +795,31 @@ export default function HomePage() {
     PAGE_TEXT[language];
 
   const planTemplateLabel =
-    "Preliminary Lot Plan";
+    "Preliminary Land Plan";
 
-  const canSaveLot =
+  const hasValidPolygon =
     Boolean(
       polygon &&
         polygon.coordinates.length >= 3,
     );
+  const hasRecordTitle =
+    formData.lotNumber.trim().length > 0;
+  const hasPositiveArea =
+    Boolean(
+      polygon &&
+        Number.isFinite(polygon.areaM2) &&
+        polygon.areaM2 > 0,
+    );
+  const canSaveLot =
+    hasValidPolygon &&
+    hasRecordTitle &&
+    hasPositiveArea;
+  const saveBlockedMessage =
+    !hasValidPolygon
+      ? text.polygonRequired
+      : !hasPositiveArea
+        ? text.areaRequired
+        : text.titleRequired;
 
   const displayArea = (
     areaM2: number,
@@ -862,6 +974,15 @@ export default function HomePage() {
         district:
           parsedRecord.district ??
           "",
+
+        notes:
+          parsedRecord.notes ??
+          "",
+
+        landRecord:
+          normalizeLandRecordDetails(
+            parsedRecord.landRecord,
+          ),
       });
 
       setPolygon(
@@ -980,7 +1101,7 @@ export default function HomePage() {
   }, [saveMessage]);
 
   const updateField = (
-    field: keyof LotFormData,
+    field: Exclude<keyof LotFormData, "landRecord">,
     value: string,
   ) => {
     setHasUnsavedChanges(true);
@@ -989,6 +1110,40 @@ export default function HomePage() {
         ...current,
         [field]: value,
       }),
+    );
+  };
+
+  const updateLandRecordField = <K extends keyof LandRecordDetails>(
+    field: K,
+    value: LandRecordDetails[K],
+  ) => {
+    setHasUnsavedChanges(true);
+    setFormData((current) => ({
+      ...current,
+      landRecord: {
+        ...current.landRecord,
+        [field]: value,
+      },
+    }));
+  };
+
+  const toggleAvailableRecord = (record: AvailableRecord) => {
+    const current = formData.landRecord.recordsAvailable;
+    const next = current.includes(record)
+      ? current.filter((item) => item !== record)
+      : record === "no_record"
+        ? [record]
+        : [...current.filter((item) => item !== "no_record"), record];
+    updateLandRecordField("recordsAvailable", next);
+  };
+
+  const toggleIssueTag = (tag: LandIssueTag) => {
+    const current = formData.landRecord.issueTags;
+    updateLandRecordField(
+      "issueTags",
+      current.includes(tag)
+        ? current.filter((item) => item !== tag)
+        : [...current, tag],
     );
   };
 
@@ -1043,22 +1198,75 @@ export default function HomePage() {
     const save =
       async () => {
         const lotName =
-          formData.lotNumber.trim() ||
-          (
-            language === "ms"
-              ? "Lot Tanpa Nama"
-              : "Untitled Lot"
-          );
+          formData.lotNumber.trim();
 
         if (
-          !canSaveLot ||
-          !polygon
+          !polygon ||
+          polygon.coordinates.length < 3
         ) {
           setSaveMessage(
             text.polygonRequired,
           );
 
           return;
+        }
+
+        if (!lotName) {
+          setSaveMessage(
+            text.titleRequired,
+          );
+
+          return;
+        }
+
+        if (
+          !Number.isFinite(
+            polygon.areaM2,
+          ) ||
+          polygon.areaM2 <= 0
+        ) {
+          setSaveMessage(
+            text.areaRequired,
+          );
+
+          return;
+        }
+
+        let projectIdForSave =
+          currentProjectId;
+        let savingAsNewRecord =
+          false;
+        const loadedLocalRecord =
+          currentProjectId
+            ? localLots.find(
+                (lot) =>
+                  lot.id ===
+                  currentProjectId,
+              )
+            : undefined;
+
+        if (loadedLocalRecord) {
+          const nextFingerprint =
+            createPolygonFingerprint(
+              polygon.coordinates,
+            );
+          const recordChanged =
+            loadedLocalRecord.lot_name !==
+              lotName ||
+            loadedLocalRecord.polygon_fingerprint !==
+              nextFingerprint;
+
+          if (
+            recordChanged &&
+            !window.confirm(
+              text.confirmUpdateExisting,
+            )
+          ) {
+            projectIdForSave =
+              null;
+            savingAsNewRecord =
+              true;
+          }
         }
 
         setIsSaving(true);
@@ -1068,7 +1276,7 @@ export default function HomePage() {
         try {
           localRecord = saveLocalLot({
             projectId:
-              currentProjectId,
+              projectIdForSave,
             lotName,
             lotNumber:
               formData.lotNumber,
@@ -1078,6 +1286,10 @@ export default function HomePage() {
               formData.village,
             district:
               formData.district,
+            notes:
+              formData.notes,
+            landRecord:
+              formData.landRecord,
             polygon,
             drawingObjects,
             activeObjectId,
@@ -1120,9 +1332,11 @@ export default function HomePage() {
                 userError,
               );
             }
-            setSaveMessage(
-              text.savedLocalSignIn,
-            );
+          setSaveMessage(
+            savingAsNewRecord
+              ? text.savedAsNew
+              : text.savedLocalSignIn,
+          );
             return;
           }
 
@@ -1366,6 +1580,11 @@ export default function HomePage() {
           lot.lot_number ?? lot.lot_name,
         village: lot.village ?? "",
         district: lot.district ?? "",
+        notes: lot.notes ?? "",
+        landRecord:
+          normalizeLandRecordDetails(
+            lot.land_record,
+          ),
       });
       setLoadedCoordinates(
         lot.coordinates.map(
@@ -1875,7 +2094,7 @@ export default function HomePage() {
 
         const lotName =
           formData.lotNumber.trim() ||
-          "Untitled Lot";
+          "Unnamed preliminary record";
 
         const jobTitle =
           pdfJobTitle.trim() ||
@@ -1965,20 +2184,80 @@ export default function HomePage() {
           `${scaleDistanceM.toLocaleString("en-MY")} m`;
 
         const disclaimer =
-          "This preliminary plan is provided for reference, discussion and early planning purposes only. It is not an official survey plan, cadastral plan, Registered Survey Plan, SP Plan or legal proof of boundary. All measurements, coordinates and areas must be verified through a proper land survey and by the relevant authorities or qualified professionals.";
-
-        const preliminaryAcknowledgement =
-          "Pending Official Verification";
+          PRELIMINARY_DISCLAIMER;
 
         const preliminaryNotice =
-          "Pending Official Verification";
+          "PRELIMINARY ONLY";
+
+        const formatPdfDistance = (
+          distanceM?: number,
+        ) =>
+          typeof distanceM === "number"
+            ? `${distanceM.toFixed(2)} m`
+            : "";
+
+        const formatPdfBearing = (
+          bearingDecimal?: number,
+        ) => {
+          if (
+            typeof bearingDecimal !==
+            "number"
+          ) {
+            return "";
+          }
+
+          const normalized =
+            (
+              (
+                bearingDecimal %
+                360
+              ) + 360
+            ) % 360;
+          let degrees =
+            Math.floor(normalized);
+          const minuteValue =
+            (
+              normalized -
+              degrees
+            ) * 60;
+          let minutes =
+            Math.floor(minuteValue);
+          let seconds =
+            Math.round(
+              (
+                minuteValue -
+                minutes
+              ) * 60,
+            );
+
+          if (seconds === 60) {
+            seconds = 0;
+            minutes += 1;
+          }
+
+          if (minutes === 60) {
+            minutes = 0;
+            degrees =
+              (
+                degrees + 1
+              ) % 360;
+          }
+
+          return `${String(
+            degrees,
+          ).padStart(3, "0")}° ${String(
+            minutes,
+          ).padStart(2, "0")}′ ${String(
+            seconds,
+          ).padStart(2, "0")}″`;
+        };
 
         const reportText =
           {
             plan:
               planTemplateLabel,
             area:
-              "Area",
+              "Estimated Area",
             coordinates:
               "Coordinate Table",
             point:
@@ -1988,7 +2267,7 @@ export default function HomePage() {
             longitude:
               "Longitude",
             distance:
-              "Segment distance (m)",
+              "Distance",
             bearing:
               "Bearing",
             z:
@@ -2571,7 +2850,7 @@ export default function HomePage() {
             [
               "Disediakan oleh",
               jobTitle === "-"
-                ? "SabahLot Alpha"
+                ? "SabahLot powered by Myukur Alpha"
                 : jobTitle,
             ],
             [
@@ -3741,8 +4020,7 @@ export default function HomePage() {
               nameValue.trim();
             const nameY =
               cellY +
-              cellHeight -
-              12.2;
+              7.4;
 
             if (trimmedName) {
               pdf.text(
@@ -3776,28 +4054,28 @@ export default function HomePage() {
             const trimmedId =
               idValue.trim();
 
-            pdf.text(
-              trimmedId
-                ? `IC / ID No.: ${trimmedId}`
-                : "IC / ID No.:",
-              cellX +
-                cellWidth /
-                2,
-              nameY +
-                3.6,
-              {
-                align:
-                  "center",
-                maxWidth:
-                  cellWidth -
-                  6,
-              },
-            );
+            if (trimmedId) {
+              pdf.text(
+                `IC / ID No.: ${trimmedId}`,
+                cellX +
+                  cellWidth /
+                  2,
+                nameY +
+                  3.4,
+                {
+                  align:
+                    "center",
+                  maxWidth:
+                    cellWidth -
+                    6,
+                },
+              );
+            }
 
             const signatureLineY =
               cellY +
               cellHeight -
-              5.7;
+              5.2;
             pdf.setDrawColor(
               100,
               116,
@@ -3827,14 +4105,13 @@ export default function HomePage() {
             const lineY =
               cellY +
               cellHeight -
-              2.7;
+              1.7;
             pdf.text(
               "Signature / Date",
               cellX +
                 cellWidth /
                 2,
-              lineY +
-                2.8,
+              lineY,
               {
                 align:
                   "center",
@@ -3951,13 +4228,12 @@ export default function HomePage() {
               "-",
           );
           drawDetailRow(
-            "Area / Perimeter",
+            "Estimated area / perimeter",
             `${displayArea(
               polygon.areaM2,
               "en",
-            )} / ${formatNumber(
-              polygon.perimeterM,
-              "en",
+            )} / ${polygon.perimeterM.toFixed(
+              2,
             )} m`,
           );
 
@@ -3993,17 +4269,17 @@ export default function HomePage() {
           );
 
           drawSectionTitle(
-            "Coordinate / boundary table",
+            "Coordinate / approximate boundary table",
           );
           const coordinateRowHeight =
-            4.6;
+            5.2;
           const columnEdges = [
             0,
-            0.08,
-            0.28,
-            0.47,
+            0.07,
+            0.25,
+            0.43,
             0.68,
-            0.88,
+            0.9,
             1,
           ].map(
             (ratio) =>
@@ -4052,7 +4328,7 @@ export default function HomePage() {
             pdf.setFontSize(
               bold
                 ? 5.2
-                : 5,
+                : 4.8,
             );
             pdf.setTextColor(
               15,
@@ -4075,11 +4351,12 @@ export default function HomePage() {
                 2,
               rowY +
                 coordinateRowHeight /
-                2 +
-                0.65,
+                2,
               {
                 align:
                   "center",
+                baseline:
+                  "middle",
                 maxWidth:
                   cellWidth -
                   1.8,
@@ -4129,11 +4406,15 @@ export default function HomePage() {
                   String(index + 1),
                   coordinate.lng.toFixed(5),
                   coordinate.lat.toFixed(5),
-                  polygon.segments[index]
-                    ?.bearingDms ?? "-",
-                  polygon.segments[index]
-                    ?.distanceM.toFixed(2) ?? "-",
-                  "-",
+                  formatPdfBearing(
+                    polygon.segments[index]
+                      ?.bearingDecimal,
+                  ),
+                  formatPdfDistance(
+                    polygon.segments[index]
+                      ?.distanceM,
+                  ),
+                  "",
                 ];
                 values.forEach(
                   (
@@ -4186,9 +4467,9 @@ export default function HomePage() {
             cursorY;
           const signatureHeight =
             Math.min(
-              48,
+              44,
               Math.max(
-                42,
+                38,
                 height -
                   (
                     cursorY -
@@ -4257,7 +4538,7 @@ export default function HomePage() {
 
           const remainingHeight =
             Math.max(
-              18,
+              24,
               y +
                 height -
                 cursorY,
@@ -4306,22 +4587,6 @@ export default function HomePage() {
           );
           pdf.text(
             pdf.splitTextToSize(
-              preliminaryAcknowledgement,
-              width -
-                4,
-            ),
-            x +
-              2,
-            cursorY +
-              7.5,
-            {
-              maxWidth:
-                width -
-                4,
-            },
-          );
-          pdf.text(
-            pdf.splitTextToSize(
               disclaimer,
               width -
                 4,
@@ -4329,7 +4594,7 @@ export default function HomePage() {
             x +
               2,
             cursorY +
-              16,
+              7.5,
             {
               maxWidth:
                 width -
@@ -5035,7 +5300,7 @@ export default function HomePage() {
 
         if (
           polygon.coordinates.length >
-          10
+          5
         ) {
           pdf.addPage();
           addDrawingBorder();
@@ -5057,11 +5322,11 @@ export default function HomePage() {
 
         const columnEdges = [
           0,
-          0.08,
-          0.27,
-          0.46,
-          0.66,
-          0.86,
+          0.07,
+          0.25,
+          0.43,
+          0.68,
+          0.9,
           1,
         ].map(
           (ratio) =>
@@ -5135,11 +5400,12 @@ export default function HomePage() {
               2,
             cellY +
               rowHeight /
-              2 +
-              0.9,
+              2,
             {
               align:
                 "center",
+              baseline:
+                "middle",
               maxWidth:
                 cellWidth -
                 3,
@@ -5195,7 +5461,7 @@ export default function HomePage() {
 
         polygon.coordinates
           .slice(
-            10,
+            5,
           )
           .forEach(
           (
@@ -5204,7 +5470,7 @@ export default function HomePage() {
           ) => {
             const pointIndex =
               index +
-              10;
+              5;
 
             if (
               rowY >
@@ -5230,17 +5496,17 @@ export default function HomePage() {
               coordinate.lat.toFixed(
                 6,
               ),
-              polygon.segments[
-                pointIndex
-              ]?.bearingDms ??
-                "-",
-              polygon.segments[
-                pointIndex
-              ]?.distanceM.toFixed(
-                2,
-              ) ??
-                "-",
-              "-",
+              formatPdfBearing(
+                polygon.segments[
+                  pointIndex
+                ]?.bearingDecimal,
+              ),
+              formatPdfDistance(
+                polygon.segments[
+                  pointIndex
+                ]?.distanceM,
+              ),
+              "",
             ].forEach(
               (
                 value,
@@ -5282,7 +5548,11 @@ export default function HomePage() {
         setSaveMessage(
           PAGE_TEXT.en.exportPdfSuccess,
         );
-      } catch {
+      } catch (error) {
+        console.error(
+          "SabahLot PDF generation failed",
+          error,
+        );
         setSaveMessage(
           PAGE_TEXT.en.exportPdfFailed,
         );
@@ -5339,39 +5609,9 @@ export default function HomePage() {
 
   const exportKml =
     () => {
-      if (!polygon) {
-        setSaveMessage(
-          text.polygonRequired,
-        );
-
-        return;
-      }
-
       const lotName =
         formData.lotNumber.trim() ||
         "SabahLot";
-
-      const safeLotName =
-        lotName.replace(
-          /[&<>"']/g,
-          (
-            character,
-          ) => ({
-            "&":
-              "&amp;",
-            "<":
-              "&lt;",
-            ">":
-              "&gt;",
-            '"':
-              "&quot;",
-            "'":
-              "&apos;",
-          })[
-            character
-          ] ??
-          character,
-        );
 
       const escapeKml =
         (value: string) =>
@@ -5469,10 +5709,15 @@ export default function HomePage() {
           (object) =>
             object.isVisible,
         );
+      const visiblePoints =
+        manualPoints.filter(
+          (point) =>
+            point.isVisible,
+        );
 
       const placemarks =
         [
-          ...manualPoints.map(
+          ...visiblePoints.map(
             (point) =>
               `<Placemark>` +
               `<name>${escapeKml(
@@ -5486,6 +5731,10 @@ export default function HomePage() {
                   point.id,
                 ],
                 [
+                  "Object Type",
+                  "Point",
+                ],
+                [
                   "Category",
                   categoryLabel(
                     point.category,
@@ -5494,6 +5743,10 @@ export default function HomePage() {
                 [
                   "Status",
                   "Preliminary",
+                ],
+                [
+                  "Generated By",
+                  "SabahLot powered by Myukur",
                 ],
               ]) +
               `<Point><coordinates>${coordinateText([
@@ -5526,6 +5779,10 @@ export default function HomePage() {
                         object.id,
                       ],
                       [
+                        "Object Type",
+                  "Approximate Polygon Boundary",
+                      ],
+                      [
                         "Category",
                         categoryLabel(
                           object.category,
@@ -5535,15 +5792,17 @@ export default function HomePage() {
                         "Status",
                         "Preliminary",
                       ],
+                      [
+                        "Estimated Area",
+                        `${object.areaSqm.toFixed(2)} m2`,
+                      ],
+                      [
+                        "Generated By",
+                        "SabahLot powered by Myukur",
+                      ],
                     ]) +
-                    `<MultiGeometry>` +
-                    `<Polygon><extrude>0</extrude><tessellate>1</tessellate>` +
-                    `<outerBoundaryIs><LinearRing><coordinates>` +
-                    `${coordinates}</coordinates></LinearRing></outerBoundaryIs>` +
-                    `</Polygon>` +
                     `<LineString><tessellate>1</tessellate><coordinates>` +
                     `${coordinates}</coordinates></LineString>` +
-                    `</MultiGeometry>` +
                     `</Placemark>`,
                 ];
               }
@@ -5566,6 +5825,10 @@ export default function HomePage() {
                       object.id,
                     ],
                     [
+                      "Object Type",
+                      lineKind,
+                    ],
+                    [
                       "Category",
                       categoryLabel(
                         object.category,
@@ -5578,6 +5841,14 @@ export default function HomePage() {
                     [
                       "Status",
                       "Preliminary",
+                    ],
+                    [
+                      "Length",
+                      `${object.lengthM.toFixed(2)} m`,
+                    ],
+                    [
+                      "Generated By",
+                      "SabahLot powered by Myukur",
                     ],
                   ]) +
                   `<LineString><tessellate>1</tessellate><coordinates>` +
@@ -5601,20 +5872,11 @@ export default function HomePage() {
       }
 
       downloadTextFile(
-        `<?xml version="1.0" encoding="UTF-8"?>\n` +
-          `<kml xmlns="http://www.opengis.net/kml/2.2"><Document>` +
-          `<name>${safeLotName}</name>` +
-          `<Style id="sabahlot-boundary-style">` +
-          `<LineStyle><color>ff00ffff</color><width>3</width></LineStyle>` +
-          `<PolyStyle><color>0000ffff</color><fill>0</fill><outline>1</outline></PolyStyle>` +
-          `</Style>` +
-          `<Style id="sabahlot-line-style">` +
-          `<LineStyle><color>ff00ffff</color><width>3</width></LineStyle>` +
-          `</Style>` +
-          `<Style id="sabahlot-point-style">` +
-          `<IconStyle><scale>1</scale><Icon><href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href></Icon></IconStyle>` +
-          `</Style>` +
-          `${placemarks.join("")}</Document></kml>`,
+        buildKmlDocument(
+          lotName,
+          drawingObjects,
+          manualPoints,
+        ).content,
         `${lotName.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.kml`,
         "application/vnd.google-earth.kml+xml",
       );
@@ -5631,10 +5893,15 @@ export default function HomePage() {
           (object) =>
             object.isVisible,
         );
+      const visiblePoints =
+        manualPoints.filter(
+          (point) =>
+            point.isVisible,
+        );
 
       if (
         visibleObjects.length === 0 &&
-        manualPoints.length === 0
+        visiblePoints.length === 0
       ) {
         setSaveMessage(
           "No visible objects to export.",
@@ -5823,7 +6090,7 @@ export default function HomePage() {
           })
           .join("");
       const pointEntities =
-        manualPoints
+        visiblePoints
           .map((point) =>
             pointEntity(
               point.coordinate,
@@ -5833,15 +6100,17 @@ export default function HomePage() {
           )
           .join("");
 
+      // These legacy builders remain local to minimize churn in this phase;
+      // the tested utility below is the authoritative downloaded document.
+      void layerTable;
+      void objectEntities;
+      void pointEntities;
+
       downloadTextFile(
-        `0\nSECTION\n2\nHEADER\n` +
-          `999\nSabahLot preliminary DXF export. Coordinates are WGS84 longitude/latitude; no projected meter transform has been applied.\n` +
-          `9\n$INSUNITS\n70\n0\n` +
-          `0\nENDSEC\n` +
-          `0\nSECTION\n2\nTABLES\n${layerTable}0\nENDSEC\n` +
-          `0\nSECTION\n2\nENTITIES\n` +
-          `${objectEntities}${pointEntities}` +
-          `0\nENDSEC\n0\nEOF\n`,
+        buildDxfDocument(
+          drawingObjects,
+          manualPoints,
+        ).content,
         `${safeFileName}.dxf`,
         "application/dxf",
       );
@@ -5995,6 +6264,11 @@ export default function HomePage() {
             <p>
               {text.panelDescription}
             </p>
+
+            <p className="sl-alpha-privacy-note">
+              For Alpha testing, avoid entering highly sensitive personal information.
+              {` ${PRELIMINARY_DISCLAIMER}`}
+            </p>
           </div>
 
           <form
@@ -6003,6 +6277,9 @@ export default function HomePage() {
               saveLotRecord
             }
           >
+            <details className="sl-record-section" open>
+              <summary>Basic Lot Info</summary>
+              <div className="sl-record-section-body">
             <label>
               <span>
                 {text.ownerName}
@@ -6103,6 +6380,168 @@ export default function HomePage() {
               />
             </label>
 
+              </div>
+            </details>
+
+            <details className="sl-record-section">
+              <summary>Land Application Record</summary>
+              <div className="sl-record-section-body">
+                <label>
+                  <span>Land case type</span>
+                  <select
+                    value={formData.landRecord.landCaseType}
+                    onChange={(event) =>
+                      updateLandRecordField(
+                        "landCaseType",
+                        event.target.value as LandRecordDetails["landCaseType"],
+                      )
+                    }
+                  >
+                    <option value="">Select case type</option>
+                    {LAND_CASE_OPTIONS.map(([value, label]) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <fieldset className="sl-record-checklist">
+                  <legend>Record available</legend>
+                  {AVAILABLE_RECORD_OPTIONS.map(([value, label]) => (
+                    <label key={value}>
+                      <input
+                        type="checkbox"
+                        checked={formData.landRecord.recordsAvailable.includes(value)}
+                        onChange={() => toggleAvailableRecord(value)}
+                      />
+                      <span>{label}</span>
+                    </label>
+                  ))}
+                </fieldset>
+
+                <label>
+                  <span>Application age</span>
+                  <select
+                    value={formData.landRecord.applicationAge}
+                    onChange={(event) =>
+                      updateLandRecordField(
+                        "applicationAge",
+                        event.target.value as LandRecordDetails["applicationAge"],
+                      )
+                    }
+                  >
+                    <option value="">Select application age</option>
+                    {APPLICATION_AGE_OPTIONS.map(([value, label]) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </details>
+
+            <details className="sl-record-section">
+              <summary>Family / Inheritance</summary>
+              <div className="sl-record-section-body">
+                <label>
+                  <span>Original applicant name</span>
+                  <input
+                    type="text"
+                    value={formData.landRecord.originalApplicantName}
+                    onChange={(event) => updateLandRecordField("originalApplicantName", event.target.value)}
+                    autoComplete="off"
+                  />
+                </label>
+                <label>
+                  <span>Original applicant status</span>
+                  <select
+                    value={formData.landRecord.originalApplicantStatus}
+                    onChange={(event) => updateLandRecordField(
+                      "originalApplicantStatus",
+                      event.target.value as LandRecordDetails["originalApplicantStatus"],
+                    )}
+                  >
+                    <option value="">Select status</option>
+                    <option value="alive">Alive</option>
+                    <option value="deceased">Deceased</option>
+                    <option value="unknown">Unknown</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Main heir name</span>
+                  <input
+                    type="text"
+                    value={formData.landRecord.mainHeirName}
+                    onChange={(event) => updateLandRecordField("mainHeirName", event.target.value)}
+                    autoComplete="off"
+                  />
+                </label>
+                <label>
+                  <span>Relationship to applicant</span>
+                  <input
+                    type="text"
+                    value={formData.landRecord.relationshipToApplicant}
+                    onChange={(event) => updateLandRecordField("relationshipToApplicant", event.target.value)}
+                    autoComplete="off"
+                  />
+                </label>
+                <label>
+                  <span>Can heirs identify the land location?</span>
+                  <select
+                    value={formData.landRecord.heirsCanIdentifyLocation}
+                    onChange={(event) => updateLandRecordField(
+                      "heirsCanIdentifyLocation",
+                      event.target.value as LandRecordDetails["heirsCanIdentifyLocation"],
+                    )}
+                  >
+                    <option value="">Select answer</option>
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                    <option value="not_sure">Not sure</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Land history notes</span>
+                  <textarea
+                    value={formData.landRecord.landHistoryNotes}
+                    onChange={(event) => updateLandRecordField("landHistoryNotes", event.target.value)}
+                    rows={4}
+                  />
+                </label>
+              </div>
+            </details>
+
+            <details className="sl-record-section">
+              <summary>Issue Tags</summary>
+              <div className="sl-record-section-body">
+                <fieldset className="sl-record-checklist">
+                  <legend>Land issue tags</legend>
+                  {ISSUE_TAG_OPTIONS.map(([value, label]) => (
+                    <label key={value}>
+                      <input
+                        type="checkbox"
+                        checked={formData.landRecord.issueTags.includes(value)}
+                        onChange={() => toggleIssueTag(value)}
+                      />
+                      <span>{label}</span>
+                    </label>
+                  ))}
+                </fieldset>
+              </div>
+            </details>
+
+            <details className="sl-record-section">
+              <summary>Notes</summary>
+              <div className="sl-record-section-body">
+                <label>
+                  <span>General record notes</span>
+                  <textarea
+                    value={formData.notes}
+                    onChange={(event) => updateField("notes", event.target.value)}
+                    rows={4}
+                  />
+                </label>
+              </div>
+            </details>
+
             <button
               type="submit"
               className={`sl-save-button ${
@@ -6111,13 +6550,12 @@ export default function HomePage() {
                   : ""
               }`}
               disabled={
-                isSaving ||
-                !canSaveLot
+                isSaving
               }
               title={
                 canSaveLot
                   ? text.save
-                  : text.polygonRequired
+                  : saveBlockedMessage
               }
             >
               <span aria-hidden="true">
@@ -6204,7 +6642,7 @@ export default function HomePage() {
 
               <label>
                 <span>
-                  Output format
+                  Preliminary output format
                 </span>
 
                 <select
@@ -6538,7 +6976,7 @@ export default function HomePage() {
                     : "Landscape"}
                 </strong>
                 <small>
-                  Area:{" "}
+                  Estimated area:{" "}
                   {polygon
                     ? displayArea(
                         polygon.areaM2,
@@ -6569,7 +7007,7 @@ export default function HomePage() {
               <span>
                 {isExportingPdf
                   ? "Generating PDF..."
-                  : "Generate output"}
+                  : "Generate preliminary output"}
               </span>
             </button>
           </section>

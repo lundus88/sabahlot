@@ -11,13 +11,13 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title:
-    "SabahLot",
+    "SabahLot powered by Myukur",
 
   description:
-    "Preliminary land planning and mapping tool for Sabah.",
+    "Preliminary Sabah land workflow tool for planning and reference only.",
 
   applicationName:
-    "SabahLot",
+    "SabahLot powered by Myukur",
 
   manifest:
     "/manifest.webmanifest",
@@ -49,7 +49,7 @@ export const metadata: Metadata = {
     capable:
       true,
     title:
-      "SabahLot",
+      "SabahLot powered by Myukur",
     statusBarStyle:
       "black-translucent",
   },

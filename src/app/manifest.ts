@@ -5,11 +5,11 @@ import type {
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name:
-      "SabahLot",
+      "SabahLot powered by Myukur",
     short_name:
       "SabahLot",
     description:
-      "Preliminary land planning and mapping tool for Sabah.",
+      "Preliminary Sabah land workflow tool for planning and reference only.",
     display:
       "standalone",
     start_url:
