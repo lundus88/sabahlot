@@ -5,23 +5,23 @@ import type {
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name:
-      "SabahLot powered by Myukur",
+      "SabahLot",
     short_name:
       "SabahLot",
     description:
       "Preliminary Sabah land workflow tool for planning and reference only.",
     display:
-      "standalone",
+      "fullscreen",
     start_url:
       "/",
     scope:
       "/",
     theme_color:
-      "#0F172A",
+      "#0f172a",
     background_color:
-      "#F8FAFC",
+      "#0f172a",
     orientation:
-      "any",
+      "portrait",
     icons: [
       {
         src:
