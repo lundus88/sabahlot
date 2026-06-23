@@ -13,7 +13,73 @@ import type {
 export const LOCAL_LOTS_STORAGE_KEY =
   "sabahlot_local_lots_v1";
 
-export const LOCAL_LOT_SCHEMA_VERSION = 2;
+export const LOCAL_LOT_SCHEMA_VERSION = 3;
+
+export type LandCaseType =
+  | "land_application"
+  | "inheritance_land"
+  | "family_customary_land"
+  | "titled_land"
+  | "unsure"
+  | "";
+
+export type AvailableRecord =
+  | "title"
+  | "official_receipt"
+  | "application_letter"
+  | "plan_or_sketch"
+  | "gps_coordinates"
+  | "site_photos"
+  | "no_record";
+
+export type ApplicationAge =
+  | "under_5_years"
+  | "5_to_10_years"
+  | "10_to_20_years"
+  | "over_20_years"
+  | "unsure"
+  | "";
+
+export type LandIssueTag =
+  | "unknown_application_status"
+  | "difficult_to_get_information"
+  | "lost_documents"
+  | "unknown_land_location"
+  | "unclear_land_process"
+  | "boundary_dispute"
+  | "title_subdivision"
+  | "customary_land_ncr"
+  | "encroachment"
+  | "overlapping_land";
+
+export type ApplicantStatus = "alive" | "deceased" | "unknown" | "";
+export type HeirLocationKnowledge = "yes" | "no" | "not_sure" | "";
+
+export interface LandRecordDetails {
+  landCaseType: LandCaseType;
+  recordsAvailable: AvailableRecord[];
+  applicationAge: ApplicationAge;
+  issueTags: LandIssueTag[];
+  originalApplicantName: string;
+  originalApplicantStatus: ApplicantStatus;
+  mainHeirName: string;
+  relationshipToApplicant: string;
+  heirsCanIdentifyLocation: HeirLocationKnowledge;
+  landHistoryNotes: string;
+}
+
+export const EMPTY_LAND_RECORD: LandRecordDetails = {
+  landCaseType: "",
+  recordsAvailable: [],
+  applicationAge: "",
+  issueTags: [],
+  originalApplicantName: "",
+  originalApplicantStatus: "",
+  mainHeirName: "",
+  relationshipToApplicant: "",
+  heirsCanIdentifyLocation: "",
+  landHistoryNotes: "",
+};
 
 export type LocalLotSyncStatus =
   | "pending_sync"
@@ -29,6 +95,7 @@ export interface LocalLotRecord {
   village: string | null;
   district: string | null;
   notes?: string | null;
+  land_record?: LandRecordDetails;
   created_at: string;
   updated_at: string;
   polygon_geojson: {
@@ -70,6 +137,7 @@ interface SaveLocalLotInput {
   village?: string;
   district?: string;
   notes?: string;
+  landRecord?: LandRecordDetails;
   polygon: PolygonResult;
   drawingObjects?: DrawingObject[];
   activeObjectId?: string | null;
@@ -136,6 +204,74 @@ function isRecord(
       typeof value === "object" &&
       !Array.isArray(value),
   );
+}
+
+export function normalizeLandRecordDetails(value: unknown): LandRecordDetails {
+  const source = isRecord(value) ? value : {};
+  const stringValue = (key: keyof LandRecordDetails) =>
+    typeof source[key] === "string" ? source[key] : "";
+  const enumValue = <T extends string>(key: keyof LandRecordDetails, values: readonly T[]) => {
+    const candidate = stringValue(key);
+    return values.includes(candidate as T) ? (candidate as T) : "";
+  };
+  const enumList = <T extends string>(key: keyof LandRecordDetails, values: readonly T[]) =>
+    Array.isArray(source[key])
+      ? source[key].filter(
+          (item): item is T => typeof item === "string" && values.includes(item as T),
+        )
+      : [];
+
+  return {
+    landCaseType: enumValue("landCaseType", [
+      "land_application",
+      "inheritance_land",
+      "family_customary_land",
+      "titled_land",
+      "unsure",
+    ]),
+    recordsAvailable: enumList("recordsAvailable", [
+      "title",
+      "official_receipt",
+      "application_letter",
+      "plan_or_sketch",
+      "gps_coordinates",
+      "site_photos",
+      "no_record",
+    ]),
+    applicationAge: enumValue("applicationAge", [
+      "under_5_years",
+      "5_to_10_years",
+      "10_to_20_years",
+      "over_20_years",
+      "unsure",
+    ]),
+    issueTags: enumList("issueTags", [
+      "unknown_application_status",
+      "difficult_to_get_information",
+      "lost_documents",
+      "unknown_land_location",
+      "unclear_land_process",
+      "boundary_dispute",
+      "title_subdivision",
+      "customary_land_ncr",
+      "encroachment",
+      "overlapping_land",
+    ]),
+    originalApplicantName: stringValue("originalApplicantName"),
+    originalApplicantStatus: enumValue("originalApplicantStatus", [
+      "alive",
+      "deceased",
+      "unknown",
+    ]),
+    mainHeirName: stringValue("mainHeirName"),
+    relationshipToApplicant: stringValue("relationshipToApplicant"),
+    heirsCanIdentifyLocation: enumValue("heirsCanIdentifyLocation", [
+      "yes",
+      "no",
+      "not_sure",
+    ]),
+    landHistoryNotes: stringValue("landHistoryNotes"),
+  };
 }
 
 function isGeometryType(
@@ -467,6 +603,10 @@ function sanitizeLocalLotRecord(
       typeof value.notes === "string"
         ? value.notes
         : null,
+    land_record:
+      normalizeLandRecordDetails(
+        value.land_record,
+      ),
     created_at:
       typeof value.created_at ===
       "string"
@@ -649,6 +789,10 @@ export function saveLocalLot(
     district:
       input.district?.trim() || null,
     notes: input.notes?.trim() || null,
+    land_record:
+      normalizeLandRecordDetails(
+        input.landRecord,
+      ),
     created_at: existing?.created_at ?? now,
     updated_at: now,
     polygon_geojson: createGeoJson(
