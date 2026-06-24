@@ -189,8 +189,8 @@ const AVAILABLE_RECORD_OPTIONS: ReadonlyArray<readonly [AvailableRecord, string]
 
 const APPLICATION_AGE_OPTIONS = [
   ["under_5_years", "Kurang 5 tahun"],
-  ["5_to_10_years", "5–10 tahun"],
-  ["10_to_20_years", "10–20 tahun"],
+  ["5_to_10_years", "5â€“10 tahun"],
+  ["10_to_20_years", "10â€“20 tahun"],
   ["over_20_years", "Lebih 20 tahun"],
   ["unsure", "Tidak pasti"],
 ] as const;
@@ -248,7 +248,7 @@ const PAGE_TEXT = {
       "District",
 
     ownerPlaceholder:
-      "Example: Alex Nairing",
+      "Example: Ali bin Baba",
 
     lotPlaceholder:
       "Example: Lot 69467",
@@ -412,7 +412,7 @@ const PAGE_TEXT = {
       "Daerah",
 
     ownerPlaceholder:
-      "Contoh: Alex Nairing",
+      "Contoh: Ali bin Baba",
 
     lotPlaceholder:
       "Contoh: Lot 69467",
@@ -2245,11 +2245,11 @@ export default function HomePage() {
 
           return `${String(
             degrees,
-          ).padStart(3, "0")}° ${String(
+          ).padStart(3, "0")}Â° ${String(
             minutes,
-          ).padStart(2, "0")}′ ${String(
+          ).padStart(2, "0")}â€² ${String(
             seconds,
-          ).padStart(2, "0")}″`;
+          ).padStart(2, "0")}â€³`;
         };
 
         const reportText =
@@ -6247,7 +6247,7 @@ export default function HomePage() {
               text.close
             }
           >
-            ×
+            Ã—
           </button>
         </div>
 
@@ -6559,7 +6559,7 @@ export default function HomePage() {
               }
             >
               <span aria-hidden="true">
-                ✓
+                âœ“
               </span>
 
               <span>
@@ -6968,8 +6968,8 @@ export default function HomePage() {
               <div className="sl-output-preview">
                 <span>Output summary</span>
                 <strong>
-                  {planTemplateLabel} ·{" "}
-                  {pdfPaperSize.toUpperCase()} ·{" "}
+                  {planTemplateLabel} Â·{" "}
+                  {pdfPaperSize.toUpperCase()} Â·{" "}
                   {pdfOrientation ===
                   "portrait"
                     ? "Portrait"
@@ -7070,7 +7070,7 @@ export default function HomePage() {
                       <small>
                         {displayArea(
                           lot.area_m2,
-                        )} · {lot.point_count}{" "}
+                        )} Â· {lot.point_count}{" "}
                         {text.points}
                       </small>
 
@@ -7178,3 +7178,4 @@ export default function HomePage() {
     </main>
   );
 }
+
