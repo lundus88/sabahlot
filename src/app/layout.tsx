@@ -69,7 +69,7 @@ export const viewport: Viewport = {
     "cover",
 
   themeColor:
-    "#0F172A",
+    "#0f172a",
 };
 
 interface RootLayoutProps {

@@ -945,8 +945,10 @@ select:focus-visible {
    ===================================================== */
 
 .leaflet-container {
-  width: 100%;
-  height: 100%;
+  width: 100vw;
+  height: 100dvh;
+  min-width: 100vw;
+  min-height: 100dvh;
 
   font-family:
     Inter,
@@ -4974,5 +4976,75 @@ select:focus-visible {
   .sl-field-point-options,
   .sl-settings-card {
     top: calc(env(safe-area-inset-top) + 56px);
+  }
+}
+
+/* Sprint 03G: installed PWA display modes. */
+@media (display-mode: standalone), (display-mode: fullscreen) {
+  html,
+  body {
+    width: 100vw;
+    height: 100dvh;
+    min-height: 100dvh;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    overscroll-behavior: none;
+    background: #0f172a;
+  }
+
+  body {
+    position: fixed;
+    inset: 0;
+  }
+
+  .sl-app-shell,
+  .sl-map-shell {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100dvh;
+    min-width: 100vw;
+    min-height: 100dvh;
+    max-width: 100vw;
+    max-height: 100dvh;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: #0f172a;
+  }
+
+  .sl-map-canvas,
+  .sl-map-canvas .leaflet-container,
+  .leaflet-container {
+    position: absolute;
+    inset: 0;
+    width: 100vw;
+    height: 100dvh;
+    min-width: 100vw;
+    min-height: 100dvh;
+    margin: 0;
+    padding: 0;
+  }
+
+  .sl-topbar,
+  .sl-topbar-actions {
+    top: calc(env(safe-area-inset-top) + 8px);
+  }
+
+  .sl-tool-dock {
+    bottom: calc(env(safe-area-inset-bottom) + 8px) !important;
+    padding-bottom: max(5px, env(safe-area-inset-bottom)) !important;
+  }
+
+  .sl-context-toolbar {
+    bottom: calc(env(safe-area-inset-bottom) + 8px);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .sl-map-status,
+  .sl-map-navigation,
+  .sl-tool-flyout {
+    bottom: calc(env(safe-area-inset-bottom) + 78px) !important;
   }
 }

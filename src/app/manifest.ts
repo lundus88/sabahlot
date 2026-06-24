@@ -2,8 +2,16 @@ import type {
   MetadataRoute,
 } from "next";
 
+type SabahLotDisplayMode =
+  NonNullable<MetadataRoute.Manifest["display"]>;
+
+type SabahLotManifest =
+  MetadataRoute.Manifest & {
+    display_override: SabahLotDisplayMode[];
+  };
+
 export default function manifest(): MetadataRoute.Manifest {
-  return {
+  const sabahLotManifest: SabahLotManifest = {
     name:
       "SabahLot",
     short_name:
@@ -11,7 +19,12 @@ export default function manifest(): MetadataRoute.Manifest {
     description:
       "Preliminary Sabah land workflow tool for planning and reference only.",
     display:
+      "standalone",
+    display_override: [
       "fullscreen",
+      "standalone",
+      "minimal-ui",
+    ],
     start_url:
       "/",
     scope:
@@ -45,4 +58,6 @@ export default function manifest(): MetadataRoute.Manifest {
       },
     ],
   };
+
+  return sabahLotManifest;
 }
