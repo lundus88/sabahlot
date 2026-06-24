@@ -1,4 +1,4 @@
- import type {
+﻿ import type {
   Metadata,
   Viewport,
 } from "next";
@@ -6,6 +6,8 @@
 import type {
   ReactNode,
 } from "react";
+
+import PWARegister from "@/components/PWARegister";
 
 import "./globals.css";
 
@@ -84,7 +86,9 @@ export default function RootLayout({
     <html lang="en">
       <body>
         {children}
+        <PWARegister />
       </body>
     </html>
   );
 }
+

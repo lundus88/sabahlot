@@ -5048,3 +5048,59 @@ select:focus-visible {
     bottom: calc(env(safe-area-inset-bottom) + 78px) !important;
   }
 }
+
+/* Sprint 03G-2: Complete PWA install mode for mobile fullscreen */
+@media (max-width: 768px) {
+  html,
+  body {
+    width: 100vw;
+    min-height: 100dvh;
+    margin: 0;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  body {
+    touch-action: manipulation;
+    background: #0f172a;
+  }
+
+  .leaflet-container {
+    width: 100vw !important;
+    height: 100dvh !important;
+  }
+}
+
+/* Installed PWA mode: Add to Home Screen / standalone / fullscreen */
+@media (display-mode: standalone), (display-mode: fullscreen) {
+  html,
+  body {
+    width: 100vw;
+    height: 100dvh;
+    margin: 0;
+    overflow: hidden;
+    background: #0f172a;
+    overscroll-behavior: none;
+  }
+
+  body {
+    touch-action: manipulation;
+  }
+
+  .leaflet-container {
+    width: 100vw !important;
+    height: 100dvh !important;
+  }
+}
+
+/* iOS / Android safe-area support */
+@supports (padding: max(0px)) {
+  @media (max-width: 768px) {
+    body {
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+    }
+  }
+}
