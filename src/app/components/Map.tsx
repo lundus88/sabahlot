@@ -6366,6 +6366,7 @@ export default function Map({
                 latitude?: number;
                 longitude?: number;
                 label?: string;
+                note?: string;
               }>
             ).detail;
 
@@ -6384,7 +6385,7 @@ export default function Map({
               detail.latitude,
               detail.longitude,
             ]).bindPopup(
-              `<strong>${escapeHtml(detail.label ?? "Keyed coordinate")}</strong><br/>WGS84 preliminary approximate field reference only`,
+              `<strong>${escapeHtml(detail.label ?? "Keyed coordinate")}</strong><br/>${detail.note ? `${escapeHtml(detail.note)}<br/>` : ""}WGS84 preliminary approximate field reference only`,
             );
 
           marker.addTo(

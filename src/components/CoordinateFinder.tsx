@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  useMemo,
   useState,
 } from "react";
 
@@ -13,6 +12,10 @@ import {
   createKeyedCoordinatePoint,
   KEYED_COORDINATE_DISCLAIMER,
 } from "@/lib/field-gps";
+
+import type {
+  CoordinateParseResult,
+} from "@/lib/coordinate.types";
 
 interface CoordinateFinderProps {
   enabled: boolean;
@@ -45,27 +48,27 @@ export default function CoordinateFinder({
     message,
     setMessage,
   ] = useState("");
-
-  const result =
-    useMemo(
-      () =>
-        input.trim()
-          ? parseWgs84Coordinate(
-              input,
-            )
-          : {
-              ok: false,
-              error:
-                "Enter a WGS84 latitude, longitude coordinate.",
-            },
-      [input],
-    );
+  const [
+    parsedResult,
+    setParsedResult,
+  ] = useState<CoordinateParseResult>({
+    ok: false,
+    error:
+      "Enter a WGS84 latitude, longitude coordinate.",
+  });
 
   if (!enabled) {
     return null;
   }
 
   const findPoint = () => {
+    const result =
+      parseWgs84Coordinate(
+        input,
+      );
+
+    setParsedResult(result);
+
     if (
       !result.ok ||
       !result.coordinate
@@ -89,6 +92,8 @@ export default function CoordinateFinder({
             label:
               label.trim() ||
               "Keyed coordinate",
+            note:
+              note.trim(),
           },
         },
       ),
@@ -107,12 +112,20 @@ export default function CoordinateFinder({
         "sabahlot:clear-coordinate-marker",
       ),
     );
+    setParsedResult({
+      ok: false,
+      error:
+        "Enter a WGS84 latitude, longitude coordinate.",
+    });
     setMessage(
       "Coordinate marker cleared.",
     );
   };
 
   const addAsFieldPoint = () => {
+    const result =
+      parsedResult;
+
     if (
       !result.ok ||
       !result.coordinate
@@ -177,9 +190,16 @@ export default function CoordinateFinder({
                 type="text"
                 value={input}
                 onChange={(event) =>
-                  setInput(
-                    event.target.value,
-                  )
+                  {
+                    setInput(
+                      event.target.value,
+                    );
+                    setParsedResult({
+                      ok: false,
+                      error:
+                        "Click Find Point to parse this WGS84 coordinate.",
+                    });
+                  }
                 }
                 placeholder="5.968600, 116.072130"
                 autoComplete="off"
@@ -219,32 +239,32 @@ export default function CoordinateFinder({
             <div className="sl-field-gps-grid">
               <span>Latitude</span>
               <strong>
-                {result.ok &&
-                result.coordinate
-                  ? result.coordinate.latitude.toFixed(7)
+                {parsedResult.ok &&
+                parsedResult.coordinate
+                  ? parsedResult.coordinate.latitude.toFixed(7)
                   : "-"}
               </strong>
               <span>Longitude</span>
               <strong>
-                {result.ok &&
-                result.coordinate
-                  ? result.coordinate.longitude.toFixed(7)
+                {parsedResult.ok &&
+                parsedResult.coordinate
+                  ? parsedResult.coordinate.longitude.toFixed(7)
                   : "-"}
               </strong>
               <span>Coordinate system</span>
               <strong>WGS84</strong>
               <span>Validation status</span>
               <strong>
-                {result.ok
-                  ? result.coordinate?.warnings.length
+                {parsedResult.ok
+                  ? parsedResult.coordinate?.warnings.length
                     ? "Valid with warning"
                     : "Valid"
-                  : result.error}
+                  : parsedResult.error}
               </strong>
             </div>
 
-            {result.ok &&
-              result.coordinate?.warnings.map(
+            {parsedResult.ok &&
+              parsedResult.coordinate?.warnings.map(
                 (warning) => (
                   <p
                     key={warning}
@@ -272,6 +292,10 @@ export default function CoordinateFinder({
             <button
               type="button"
               onClick={addAsFieldPoint}
+              disabled={
+                !parsedResult.ok ||
+                !parsedResult.coordinate
+              }
             >
               Add as Field Point
             </button>
