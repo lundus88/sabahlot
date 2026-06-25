@@ -2326,6 +2326,11 @@ export default function Map({
       null,
     );
 
+  const coordinateMarkerLayerRef =
+    useRef<LayerGroup | null>(
+      null,
+    );
+
   const pointsRef =
     useRef<
       CoordinatePair[]
@@ -6214,6 +6219,14 @@ export default function Map({
     () => {
       let cancelled =
         false;
+      let handleFindCoordinate:
+        | ((event: Event) => void)
+        | null =
+        null;
+      let handleClearCoordinateMarker:
+        | (() => void)
+        | null =
+        null;
 
       async function initialiseMap() {
         if (
@@ -6321,6 +6334,11 @@ export default function Map({
             map,
           );
 
+        const coordinateMarkerLayer =
+          L.layerGroup().addTo(
+            map,
+          );
+
         mapRef.current =
           map;
 
@@ -6335,6 +6353,69 @@ export default function Map({
 
         locationLayerRef.current =
           locationLayer;
+
+        coordinateMarkerLayerRef.current =
+          coordinateMarkerLayer;
+
+        handleFindCoordinate = (
+          event: Event,
+        ) => {
+          const detail =
+            (
+              event as CustomEvent<{
+                latitude?: number;
+                longitude?: number;
+                label?: string;
+              }>
+            ).detail;
+
+          if (
+            typeof detail?.latitude !==
+              "number" ||
+            typeof detail.longitude !==
+              "number"
+          ) {
+            return;
+          }
+
+          coordinateMarkerLayer.clearLayers();
+          const marker =
+            L.marker([
+              detail.latitude,
+              detail.longitude,
+            ]).bindPopup(
+              `<strong>${escapeHtml(detail.label ?? "Keyed coordinate")}</strong><br/>WGS84 preliminary approximate field reference only`,
+            );
+
+          marker.addTo(
+            coordinateMarkerLayer,
+          );
+          map.setView(
+            [
+              detail.latitude,
+              detail.longitude,
+            ],
+            Math.max(
+              map.getZoom(),
+              17,
+            ),
+          );
+          marker.openPopup();
+        };
+
+        handleClearCoordinateMarker =
+          () => {
+            coordinateMarkerLayer.clearLayers();
+          };
+
+        window.addEventListener(
+          "sabahlot:find-coordinate",
+          handleFindCoordinate,
+        );
+        window.addEventListener(
+          "sabahlot:clear-coordinate-marker",
+          handleClearCoordinateMarker,
+        );
 
         const handleClick = (
           event:
@@ -6611,6 +6692,20 @@ export default function Map({
 
         mapRef.current?.remove();
 
+        if (handleFindCoordinate) {
+          window.removeEventListener(
+            "sabahlot:find-coordinate",
+            handleFindCoordinate,
+          );
+        }
+
+        if (handleClearCoordinateMarker) {
+          window.removeEventListener(
+            "sabahlot:clear-coordinate-marker",
+            handleClearCoordinateMarker,
+          );
+        }
+
         mapRef.current =
           null;
 
@@ -6630,6 +6725,9 @@ export default function Map({
           null;
 
         locationLayerRef.current =
+          null;
+
+        coordinateMarkerLayerRef.current =
           null;
       };
     },

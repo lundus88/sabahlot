@@ -277,13 +277,21 @@ select:focus-visible {
   gap: 4px;
 }
 
-.sl-field-gps-label select {
+.sl-field-gps-label input,
+.sl-field-gps-label select,
+.sl-field-gps-label textarea {
   min-height: 34px;
   padding: 0 8px;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
   background: #ffffff;
   font-size: 12px;
+}
+
+.sl-field-gps-label textarea {
+  min-height: 70px;
+  padding: 8px;
+  resize: vertical;
 }
 
 .sl-field-gps-check {

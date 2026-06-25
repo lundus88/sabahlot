@@ -11,7 +11,12 @@ export type GpsQualityGrade =
 export type FieldGpsCaptureMethod =
   | "single"
   | "averaged"
-  | "best-fix";
+  | "best-fix"
+  | "manual-key-in";
+
+export type FieldGpsPointSource =
+  | "phone-gps"
+  | "keyed-coordinate";
 
 export interface FieldGpsPoint {
   id: string;
@@ -24,7 +29,7 @@ export interface FieldGpsPoint {
   heading?: number | null;
   speed?: number | null;
   timestamp: string;
-  source: "phone-gps";
+  source: FieldGpsPointSource;
   qualityGrade: GpsQualityGrade;
   sampleCount: number;
   captureMethod: FieldGpsCaptureMethod;

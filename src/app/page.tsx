@@ -14,6 +14,7 @@ import Map, {
 
 import FieldGpsLite from "@/components/FieldGpsLite";
 import OfflineMapLite from "@/components/OfflineMapLite";
+import CoordinateFinder from "@/components/CoordinateFinder";
 
 import {
   createClient,
@@ -6292,6 +6293,10 @@ export default function HomePage() {
             onPolygonGenerated={
               handleFieldGpsPolygonGenerated
             }
+          />
+
+          <CoordinateFinder
+            enabled={fieldGpsEnabled}
           />
 
           <OfflineMapLite

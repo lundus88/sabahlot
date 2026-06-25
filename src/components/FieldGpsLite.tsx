@@ -71,7 +71,7 @@ function formatAccuracy(
   accuracy?: number,
 ): string {
   return accuracy === undefined
-    ? "unknown"
+    ? "not measured"
     : `${accuracy.toFixed(1)} m`;
 }
 
@@ -239,6 +239,45 @@ export default function FieldGpsLite({
   useEffect(() => {
     trackRef.current = tracking;
   }, [tracking]);
+
+  useEffect(() => {
+    const handleKeyedPoint = (
+      event: Event,
+    ) => {
+      const detail =
+        (
+          event as CustomEvent<{
+            point?: FieldGpsPoint;
+          }>
+        ).detail;
+
+      if (!detail?.point) {
+        return;
+      }
+
+      setPoints(
+        (current) => [
+          ...current,
+          detail.point!,
+        ],
+      );
+      setCaptureMessage(
+        `${detail.point.label} added as keyed WGS84 coordinate. Preliminary approximate field reference only.`,
+      );
+    };
+
+    window.addEventListener(
+      "sabahlot:add-field-gps-point",
+      handleKeyedPoint,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "sabahlot:add-field-gps-point",
+        handleKeyedPoint,
+      );
+    };
+  }, []);
 
   if (!enabled) {
     return null;
@@ -671,9 +710,11 @@ export default function FieldGpsLite({
                           {point.label}
                         </strong>
                         <span>
-                          {formatAccuracy(
-                            point.accuracyMeters,
-                          )} | Grade {point.qualityGrade} | {point.captureMethod}
+                          {point.source === "keyed-coordinate"
+                            ? "Keyed coordinate"
+                            : "Phone GPS"} | {formatAccuracy(
+                              point.accuracyMeters,
+                            )} | Grade {point.qualityGrade} | {point.captureMethod}
                         </span>
                         <small>
                           {point.timestamp}

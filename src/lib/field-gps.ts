@@ -26,6 +26,9 @@ const METERS_PER_CHAIN = 20.1168;
 export const FIELD_GPS_DISCLAIMER =
   "This Field GPS Capture is preliminary only. Phone GPS coordinates are approximate and may contain positional errors. Accuracy depends on device, satellite reception, terrain, canopy, buildings, weather, and field conditions. Offline map tiles are for field reference only and may be incomplete. This output is not a legal survey plan, not proof of land boundary, and not an official approval by JTU, Land Office, or any authority. Final boundary and land matters must be verified through the proper Sabah land and survey procedures.";
 
+export const KEYED_COORDINATE_DISCLAIMER =
+  "Keyed coordinates are user-entered and have not been independently verified by SabahLot. They are for preliminary field reference only and must not be treated as legal boundary evidence.";
+
 export const GEOLOCATION_OPTIONS: PositionOptions = {
   enableHighAccuracy: true,
   timeout: 15000,
@@ -126,6 +129,37 @@ export function createFieldGpsPoint(
     captureMethod,
     occupationSeconds,
     note,
+  };
+}
+
+export function createKeyedCoordinatePoint(
+  latitude: number,
+  longitude: number,
+  label: string,
+  note?: string,
+): FieldGpsPoint {
+  return {
+    id:
+      createFieldGpsId(),
+    label,
+    latitude,
+    longitude,
+    timestamp:
+      new Date().toISOString(),
+    source:
+      "keyed-coordinate",
+    qualityGrade:
+      "D",
+    sampleCount:
+      1,
+    captureMethod:
+      "manual-key-in",
+    occupationSeconds:
+      0,
+    note:
+      note?.trim()
+        ? `${note.trim()} Keyed WGS84 latitude/longitude; preliminary approximate field reference only.`
+        : "Keyed WGS84 latitude/longitude; preliminary approximate field reference only.",
   };
 }
 

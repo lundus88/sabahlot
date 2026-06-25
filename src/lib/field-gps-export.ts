@@ -5,6 +5,7 @@ import type {
 
 import {
   FIELD_GPS_DISCLAIMER,
+  KEYED_COORDINATE_DISCLAIMER,
 } from "./field-gps";
 
 export interface FieldGpsExportInput {
@@ -56,6 +57,7 @@ export function buildFieldGpsCsv(
     "longitude",
     "accuracyMeters",
     "qualityGrade",
+    "source",
     "captureMethod",
     "sampleCount",
     "occupationSeconds",
@@ -73,6 +75,7 @@ export function buildFieldGpsCsv(
           point.longitude,
           point.accuracyMeters,
           point.qualityGrade,
+          point.source,
           point.captureMethod,
           point.sampleCount,
           point.occupationSeconds,
@@ -131,8 +134,9 @@ export function buildFieldGpsKml(
       <styleUrl>#field-gps-point</styleUrl>
       <description>${escapeXml(
         [
-          `Status: preliminary approximate phone GPS field reference only`,
-          `Accuracy: ${point.accuracyMeters?.toFixed(1) ?? "unknown"} m`,
+          "Status: preliminary approximate WGS84 field reference only",
+          `Source: ${point.source === "keyed-coordinate" ? "Keyed coordinate" : "Phone GPS"}`,
+          `Accuracy: ${point.source === "keyed-coordinate" ? "Not measured / user-entered" : `${point.accuracyMeters?.toFixed(1) ?? "unknown"} m`}`,
           `Quality grade: ${point.qualityGrade}`,
           `Capture method: ${point.captureMethod}`,
           `Sample count: ${point.sampleCount}`,
@@ -260,7 +264,8 @@ export async function exportFieldGpsPdf(
           point.label,
           `Lat ${point.latitude.toFixed(7)}`,
           `Lng ${point.longitude.toFixed(7)}`,
-          `Accuracy ${point.accuracyMeters?.toFixed(1) ?? "unknown"} m`,
+          `Source ${point.source === "keyed-coordinate" ? "Keyed coordinate" : "Phone GPS"}`,
+          `Accuracy ${point.source === "keyed-coordinate" ? "Not measured / user-entered" : `${point.accuracyMeters?.toFixed(1) ?? "unknown"} m`}`,
           `Grade ${point.qualityGrade}`,
           point.captureMethod,
           `Samples ${point.sampleCount}`,
@@ -279,6 +284,7 @@ export async function exportFieldGpsPdf(
   write("Disclaimer", 11);
   pdf.setFont("helvetica", "normal");
   write(FIELD_GPS_DISCLAIMER, 8);
+  write(KEYED_COORDINATE_DISCLAIMER, 8);
 
   pdf.save("preliminary-field-gps-capture.pdf");
 }
