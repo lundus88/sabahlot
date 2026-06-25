@@ -102,6 +102,267 @@ function coordinatesText(
     .join(" ");
 }
 
+function degreesToRadians(
+  value: number,
+): number {
+  return (
+    value *
+    Math.PI
+  ) / 180;
+}
+
+function distanceMeters(
+  start: {
+    lat: number;
+    lng: number;
+  },
+  end: {
+    lat: number;
+    lng: number;
+  },
+): number {
+  const earthRadiusMeters =
+    6378137;
+  const latitude1 =
+    degreesToRadians(
+      start.lat,
+    );
+  const latitude2 =
+    degreesToRadians(
+      end.lat,
+    );
+  const latitudeDelta =
+    degreesToRadians(
+      end.lat - start.lat,
+    );
+  const longitudeDelta =
+    degreesToRadians(
+      end.lng - start.lng,
+    );
+  const haversine =
+    Math.sin(
+      latitudeDelta / 2,
+    ) ** 2 +
+    Math.cos(latitude1) *
+      Math.cos(latitude2) *
+      Math.sin(
+        longitudeDelta / 2,
+      ) ** 2;
+
+  return (
+    earthRadiusMeters *
+    2 *
+    Math.atan2(
+      Math.sqrt(haversine),
+      Math.sqrt(
+        1 - haversine,
+      ),
+    )
+  );
+}
+
+function estimatedPerimeterMeters(
+  coordinates?: Array<{
+    lat: number;
+    lng: number;
+  }>,
+): number | null {
+  if (
+    !coordinates ||
+    coordinates.length < 3
+  ) {
+    return null;
+  }
+
+  return coordinates.reduce(
+    (
+      total,
+      coordinate,
+      index,
+    ) =>
+      total +
+      distanceMeters(
+        coordinate,
+        coordinates[
+          (index + 1) %
+            coordinates.length
+        ],
+      ),
+    0,
+  );
+}
+
+function captureSourceSummary(
+  points: FieldGpsPoint[],
+): string {
+  const hasPhoneGps =
+    points.some(
+      (point) =>
+        point.source ===
+        "phone-gps",
+    );
+  const hasKeyed =
+    points.some(
+      (point) =>
+        point.source ===
+        "keyed-coordinate",
+    );
+
+  if (
+    hasPhoneGps &&
+    hasKeyed
+  ) {
+    return "Mixed Phone GPS + Keyed Coordinate";
+  }
+
+  if (hasKeyed) {
+    return "Keyed Coordinate";
+  }
+
+  if (hasPhoneGps) {
+    return "Phone GPS";
+  }
+
+  return "Not provided";
+}
+
+function captureMethodSummary(
+  points: FieldGpsPoint[],
+): string {
+  const methods =
+    new Set(
+      points.map(
+        (point) =>
+          point.captureMethod,
+      ),
+    );
+
+  if (methods.size === 0) {
+    return "Not provided";
+  }
+
+  if (methods.size > 1) {
+    return "Mixed methods";
+  }
+
+  switch (
+    points[0]?.captureMethod
+  ) {
+    case "manual-key-in":
+      return "Manual key-in";
+    case "single":
+      return "Single GPS";
+    case "best-fix":
+      return "Best fix";
+    case "averaged":
+      return "Averaged GPS";
+    default:
+      return "Mixed methods";
+  }
+}
+
+function accuracySummary(
+  points: FieldGpsPoint[],
+): string {
+  const hasKeyed =
+    points.some(
+      (point) =>
+        point.source ===
+        "keyed-coordinate",
+    );
+  const phoneAccuracies =
+    points
+      .filter(
+        (point) =>
+          point.source ===
+            "phone-gps" &&
+          typeof point.accuracyMeters ===
+            "number",
+      )
+      .map(
+        (point) =>
+          point.accuracyMeters as number,
+      );
+
+  if (
+    phoneAccuracies.length === 0
+  ) {
+    return hasKeyed
+      ? "Not measured / user-entered"
+      : "Not available";
+  }
+
+  const best =
+    Math.min(...phoneAccuracies);
+  const worst =
+    Math.max(...phoneAccuracies);
+  const average =
+    phoneAccuracies.reduce(
+      (
+        total,
+        value,
+      ) =>
+        total + value,
+      0,
+    ) /
+    phoneAccuracies.length;
+  const phoneSummary =
+    `Best accuracy: +/-${best.toFixed(1)}m; Worst accuracy: +/-${worst.toFixed(1)}m; Average accuracy: +/-${average.toFixed(1)}m`;
+
+  return hasKeyed
+    ? `${phoneSummary}; keyed coordinates not measured.`
+    : phoneSummary;
+}
+
+function qualitySummary(
+  points: FieldGpsPoint[],
+): string {
+  const counts =
+    points.reduce<
+      Record<
+        FieldGpsPoint["qualityGrade"],
+        number
+      >
+    >(
+      (
+        current,
+        point,
+      ) => ({
+        ...current,
+        [point.qualityGrade]:
+          current[
+            point.qualityGrade
+          ] + 1,
+      }),
+      {
+        A: 0,
+        B: 0,
+        C: 0,
+        D: 0,
+      },
+    );
+  const summary =
+    (
+      [
+        "A",
+        "B",
+        "C",
+        "D",
+      ] as const
+    )
+      .filter(
+        (grade) =>
+          counts[grade] > 0,
+      )
+      .map(
+        (grade) =>
+          `${grade}: ${counts[grade]}`,
+      )
+      .join(", ");
+
+  return summary || "Not provided";
+}
+
 export function buildFieldGpsKml(
   input: FieldGpsExportInput,
 ): string {
@@ -192,13 +453,25 @@ export async function exportFieldGpsPdf(
       format:
         "a4",
       orientation:
-        "landscape",
+        "portrait",
       unit:
         "mm",
     });
   const margin = 12;
   let y = margin;
   const lineHeight = 6;
+  const pageWidth =
+    pdf.internal.pageSize.getWidth();
+  const pageHeight =
+    pdf.internal.pageSize.getHeight();
+  const contentWidth =
+    pageWidth - margin * 2;
+  const generatedAt =
+    new Date().toLocaleString("en-MY");
+  const perimeterM =
+    estimatedPerimeterMeters(
+      input.polygonCoordinates,
+    );
 
   const write = (
     text: string,
@@ -208,7 +481,7 @@ export async function exportFieldGpsPdf(
     const lines =
       pdf.splitTextToSize(
         text,
-        270,
+        contentWidth,
       );
     pdf.text(
       lines,
@@ -220,26 +493,241 @@ export async function exportFieldGpsPdf(
         lineHeight;
   };
 
+  const titleBlockRows: Array<
+    readonly [string, string]
+  > = [
+    [
+      "Output",
+      "Preliminary Field GPS Capture",
+    ],
+    [
+      "Branding",
+      "SabahLot powered by Myukur",
+    ],
+    [
+      "Record name",
+      input.recordName?.trim() ||
+        "Not provided",
+    ],
+    [
+      "Coordinate system",
+      "WGS84 Latitude/Longitude",
+    ],
+    [
+      "Capture source",
+      captureSourceSummary(
+        input.points,
+      ),
+    ],
+    [
+      "Capture method",
+      captureMethodSummary(
+        input.points,
+      ),
+    ],
+    [
+      "Points observed",
+      `${input.points.length} ${
+        input.points.length === 1
+          ? "point"
+          : "points"
+      }`,
+    ],
+    [
+      "Estimated area only",
+      typeof input.estimatedAreaM2 ===
+      "number"
+        ? `${input.estimatedAreaM2.toFixed(2)} m2`
+        : "Not generated",
+    ],
+    [
+      "Estimated perimeter only",
+      perimeterM === null
+        ? "Not generated"
+        : `${perimeterM.toFixed(2)} m`,
+    ],
+    [
+      "Accuracy summary",
+      accuracySummary(
+        input.points,
+      ),
+    ],
+    [
+      "Quality summary",
+      qualitySummary(
+        input.points,
+      ),
+    ],
+    [
+      "Generated",
+      generatedAt,
+    ],
+    [
+      "Status",
+      "Preliminary only - not a legal survey plan",
+    ],
+  ];
+
+  const drawTitleBlock = () => {
+    const blockX =
+      margin;
+    const blockY =
+      y;
+    const headingHeight =
+      9;
+    const rowHeight =
+      9;
+    const columnGap =
+      4;
+    const blockHeight =
+      headingHeight +
+      Math.ceil(
+        titleBlockRows.length / 2,
+      ) *
+        rowHeight +
+      6;
+    const columnWidth =
+      (contentWidth - columnGap) /
+      2;
+
+    pdf.setDrawColor(
+      148,
+      163,
+      184,
+    );
+    pdf.setFillColor(
+      248,
+      250,
+      252,
+    );
+    pdf.rect(
+      blockX,
+      blockY,
+      contentWidth,
+      blockHeight,
+      "FD",
+    );
+
+    pdf.setFillColor(
+      15,
+      23,
+      42,
+    );
+    pdf.rect(
+      blockX,
+      blockY,
+      contentWidth,
+      headingHeight,
+      "F",
+    );
+    pdf.setFont(
+      "helvetica",
+      "bold",
+    );
+    pdf.setTextColor(
+      255,
+      255,
+      255,
+    );
+    pdf.setFontSize(10);
+    pdf.text(
+      "FIELD OBSERVATION SUMMARY",
+      blockX + 3,
+      blockY + 6.2,
+    );
+
+    pdf.setTextColor(
+      15,
+      23,
+      42,
+    );
+    titleBlockRows.forEach(
+      (
+        [
+          label,
+          value,
+        ],
+        index,
+      ) => {
+        const column =
+          index <
+          Math.ceil(
+            titleBlockRows.length / 2,
+          )
+            ? 0
+            : 1;
+        const row =
+          column === 0
+            ? index
+            : index -
+              Math.ceil(
+                titleBlockRows.length / 2,
+              );
+        const x =
+          blockX +
+          3 +
+          column *
+            (columnWidth + columnGap);
+        const rowY =
+          blockY +
+          headingHeight +
+          5 +
+          row * rowHeight;
+
+        pdf.setFont(
+          "helvetica",
+          "bold",
+        );
+        pdf.setFontSize(7.5);
+        pdf.setTextColor(
+          71,
+          85,
+          105,
+        );
+        pdf.text(
+          label,
+          x,
+          rowY,
+        );
+        pdf.setFont(
+          "helvetica",
+          "normal",
+        );
+        pdf.setFontSize(8);
+        pdf.setTextColor(
+          15,
+          23,
+          42,
+        );
+        const wrapped =
+          pdf.splitTextToSize(
+            value,
+            columnWidth - 4,
+          );
+        pdf.text(
+          wrapped.slice(0, 2),
+          x,
+          rowY + 3.7,
+        );
+      },
+    );
+
+    y +=
+      blockHeight + 6;
+    pdf.setTextColor(
+      15,
+      23,
+      42,
+    );
+  };
+
   pdf.setFont("helvetica", "bold");
   write(
     "Preliminary Field GPS Capture",
     16,
   );
   pdf.setFont("helvetica", "normal");
-  write("SabahLot powered by Myukur");
-  write(
-    `Date/time generated: ${new Date().toLocaleString("en-MY")}`,
-  );
-  write(
-    `Record name: ${input.recordName?.trim() || "Not provided"}`,
-  );
-  write(
-    `Estimated area only: ${
-      typeof input.estimatedAreaM2 === "number"
-        ? `${input.estimatedAreaM2.toFixed(2)} m2`
-        : "Not generated"
-    }`,
-  );
+  drawTitleBlock();
 
   if (input.offlineMapNote) {
     write(
@@ -254,7 +742,10 @@ export async function exportFieldGpsPdf(
 
   input.points.forEach(
     (point) => {
-      if (y > 182) {
+      if (
+        y >
+        pageHeight - margin - 35
+      ) {
         pdf.addPage();
         y = margin;
       }
