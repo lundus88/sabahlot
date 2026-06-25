@@ -1122,7 +1122,25 @@ export default function HomePage() {
       );
     }
   }, []);
-useEffect(() => {
+
+  useEffect(() => {
+    try {
+      const storedLocalLots =
+        getLocalLots();
+
+      queueMicrotask(() => {
+        setLocalLots(storedLocalLots);
+      });
+    } catch {
+      queueMicrotask(() => {
+        setSaveMessage(
+          PAGE_TEXT.en.loadFailed,
+        );
+      });
+    }
+  }, []);
+
+  useEffect(() => {
     if (
       !polygon ||
       polygon.coordinates.length < 3
@@ -1703,7 +1721,24 @@ useEffect(() => {
     }
 
     try {
-      setLocalLots(deleteLocalLot(lotId));
+      const nextLocalLots =
+        deleteLocalLot(lotId);
+
+      setLocalLots(nextLocalLots);
+
+      if (currentProjectId === lotId) {
+        window.localStorage.removeItem(
+          STORAGE_KEY,
+        );
+        setCurrentProjectId(null);
+        setFormData(EMPTY_FORM);
+        setPolygon(null);
+        setLoadedCoordinates(undefined);
+        setDrawingObjects([]);
+        setActiveObjectId(null);
+        setHasUnsavedChanges(false);
+      }
+
       setSaveMessage(text.deleted);
     } catch {
       setSaveMessage(text.deleteFailed);
