@@ -4,12 +4,16 @@ import {
   type FormEvent,
   useEffect,
   useState,
+  useSyncExternalStore,
 } from "react";
 
 import Map, {
   formatAreaDisplay,
   type ManualPointExport,
 } from "./components/Map";
+
+import FieldGpsLite from "@/components/FieldGpsLite";
+import OfflineMapLite from "@/components/OfflineMapLite";
 
 import {
   createClient,
@@ -43,6 +47,10 @@ import type {
 import type {
   DrawingObject,
 } from "@/lib/drawing-types";
+
+import type {
+  OfflineMapView,
+} from "@/lib/offline-map-cache";
 
 interface LotFormData {
   ownerName: string;
@@ -144,8 +152,53 @@ type PreviousPdfIdentityFields =
 const STORAGE_KEY =
   "sabahlot-alpha-record";
 
+const FIELD_GPS_STORAGE_KEY =
+  "sabahlot_field_gps_enabled";
+
 const PRELIMINARY_DISCLAIMER =
   "Preliminary output only. This is not a legal survey plan, not proof of land boundary, and not an official approval by JTU, Land Office, or any authority. Final boundary and land matters must be verified through the proper Sabah land and survey procedures.";
+
+function subscribeFieldGpsFlag(
+  onStoreChange: () => void,
+): () => void {
+  window.addEventListener(
+    "storage",
+    onStoreChange,
+  );
+  window.addEventListener(
+    "popstate",
+    onStoreChange,
+  );
+
+  return () => {
+    window.removeEventListener(
+      "storage",
+      onStoreChange,
+    );
+    window.removeEventListener(
+      "popstate",
+      onStoreChange,
+    );
+  };
+}
+
+function getFieldGpsFlagSnapshot(): boolean {
+  const params =
+    new URLSearchParams(
+      window.location.search,
+    );
+
+  return (
+    params.get("fieldGps") === "1" ||
+    window.localStorage.getItem(
+      FIELD_GPS_STORAGE_KEY,
+    ) === "true"
+  );
+}
+
+function getFieldGpsServerSnapshot(): boolean {
+  return false;
+}
 
 function createPolygonFingerprint(
   coordinates: Coordinate[],
@@ -790,6 +843,25 @@ export default function HomePage() {
     selectedAreaUnit,
     setSelectedAreaUnit,
   ] = useState<AreaUnit>("m2");
+
+  const fieldGpsEnabled =
+    useSyncExternalStore(
+      subscribeFieldGpsFlag,
+      getFieldGpsFlagSnapshot,
+      getFieldGpsServerSnapshot,
+    );
+
+  const [
+    mapView,
+    setMapView,
+  ] = useState<OfflineMapView | null>(
+    null,
+  );
+
+  const [
+    offlineMapNote,
+    setOfflineMapNote,
+  ] = useState("");
 
   const text =
     PAGE_TEXT[language];
@@ -6141,6 +6213,19 @@ export default function HomePage() {
       void exportPdfPlan();
     };
 
+  const handleFieldGpsPolygonGenerated = (
+    result: PolygonResult,
+  ) => {
+    setPolygon(result);
+    setLoadedCoordinates(
+      result.coordinates,
+    );
+    setHasUnsavedChanges(true);
+    setSaveMessage(
+      "Preliminary Field GPS polygon generated. Estimated area only.",
+    );
+  };
+
   return (
     <main className="sl-app-shell">
       <Map
@@ -6189,7 +6274,35 @@ export default function HomePage() {
         onAreaUnitChange={
           setSelectedAreaUnit
         }
+        onMapViewChange={
+          setMapView
+        }
       />
+
+      {fieldGpsEnabled && (
+        <div className="sl-field-gps-stack">
+          <FieldGpsLite
+            enabled={fieldGpsEnabled}
+            recordName={
+              formData.lotNumber
+            }
+            offlineMapNote={
+              offlineMapNote
+            }
+            onPolygonGenerated={
+              handleFieldGpsPolygonGenerated
+            }
+          />
+
+          <OfflineMapLite
+            enabled={fieldGpsEnabled}
+            mapView={mapView}
+            onOfflineNoteChange={
+              setOfflineMapNote
+            }
+          />
+        </div>
+      )}
 
       <div
         className={

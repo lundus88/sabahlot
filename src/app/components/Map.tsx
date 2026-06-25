@@ -19,6 +19,10 @@ import type {
 } from "@/lib/drawing-types";
 
 import type {
+  OfflineMapView,
+} from "@/lib/offline-map-cache";
+
+import type {
   Layer,
   LayerGroup,
   Map as LeafletMap,
@@ -121,6 +125,7 @@ interface MapProps {
   onOpenLotPanel?: () => void;
   onLanguageChange?: (language: AppLanguage) => void;
   onAreaUnitChange?: (areaUnit: AreaUnit) => void;
+  onMapViewChange?: (view: OfflineMapView) => void;
 }
 
 type CoordinatePair = [number, number];
@@ -1871,6 +1876,29 @@ function createBaseLayer(
   ]);
 }
 
+function getOfflineMapTileSource(
+  id: BaseMapId,
+): Pick<
+  OfflineMapView,
+  "tileUrlTemplate" | "subdomains"
+> {
+  const definition =
+    getBaseMap(id);
+  const subdomains =
+    definition.options.subdomains;
+
+  return {
+    tileUrlTemplate:
+      definition.url,
+    subdomains:
+      typeof subdomains === "string"
+        ? subdomains.split("")
+        : Array.isArray(subdomains)
+          ? subdomains.map(String)
+          : ["a"],
+  };
+}
+
 function parseCoordinates(
   value: string,
 ): CoordinatePair | null {
@@ -2242,6 +2270,7 @@ export default function Map({
   onOpenLotPanel,
   onLanguageChange,
   onAreaUnitChange,
+  onMapViewChange,
 }: MapProps) {
   const mapContainerRef =
     useRef<HTMLDivElement | null>(
@@ -2421,6 +2450,9 @@ export default function Map({
     useRef(
       false,
     );
+
+  const mapViewChangeRef =
+    useRef(onMapViewChange);
 
   const [
     mapReady,
@@ -6135,6 +6167,51 @@ export default function Map({
 
   useEffect(
     () => {
+      mapViewChangeRef.current =
+        onMapViewChange;
+    },
+    [
+      onMapViewChange,
+    ],
+  );
+
+  const publishMapView = () => {
+    const map =
+      mapRef.current;
+
+    if (
+      !map ||
+      !mapViewChangeRef.current
+    ) {
+      return;
+    }
+
+    const bounds =
+      map.getBounds();
+    const source =
+      getOfflineMapTileSource(
+        baseMapRef.current,
+      );
+
+    mapViewChangeRef.current({
+      bounds: {
+        north:
+          bounds.getNorth(),
+        south:
+          bounds.getSouth(),
+        east:
+          bounds.getEast(),
+        west:
+          bounds.getWest(),
+      },
+      zoom:
+        map.getZoom(),
+      ...source,
+    });
+  };
+
+  useEffect(
+    () => {
       let cancelled =
         false;
 
@@ -6474,6 +6551,10 @@ export default function Map({
           "zoomend",
           redrawManualPoints,
         );
+        map.on(
+          "zoomend",
+          publishMapView,
+        );
 
         map.on(
           "moveend",
@@ -6487,6 +6568,10 @@ export default function Map({
           "moveend",
           redrawManualPoints,
         );
+        map.on(
+          "moveend",
+          publishMapView,
+        );
 
         window.setTimeout(
           () =>
@@ -6498,6 +6583,7 @@ export default function Map({
         setMapReady(
           true,
         );
+        publishMapView();
       }
 
       void initialiseMap();
@@ -8048,6 +8134,10 @@ export default function Map({
 
     window.setTimeout(
       updateParentPolygon,
+      0,
+    );
+    window.setTimeout(
+      publishMapView,
       0,
     );
   };

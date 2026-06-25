@@ -11,5 +11,27 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  event.respondWith(fetch(event.request));
+  event.respondWith(
+    fetch(event.request)
+      .then((response) => response)
+      .catch(async () => {
+        const cache = await caches.open("sabahlot-offline-map-lite-v1");
+        const cached = await cache.match(event.request);
+
+        if (cached) {
+          return cached;
+        }
+
+        return new Response(
+          "Map tile not available offline. Prepare this area while online.",
+          {
+            status: 503,
+            statusText: "Offline tile unavailable",
+            headers: {
+              "Content-Type": "text/plain",
+            },
+          },
+        );
+      }),
+  );
 });

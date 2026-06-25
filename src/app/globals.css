@@ -121,6 +121,233 @@ select:focus-visible {
   background: #dbe5ee;
 }
 
+.sl-field-gps-stack {
+  position: absolute;
+  right: 12px;
+  bottom: 82px;
+  z-index: 1120;
+  display: grid;
+  gap: 8px;
+  width: min(420px, calc(100vw - 24px));
+  max-height: calc(100dvh - 116px);
+  pointer-events: none;
+}
+
+.sl-field-gps-panel {
+  display: grid;
+  justify-items: end;
+  pointer-events: none;
+}
+
+.sl-field-gps-toggle,
+.sl-field-gps-card button {
+  min-height: 34px;
+  border: 1px solid rgba(148, 163, 184, 0.38);
+  border-radius: 8px;
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.96);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.sl-field-gps-toggle {
+  padding: 0 12px;
+  box-shadow: var(--sl-shadow-soft);
+  pointer-events: auto;
+}
+
+.sl-field-gps-card {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+  max-height: min(680px, calc(100dvh - 170px));
+  margin-top: 8px;
+  padding: 12px;
+  overflow: auto;
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 8px;
+  box-shadow: var(--sl-shadow);
+  pointer-events: auto;
+}
+
+.sl-field-gps-heading,
+.sl-field-gps-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sl-field-gps-heading span,
+.sl-field-gps-status-row strong {
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.sl-field-gps-section {
+  display: grid;
+  gap: 8px;
+}
+
+.sl-field-gps-quality,
+.sl-field-gps-note,
+.sl-field-gps-warning,
+.sl-field-gps-disclaimer {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.sl-field-gps-warning {
+  padding: 8px;
+  color: #7c2d12;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+.sl-field-gps-disclaimer {
+  padding-top: 8px;
+  color: #475569;
+  border-top: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.sl-gps-grade {
+  display: inline-grid;
+  min-width: 28px;
+  min-height: 28px;
+  place-items: center;
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.sl-gps-grade.is-a {
+  background: #047857;
+}
+
+.sl-gps-grade.is-b {
+  background: #2563eb;
+}
+
+.sl-gps-grade.is-c {
+  background: #b45309;
+}
+
+.sl-gps-grade.is-d {
+  background: #be123c;
+}
+
+.sl-field-gps-grid {
+  display: grid;
+  grid-template-columns: minmax(110px, 0.8fr) minmax(0, 1fr);
+  gap: 4px 8px;
+  padding: 8px;
+  background: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 8px;
+}
+
+.sl-field-gps-grid span,
+.sl-field-gps-grid strong,
+.sl-field-gps-label span,
+.sl-field-gps-check span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+}
+
+.sl-field-gps-grid span {
+  color: #64748b;
+  font-weight: 700;
+}
+
+.sl-field-gps-grid strong {
+  color: #0f172a;
+  font-weight: 800;
+}
+
+.sl-field-gps-label {
+  display: grid;
+  gap: 4px;
+}
+
+.sl-field-gps-label select {
+  min-height: 34px;
+  padding: 0 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  font-size: 12px;
+}
+
+.sl-field-gps-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sl-field-gps-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.sl-field-gps-actions button,
+.sl-field-gps-point-actions button {
+  padding: 0 8px;
+  overflow-wrap: anywhere;
+}
+
+.sl-field-gps-card button:disabled {
+  color: #94a3b8;
+  background: #f1f5f9;
+  cursor: not-allowed;
+}
+
+.sl-field-gps-point-list {
+  display: grid;
+  gap: 6px;
+}
+
+.sl-field-gps-point {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 8px;
+  background: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 8px;
+}
+
+.sl-field-gps-point strong,
+.sl-field-gps-point span,
+.sl-field-gps-point small {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.sl-field-gps-point strong {
+  font-size: 12px;
+}
+
+.sl-field-gps-point span,
+.sl-field-gps-point small {
+  color: #475569;
+  font-size: 10px;
+}
+
+.sl-field-gps-point-actions {
+  display: grid;
+  gap: 4px;
+}
+
 /* =====================================================
    TOP BAR
    ===================================================== */
@@ -1845,6 +2072,26 @@ select:focus-visible {
    ===================================================== */
 
 @media (max-width: 760px) {
+  .sl-field-gps-stack {
+    right: 8px;
+    bottom: 74px;
+    left: 8px;
+    width: auto;
+    max-height: calc(100dvh - 102px);
+  }
+
+  .sl-field-gps-card {
+    max-height: min(620px, calc(100dvh - 148px));
+  }
+
+  .sl-field-gps-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .sl-field-gps-grid {
+    grid-template-columns: minmax(92px, 0.78fr) minmax(0, 1fr);
+  }
+
   .sl-topbar {
     top: 8px;
     right: 8px;
