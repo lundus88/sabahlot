@@ -1899,6 +1899,27 @@ function getOfflineMapTileSource(
   };
 }
 
+function createFieldPointMarkerIcon(
+  L: typeof import("leaflet"),
+  label: string,
+): import("leaflet").DivIcon {
+  return L.divIcon({
+    className:
+      "sabahlot-field-point-marker",
+    html:
+      `<div class="sabahlot-field-point-marker-wrap">` +
+      `<div class="sabahlot-field-point-label">${escapeHtml(label)}</div>` +
+      `<div class="sabahlot-field-point-dot" aria-hidden="true"></div>` +
+      `</div>`,
+    iconSize:
+      [36, 36],
+    iconAnchor:
+      [18, 18],
+    popupAnchor:
+      [0, -18],
+  });
+}
+
 function parseCoordinates(
   value: string,
 ): CoordinatePair | null {
@@ -6380,12 +6401,21 @@ export default function Map({
           }
 
           coordinateMarkerLayer.clearLayers();
+          const markerLabel =
+            detail.label?.trim() ||
+            "P";
           const marker =
             L.marker([
               detail.latitude,
               detail.longitude,
-            ]).bindPopup(
-              `<strong>${escapeHtml(detail.label ?? "Keyed coordinate")}</strong><br/>${detail.note ? `${escapeHtml(detail.note)}<br/>` : ""}WGS84 preliminary approximate field reference only`,
+            ], {
+              icon:
+                createFieldPointMarkerIcon(
+                  L,
+                  markerLabel,
+                ),
+            }).bindPopup(
+              `<strong>${escapeHtml(markerLabel)}</strong><br/>${detail.note ? `${escapeHtml(detail.note)}<br/>` : ""}WGS84 preliminary approximate field reference only`,
             );
 
           marker.addTo(

@@ -121,6 +121,51 @@ select:focus-visible {
   background: #dbe5ee;
 }
 
+.sabahlot-field-point-marker {
+  background: transparent;
+  border: 0;
+}
+
+.sabahlot-field-point-marker-wrap {
+  position: relative;
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  pointer-events: auto;
+}
+
+.sabahlot-field-point-dot {
+  width: 14px;
+  height: 14px;
+  background: #dc2626;
+  border: 3px solid #ffffff;
+  border-radius: 999px;
+  box-shadow:
+    0 0 0 1px rgba(127, 29, 29, 0.65),
+    0 2px 8px rgba(0, 0, 0, 0.45);
+}
+
+.sabahlot-field-point-label {
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  max-width: 96px;
+  padding: 1px 6px;
+  overflow: hidden;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 999px;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.38);
+  transform: translateX(-50%);
+}
+
 .sl-field-gps-stack {
   position: absolute;
   right: 12px;
