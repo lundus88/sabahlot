@@ -3605,7 +3605,8 @@ select:focus-visible {
   -webkit-backdrop-filter: blur(24px);
 }
 
-.sl-floating-summary-card span {
+.sl-floating-summary-card span,
+.sl-floating-summary-card div {
   display: grid;
   gap: 2px;
   min-width: 0;
@@ -3613,7 +3614,8 @@ select:focus-visible {
   text-align: center;
 }
 
-.sl-floating-summary-card span + span {
+.sl-floating-summary-card span + span,
+.sl-floating-summary-card div + div {
   border-left: 1px solid rgba(226, 232, 240, 0.9);
 }
 
@@ -3625,18 +3627,29 @@ select:focus-visible {
   text-transform: uppercase;
 }
 
-.sl-floating-summary-card strong {
+.sl-floating-summary-card strong,
+.sl-floating-summary-card span {
   overflow: hidden;
   font-family:
     "SFMono-Regular",
     Consolas,
     "Liberation Mono",
     monospace;
-  font-size: 12px;
   font-weight: 800;
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.sl-floating-summary-card strong {
+  font-size: 12px;
+}
+
+.sl-floating-summary-card div > span {
+  padding: 0;
+  color: #475569;
+  border-left: 0;
+  font-size: 10px;
 }
 
 @media (max-width: 760px) {
@@ -4052,7 +4065,8 @@ select:focus-visible {
   box-shadow: 0 10px 35px rgba(15, 23, 42, 0.08);
 }
 
-.sl-floating-summary-card span {
+.sl-floating-summary-card span,
+.sl-floating-summary-card div {
   gap: 1px;
   padding: 8px 10px;
 }
@@ -4065,6 +4079,10 @@ select:focus-visible {
 .sl-floating-summary-card strong {
   font-size: 11px;
   font-weight: 820;
+}
+
+.sl-floating-summary-card div > span {
+  font-size: 9px;
 }
 
 .sl-survey-distance,
@@ -5402,5 +5420,44 @@ select:focus-visible {
       padding-left: env(safe-area-inset-left);
       padding-right: env(safe-area-inset-right);
     }
+  }
+}
+
+/* Build 1: keep core polygon measurements visible without crowding mobile map controls. */
+@media (max-width: 768px) {
+  .sl-floating-summary-card {
+    right: 10px !important;
+    bottom: calc(env(safe-area-inset-bottom) + 78px) !important;
+    left: 10px !important;
+    z-index: 1087;
+    display: grid !important;
+    grid-template-columns: 1.35fr 0.65fr 1fr;
+    width: auto !important;
+    max-height: 74px;
+    border-radius: 14px;
+  }
+
+  .sl-floating-summary-card div {
+    gap: 1px;
+    padding: 6px 7px;
+  }
+
+  .sl-floating-summary-card small {
+    font-size: 9px;
+    line-height: 1.1;
+  }
+
+  .sl-floating-summary-card strong {
+    font-size: 12px;
+    line-height: 1.15;
+  }
+
+  .sl-floating-summary-card div > span {
+    font-size: 10px;
+    line-height: 1.15;
+  }
+
+  .sl-map-status {
+    display: none;
   }
 }

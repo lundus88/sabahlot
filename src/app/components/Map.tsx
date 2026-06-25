@@ -1276,7 +1276,7 @@ function calculateBearing(
 function bearingToDms(
   value: number,
 ): string {
-  let bearing =
+  const bearing =
     (
       (
         value %
@@ -1347,6 +1347,37 @@ function bearingToDms(
       "0",
     )}″`
   );
+}
+
+let fallbackClientIdCounter = 0;
+
+function createClientId(
+  prefix: string,
+): string {
+  const cryptoProvider =
+    globalThis.crypto;
+
+  if (
+    cryptoProvider?.randomUUID
+  ) {
+    return cryptoProvider.randomUUID();
+  }
+
+  if (
+    cryptoProvider
+  ) {
+    const values =
+      new Uint32Array(2);
+    cryptoProvider.getRandomValues(
+      values,
+    );
+
+    return `${prefix}-${values[0].toString(36)}-${values[1].toString(36)}`;
+  }
+
+  fallbackClientIdCounter += 1;
+
+  return `${prefix}-${fallbackClientIdCounter.toString(36)}`;
 }
 
 function distanceFromMeters(
@@ -2609,6 +2640,14 @@ export default function Map({
     );
 
   const [
+    selectedManualPoint,
+    setSelectedManualPoint,
+  ] =
+    useState<ManualFieldPoint | null>(
+      null,
+    );
+
+  const [
     manualPointCategory,
     setManualPointCategory,
   ] =
@@ -2622,6 +2661,14 @@ export default function Map({
   ] =
     useState(
       0,
+    );
+
+  const [
+    draftSummary,
+    setDraftSummary,
+  ] =
+    useState<PolygonResult | null>(
+      null,
     );
 
   const [
@@ -2754,18 +2801,10 @@ export default function Map({
     );
 
   const createDrawingObjectId =
-    () => {
-      if (
-        typeof crypto !== "undefined" &&
-        "randomUUID" in crypto
-      ) {
-        return crypto.randomUUID();
-      }
-
-      return `drawing-${Date.now()}-${Math.random()
-        .toString(36)
-        .slice(2)}`;
-    };
+    () =>
+      createClientId(
+        "drawing",
+      );
 
   const calculateLineLength = (
     points: CoordinatePair[],
@@ -3278,6 +3317,26 @@ export default function Map({
     };
   };
 
+  const refreshDraftSummary =
+    () => {
+      const points =
+        sanitizePoints(
+          pointsRef.current,
+        );
+
+      setDraftSummary(
+        points.length >= 3
+          ? createPolygonResult(
+              points,
+              distanceUnitRef.current,
+              areaUnitRef.current,
+              languageRef.current,
+              baseMapRef.current,
+            )
+          : null,
+      );
+    };
+
   const getPrimaryPolygon = () =>
     drawingObjectsRef.current.find(
       (
@@ -3365,15 +3424,15 @@ export default function Map({
 
   const createDashedLineId =
     () =>
-      `dash-${Date.now()}-${Math.random()
-        .toString(36)
-        .slice(2)}`;
+      createClientId(
+        "dash",
+      );
 
   const createFieldPointId =
     () =>
-      `point-${Date.now()}-${Math.random()
-        .toString(36)
-        .slice(2)}`;
+      createClientId(
+        "point",
+      );
 
   const nextManualPointCode =
     () =>
@@ -3396,13 +3455,22 @@ export default function Map({
     )?.label ?? "Point";
 
   const refreshManualPointState =
-    () => {
+    (
+      selectedId =
+        selectedManualPointId,
+    ) => {
       setManualPointCount(
         manualPointsRef.current.length,
       );
       setManualPointVersion(
         (current) =>
           current + 1,
+      );
+      setSelectedManualPoint(
+        manualPointsRef.current.find(
+          (point) =>
+            point.id === selectedId,
+        ) ?? null,
       );
       manualPointsCallbackRef.current?.(
         manualPointsRef.current.map(
@@ -3505,6 +3573,9 @@ export default function Map({
               setSelectedManualPointId(
                 point.id,
               );
+              refreshManualPointState(
+                point.id,
+              );
               window.setTimeout(
                 redrawManualPoints,
                 0,
@@ -3577,7 +3648,9 @@ export default function Map({
     setSelectedManualPointId(
       null,
     );
-    refreshManualPointState();
+    refreshManualPointState(
+      null,
+    );
     redrawManualPoints();
     setMessage(
       "Point deleted.",
@@ -5990,23 +6063,25 @@ export default function Map({
         pointsRef.current = [];
         polygonFinishedRef.current =
           true;
-        setPointCount(
-          0,
-        );
-        setAreaM2(
-          firstPolygon.areaSqm,
-        );
       } else {
         pointsRef.current = [];
         polygonFinishedRef.current =
           false;
-        setPointCount(
-          0,
-        );
-        setAreaM2(
-          0,
-        );
       }
+
+      window.setTimeout(
+        () => {
+          setPointCount(
+            0,
+          );
+          setAreaM2(
+            firstPolygon
+              ? firstPolygon.areaSqm
+              : 0,
+          );
+        },
+        0,
+      );
 
       redrawPolygon();
       window.setTimeout(
@@ -6143,41 +6218,47 @@ export default function Map({
       languageRef.current =
         language;
 
-      if (
-        drawingRef.current
-      ) {
-        setMessage(
-          MAP_TEXT[
-            language
-          ].drawingActive,
-        );
-      } else if (
-        polygonFinishedRef.current
-      ) {
-        setMessage(
-          MAP_TEXT[
-            language
-          ].polygonCompleted,
-        );
-      } else {
-        setMessage(
-          MAP_TEXT[
-            language
-          ].mapReady,
-        );
-      }
+      const timeoutId =
+        window.setTimeout(
+          () => {
+            if (
+              drawingRef.current
+            ) {
+              setMessage(
+                MAP_TEXT[
+                  language
+                ].drawingActive,
+              );
+            } else if (
+              polygonFinishedRef.current
+            ) {
+              setMessage(
+                MAP_TEXT[
+                  language
+                ].polygonCompleted,
+              );
+            } else {
+              setMessage(
+                MAP_TEXT[
+                  language
+                ].mapReady,
+              );
+            }
 
-      if (
-        !isTracking &&
-        locationAccuracy ===
-          null
-      ) {
-        setLocationStatus(
-          MAP_TEXT[
-            language
-          ].locationNotTracked,
+            if (
+              !isTracking &&
+              locationAccuracy ===
+                null
+            ) {
+              setLocationStatus(
+                MAP_TEXT[
+                  language
+                ].locationNotTracked,
+              );
+            }
+          },
+          0,
         );
-      }
 
       redrawPolygon();
 
@@ -6185,6 +6266,12 @@ export default function Map({
         updateParentPolygon,
         0,
       );
+
+      return () => {
+        window.clearTimeout(
+          timeoutId,
+        );
+      };
     },
     [
       language,
@@ -6257,21 +6344,21 @@ export default function Map({
           return;
         }
 
-        const module =
+        const leafletModule =
           await import(
             "leaflet"
           );
 
         const L = (
           (
-            module as {
+            leafletModule as {
               default?:
                 typeof import(
                   "leaflet"
                 );
             }
           ).default ??
-          module
+          leafletModule
         ) as typeof import(
           "leaflet"
         );
@@ -6486,7 +6573,9 @@ export default function Map({
             setSelectedManualPointId(
               newPoint.id,
             );
-            refreshManualPointState();
+            refreshManualPointState(
+              newPoint.id,
+            );
             setMessage(
               `${newPoint.pointCode} added.`,
             );
@@ -6642,6 +6731,8 @@ export default function Map({
                 .length,
             ),
           );
+
+          refreshDraftSummary();
 
           redrawPolygon();
         };
@@ -6841,6 +6932,10 @@ export default function Map({
         0,
       );
 
+      setDraftSummary(
+        null,
+      );
+
       setMessage(
         tool === "polygon"
           ? MAP_TEXT[
@@ -6965,6 +7060,8 @@ export default function Map({
             ),
       );
 
+      refreshDraftSummary();
+
       redrawPolygon();
 
       callbackRef.current(
@@ -7045,6 +7142,9 @@ export default function Map({
       setAreaM2(
         nextPolygon.areaSqm,
       );
+      setDraftSummary(
+        null,
+      );
 
       redrawPolygon();
 
@@ -7095,6 +7195,10 @@ export default function Map({
 
       setAreaM2(
         0,
+      );
+
+      setDraftSummary(
+        null,
       );
 
       setMessage(
@@ -8840,26 +8944,39 @@ export default function Map({
 
       clearPolygon();
     };
-  const selectedManualPoint =
-    manualPointsRef.current.find(
-      (point) =>
-        point.id ===
-        selectedManualPointId,
-    ) ?? null;
-
   const summaryPolygon =
-    getPrimaryPolygon();
-  const summaryPerimeterM =
-    summaryPolygon?.perimeterM ??
-    (
-      pointCount >= 3 &&
-      pointsRef.current.length >= 3
-        ? calculateLineLength([
-            ...pointsRef.current,
-            pointsRef.current[0],
-          ])
-        : 0
+    drawingObjects.find(
+      (
+        object,
+      ): object is PolygonDrawingObject =>
+        object.geometryType ===
+          "polygon" &&
+        object.isVisible,
+    ) ??
+    drawingObjects.find(
+      (
+        object,
+      ): object is PolygonDrawingObject =>
+        object.geometryType ===
+        "polygon",
     );
+  const buildOneSummary =
+    summaryPolygon
+      ? createPolygonResult(
+          coordinatesToPairs(
+            summaryPolygon.coordinates,
+          ),
+          distanceUnit,
+          areaUnit,
+          language,
+          baseMap,
+        )
+      : draftSummary;
+  const summaryPointCount =
+    buildOneSummary?.coordinates.length ??
+    pointCount;
+  const summaryPerimeterM =
+    buildOneSummary?.perimeterM ?? 0;
   const isDrawingCursorActive =
     isDrawing ||
     activeFieldTool !== null;
@@ -9576,20 +9693,45 @@ export default function Map({
         </aside>
       )}
 
-      {pointCount >= 3 && (
+      {buildOneSummary && (
         <section
           className="sl-floating-summary-card"
           aria-label="Lot summary"
         >
-          <span>
-            <small>Estimated Area</small>
-            <strong>{currentArea.text}</strong>
-          </span>
-          <span>
-            <small>Points</small>
-            <strong>{pointCount}</strong>
-          </span>
-          <span>
+          <div>
+            <small>Area</small>
+            <strong>
+              {formatNumber(
+                buildOneSummary.areaM2,
+                2,
+                language,
+              )}{" "}
+              sqm
+            </strong>
+            <span>
+              {formatNumber(
+                buildOneSummary.areaHa,
+                4,
+                language,
+              )}{" "}
+              ha
+            </span>
+            <span>
+              {formatNumber(
+                buildOneSummary.areaAcre,
+                4,
+                language,
+              )}{" "}
+              ac
+            </span>
+          </div>
+
+          <div>
+            <small>Vertices</small>
+            <strong>{summaryPointCount}</strong>
+          </div>
+
+          <div>
             <small>Perimeter</small>
             <strong>
               {formatNumber(
@@ -9599,7 +9741,15 @@ export default function Map({
               )}{" "}
               m
             </strong>
-          </span>
+            <span>
+              {formatNumber(
+                summaryPerimeterM / 1000,
+                3,
+                language,
+              )}{" "}
+              km
+            </span>
+          </div>
         </section>
       )}
 
@@ -9837,7 +9987,7 @@ export default function Map({
         <span className="sl-status-divider" />
 
         <strong>
-          {pointCount}{" "}
+          {summaryPointCount}{" "}
           {text.points}
         </strong>
 

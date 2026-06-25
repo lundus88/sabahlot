@@ -1,4 +1,4 @@
- "use client";
+﻿ "use client";
 
 import {
   type FormEvent,
@@ -243,8 +243,8 @@ const AVAILABLE_RECORD_OPTIONS: ReadonlyArray<readonly [AvailableRecord, string]
 
 const APPLICATION_AGE_OPTIONS = [
   ["under_5_years", "Kurang 5 tahun"],
-  ["5_to_10_years", "5â€“10 tahun"],
-  ["10_to_20_years", "10â€“20 tahun"],
+  ["5_to_10_years", "5Ã¢â‚¬â€œ10 tahun"],
+  ["10_to_20_years", "10Ã¢â‚¬â€œ20 tahun"],
   ["over_20_years", "Lebih 20 tahun"],
   ["unsure", "Tidak pasti"],
 ] as const;
@@ -1030,7 +1030,8 @@ export default function HomePage() {
           storedRecord,
         ) as PreviousSavedLotRecord;
 
-      setFormData({
+      queueMicrotask(() => {
+    setFormData({
         ownerName:
           parsedRecord.ownerName ??
           "",
@@ -1057,65 +1058,71 @@ export default function HomePage() {
             parsedRecord.landRecord,
           ),
       });
+  });
 
-      setPolygon(
+      queueMicrotask(() => {
+    setPolygon(
         parsedRecord.polygon ??
           null,
       );
+  });
 
-      setCurrentProjectId(
+      queueMicrotask(() => {
+    setCurrentProjectId(
         parsedRecord.projectId ??
           null,
       );
+  });
 
-      setDrawingObjects(
+      queueMicrotask(() => {
+    setDrawingObjects(
         parsedRecord.drawingObjects ??
           [],
       );
+  });
 
-      setActiveObjectId(
+      queueMicrotask(() => {
+    setActiveObjectId(
         parsedRecord.activeObjectId ??
           parsedRecord.drawingObjects?.[0]
             ?.id ??
           null,
       );
+  });
 
-      setPdfIdentities(
+      queueMicrotask(() => {
+    setPdfIdentities(
         normalizePdfIdentities(
           parsedRecord.pdfIdentities,
         ),
       );
+  });
 
       if (
         parsedRecord.polygon?.coordinates
       ) {
-        setLoadedCoordinates(
-          parsedRecord.polygon.coordinates,
+        queueMicrotask(() => {
+    setLoadedCoordinates(
+          parsedRecord.polygon!.coordinates,
         );
+  });
       }
 
-      setSaveMessage(
+      queueMicrotask(() => {
+    setSaveMessage(
         PAGE_TEXT.en.restored,
       );
-      setHasUnsavedChanges(false);
+  });
+      queueMicrotask(() => {
+    setHasUnsavedChanges(false);
+  });
     } catch {
       window.localStorage.removeItem(
         STORAGE_KEY,
       );
     }
   }, []);
-
-  useEffect(() => {
-    try {
-      setLocalLots(getLocalLots());
-    } catch {
-      setSaveMessage(
-        PAGE_TEXT.en.loadFailed,
-      );
-    }
-  }, []);
-
-  useEffect(() => {
+useEffect(() => {
     if (
       !polygon ||
       polygon.coordinates.length < 3
@@ -2318,11 +2325,11 @@ export default function HomePage() {
 
           return `${String(
             degrees,
-          ).padStart(3, "0")}Â° ${String(
+          ).padStart(3, "0")}Ã‚Â° ${String(
             minutes,
-          ).padStart(2, "0")}â€² ${String(
+          ).padStart(2, "0")}Ã¢â‚¬Â² ${String(
             seconds,
-          ).padStart(2, "0")}â€³`;
+          ).padStart(2, "0")}Ã¢â‚¬Â³`;
         };
 
         const reportText =
@@ -6365,7 +6372,7 @@ export default function HomePage() {
               text.close
             }
           >
-            Ã—
+            Ãƒâ€”
           </button>
         </div>
 
@@ -6677,7 +6684,7 @@ export default function HomePage() {
               }
             >
               <span aria-hidden="true">
-                âœ“
+                Ã¢Å“â€œ
               </span>
 
               <span>
@@ -7086,8 +7093,8 @@ export default function HomePage() {
               <div className="sl-output-preview">
                 <span>Output summary</span>
                 <strong>
-                  {planTemplateLabel} Â·{" "}
-                  {pdfPaperSize.toUpperCase()} Â·{" "}
+                  {planTemplateLabel} Ã‚Â·{" "}
+                  {pdfPaperSize.toUpperCase()} Ã‚Â·{" "}
                   {pdfOrientation ===
                   "portrait"
                     ? "Portrait"
@@ -7188,7 +7195,7 @@ export default function HomePage() {
                       <small>
                         {displayArea(
                           lot.area_m2,
-                        )} Â· {lot.point_count}{" "}
+                        )} Ã‚Â· {lot.point_count}{" "}
                         {text.points}
                       </small>
 
@@ -7296,4 +7303,8 @@ export default function HomePage() {
     </main>
   );
 }
+
+
+
+
 
