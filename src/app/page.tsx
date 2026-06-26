@@ -39,6 +39,9 @@ import {
   type LocalLotRecord,
   type LandRecordDetails,
   type AvailableRecord,
+  type LandDocumentRecord,
+  type LandDocumentType,
+  type DocumentSensitivityLevel,
   type LandIssueTag,
   markLocalLotSynced,
   normalizeLandRecordDetails,
@@ -50,6 +53,23 @@ import {
   type ImportedGeometryPreview,
   type ImportFileStatus,
 } from "@/lib/import-geometries";
+import {
+  SABAHLOT_IMPORT_DISCLAIMER,
+  SABAHLOT_OFFICIAL_SOURCE_NOTE,
+  SABAHLOT_PRELIMINARY_DISCLAIMER,
+  SABAHLOT_PRIVACY_NOTE,
+} from "@/lib/sabahlot-disclaimers";
+import {
+  assertSabahLotPricingRegistry,
+  formatSabahLotPrice,
+  getSabahLotOutputPricing,
+} from "@/lib/sabahlot-pricing-registry";
+import {
+  SABAHLOT_OUTPUT_CATALOG,
+} from "@/lib/sabahlot-output-catalog";
+import {
+  evaluateSabahLotRisk,
+} from "@/lib/sabahlot-risk-rules";
 
 import type {
   AppLanguage,
@@ -170,10 +190,13 @@ const FIELD_GPS_STORAGE_KEY =
   "sabahlot_field_gps_enabled";
 
 const PRELIMINARY_DISCLAIMER =
-  "SabahLot output is for preliminary reference only. It is not an official survey plan, not a certified boundary plan, and must not be used as legal proof of boundary, ownership, approval, subdivision or land title status. All coordinates, boundaries and areas must be verified by the relevant authority, licensed surveyor or professional adviser before official use.";
+  SABAHLOT_PRELIMINARY_DISCLAIMER;
 
 const IMPORT_DISCLAIMER =
-  "Imported files are used for preliminary reference only. Coordinates, boundaries and areas must be verified by the relevant authority, licensed surveyor or professional adviser before any official use.";
+  SABAHLOT_IMPORT_DISCLAIMER;
+
+const OUTPUT_POWERED_BY =
+  "SabahLot powered by Lundus Surveyor";
 
 const IMPORT_STATUS_LABEL: Record<ImportFileStatus, string> = {
   no_file: "No file selected",
@@ -182,6 +205,8 @@ const IMPORT_STATUS_LABEL: Record<ImportFileStatus, string> = {
   failed: "Import failed",
   unsupported: "Unsupported file",
 };
+
+assertSabahLotPricingRegistry();
 
 function subscribeFieldGpsFlag(
   onStoreChange: () => void,
@@ -285,6 +310,29 @@ const ISSUE_TAG_OPTIONS: ReadonlyArray<readonly [LandIssueTag, string]> = [
   ["encroachment", "Pencerobohan"],
   ["overlapping_land", "Tanah bertindih"],
 ];
+
+const DOCUMENT_TYPE_OPTIONS: ReadonlyArray<readonly [LandDocumentType, string]> = [
+  ["title", "Geran"],
+  ["jtu_letter", "Surat JTU"],
+  ["plan", "Pelan"],
+  ["site_photo", "Gambar tapak"],
+  ["fence_photo", "Gambar pagar"],
+  ["boundary_stone_photo", "Gambar batu sempadan"],
+  ["road_photo", "Gambar jalan"],
+  ["river_photo", "Gambar sungai"],
+  ["heir_document", "Dokumen waris"],
+  ["power_of_attorney", "Surat kuasa"],
+  ["ncr_supporting_document", "Dokumen sokongan NCR"],
+  ["other", "Dokumen lain"],
+];
+
+const SENSITIVE_DOCUMENT_TYPES: ReadonlySet<LandDocumentType> = new Set([
+  "title",
+  "jtu_letter",
+  "heir_document",
+  "power_of_attorney",
+  "ncr_supporting_document",
+]);
 
 const EMPTY_PDF_IDENTITIES: PdfIdentityFields = {
   surveyor: {
@@ -917,11 +965,71 @@ export default function HomePage() {
     setIsPreviewingImport,
   ] = useState(false);
 
+  const [
+    outputAcknowledged,
+    setOutputAcknowledged,
+  ] = useState(false);
+
+  const [
+    proofOfPaymentReference,
+    setProofOfPaymentReference,
+  ] = useState("");
+
+  const [
+    selectedDocumentType,
+    setSelectedDocumentType,
+  ] = useState<LandDocumentType>("title");
+
+  const [
+    documentSource,
+    setDocumentSource,
+  ] = useState("");
+
+  const [
+    documentNote,
+    setDocumentNote,
+  ] = useState("");
+
   const text =
     PAGE_TEXT[language];
 
   const planTemplateLabel =
     "Preliminary Land Plan";
+
+  const selectedOutputId =
+    outputFormat === "kml"
+      ? "pdf-kml-export-pack"
+      : outputFormat === "dxf"
+        ? "professional-gis-cad-export-pack"
+        : "basic-preliminary-plan-pdf";
+  const selectedOutputPricing =
+    getSabahLotOutputPricing(
+      selectedOutputId,
+    );
+  const selectedOutputPriceText =
+    formatSabahLotPrice(
+      selectedOutputPricing,
+    );
+  const riskAssessment =
+    evaluateSabahLotRisk({
+      landRecord:
+        formData.landRecord,
+      lotNumber:
+        formData.lotNumber,
+      titleNumber:
+        formData.landRecord.titleNumber,
+      coordinateSystem:
+        formData.landRecord.coordinateSystem ||
+        "unknown",
+      intendedOfficialUse:
+        formData.landRecord.intendedOfficialUse,
+    });
+  const riskSummaryText =
+    riskAssessment.flags.length > 0
+      ? riskAssessment.flags
+          .map((flag) => flag.label)
+          .join(", ")
+      : "No major risk flag from current user input.";
 
   const hasValidPolygon =
     Boolean(
@@ -930,6 +1038,8 @@ export default function HomePage() {
     );
   const hasRecordTitle =
     formData.lotNumber.trim().length > 0;
+  const hasDistrict =
+    formData.district.trim().length > 0;
   const hasPositiveArea =
     Boolean(
       polygon &&
@@ -939,10 +1049,13 @@ export default function HomePage() {
   const canSaveLot =
     hasValidPolygon &&
     hasRecordTitle &&
+    hasDistrict &&
     hasPositiveArea;
   const saveBlockedMessage =
     !hasValidPolygon
       ? text.polygonRequired
+      : !hasDistrict
+        ? "Please enter the district before saving this preliminary record."
       : !hasPositiveArea
         ? text.areaRequired
         : text.titleRequired;
@@ -1298,6 +1411,80 @@ export default function HomePage() {
     );
   };
 
+  const createDocumentId = () =>
+    typeof crypto !== "undefined" &&
+    "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `doc-${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2)}`;
+
+  const defaultDocumentSensitivity = (
+    documentType: LandDocumentType,
+  ): DocumentSensitivityLevel =>
+    SENSITIVE_DOCUMENT_TYPES.has(documentType)
+      ? "high"
+      : "medium";
+
+  const addDocumentMetadata = (
+    event: ChangeEvent<HTMLInputElement>,
+  ) => {
+    const files =
+      Array.from(event.target.files ?? []);
+
+    if (files.length === 0) {
+      return;
+    }
+
+    const now =
+      new Date().toISOString();
+    const nextDocuments: LandDocumentRecord[] =
+      files.map((file) => ({
+        id: createDocumentId(),
+        documentType:
+          selectedDocumentType,
+        fileName:
+          file.name,
+        uploadedBy:
+          formData.ownerName.trim(),
+        uploadedAt:
+          now,
+        relatedLandRecordId:
+          currentProjectId,
+        sensitivityLevel:
+          defaultDocumentSensitivity(
+            selectedDocumentType,
+          ),
+        privacyLevel:
+          "private",
+        source:
+          documentSource.trim(),
+        note:
+          documentNote.trim(),
+      }));
+
+    updateLandRecordField(
+      "documents",
+      [
+        ...formData.landRecord.documents,
+        ...nextDocuments,
+      ],
+    );
+    event.target.value = "";
+  };
+
+  const removeDocumentMetadata = (
+    documentId: string,
+  ) => {
+    updateLandRecordField(
+      "documents",
+      formData.landRecord.documents.filter(
+        (document) =>
+          document.id !== documentId,
+      ),
+    );
+  };
+
   const updatePdfIdentity = (
     field: keyof PdfIdentityFields,
     key: keyof PdfIdentityPerson,
@@ -1484,6 +1671,14 @@ export default function HomePage() {
         if (!lotName) {
           setSaveMessage(
             text.titleRequired,
+          );
+
+          return;
+        }
+
+        if (!formData.district.trim()) {
+          setSaveMessage(
+            "Please enter the district before saving this preliminary record.",
           );
 
           return;
@@ -1834,6 +2029,8 @@ export default function HomePage() {
       );
       setDrawingObjects([]);
       setActiveObjectId(null);
+      setOutputAcknowledged(false);
+      setProofOfPaymentReference("");
       setHasUnsavedChanges(false);
 
       setSaveMessage(text.loaded);
@@ -1876,6 +2073,8 @@ export default function HomePage() {
           lot.pdf_identities,
         ),
       );
+      setOutputAcknowledged(false);
+      setProofOfPaymentReference("");
       setHasUnsavedChanges(false);
       setSaveMessage(text.loaded);
     } catch {
@@ -1908,6 +2107,8 @@ export default function HomePage() {
         setLoadedCoordinates(undefined);
         setDrawingObjects([]);
         setActiveObjectId(null);
+        setOutputAcknowledged(false);
+        setProofOfPaymentReference("");
         setHasUnsavedChanges(false);
       }
 
@@ -2014,6 +2215,8 @@ export default function HomePage() {
       );
 
       setDrawingObjects([]);
+      setOutputAcknowledged(false);
+      setProofOfPaymentReference("");
       setHasUnsavedChanges(false);
 
       setSaveMessage("");
@@ -2024,6 +2227,22 @@ export default function HomePage() {
       if (!polygon) {
         setSaveMessage(
           text.polygonRequired,
+        );
+
+        return;
+      }
+
+      if (!formData.district.trim()) {
+        setSaveMessage(
+          "Enter the district before generating a preliminary output.",
+        );
+
+        return;
+      }
+
+      if (!outputAcknowledged) {
+        setSaveMessage(
+          "Acknowledge the preliminary disclaimer and pricing before export.",
         );
 
         return;
@@ -2476,6 +2695,15 @@ export default function HomePage() {
         const preliminaryNotice =
           "PRELIMINARY ONLY";
 
+        const outputPricing =
+          getSabahLotOutputPricing(
+            "basic-preliminary-plan-pdf",
+          );
+        const outputPriceText =
+          formatSabahLotPrice(
+            outputPricing,
+          );
+
         const formatPdfDistance = (
           distanceM?: number,
         ) =>
@@ -2633,7 +2861,7 @@ export default function HomePage() {
             );
 
             pdf.text(
-              "SabahLot powered by Myukur",
+              OUTPUT_POWERED_BY,
               pageWidth -
                 margin,
               pageHeight -
@@ -3139,12 +3367,12 @@ export default function HomePage() {
             [
               "Disediakan oleh",
               jobTitle === "-"
-                ? "SabahLot powered by Myukur Alpha"
+                ? OUTPUT_POWERED_BY
                 : jobTitle,
             ],
             [
               "Powered by",
-              "SabahLot powered by Myukur",
+              OUTPUT_POWERED_BY,
             ],
           ];
 
@@ -4457,7 +4685,7 @@ export default function HomePage() {
             ),
           );
           pdf.text(
-            "SabahLot powered by Myukur",
+            OUTPUT_POWERED_BY,
             x +
               3,
             cursorY +
@@ -4527,6 +4755,14 @@ export default function HomePage() {
             )} / ${polygon.perimeterM.toFixed(
               2,
             )} m`,
+          );
+          drawDetailRow(
+            "Output / price",
+            `${outputPricing.outputName} / ${outputPriceText}`,
+          );
+          drawDetailRow(
+            "Risk flag",
+            `${riskAssessment.level.replace(/_/g, " ")} - ${riskSummaryText}`,
           );
 
           drawSectionTitle(
@@ -5901,7 +6137,7 @@ export default function HomePage() {
   };
 
   const createPreliminaryExportInput =
-    () => {
+    (outputId = selectedOutputId) => {
       if (
         !polygon ||
         polygon.coordinates.length < 3
@@ -5912,6 +6148,27 @@ export default function HomePage() {
 
         return null;
       }
+
+      if (!formData.district.trim()) {
+        setSaveMessage(
+          "Enter the district before generating a preliminary output.",
+        );
+
+        return null;
+      }
+
+      if (!outputAcknowledged) {
+        setSaveMessage(
+          "Acknowledge the preliminary disclaimer and pricing before export.",
+        );
+
+        return null;
+      }
+
+      const pricing =
+        getSabahLotOutputPricing(
+          outputId,
+        );
 
       return {
         polygon,
@@ -5925,6 +6182,20 @@ export default function HomePage() {
             formData.district.trim(),
           generatedAt:
             new Date().toISOString(),
+          outputId:
+            pricing.outputId,
+          outputName:
+            pricing.outputName,
+          outputPrice:
+            formatSabahLotPrice(
+              pricing,
+            ),
+          riskLevel:
+            riskAssessment.level,
+          riskFlags:
+            riskSummaryText,
+          proofOfPaymentReference:
+            proofOfPaymentReference.trim(),
         },
       };
     };
@@ -6045,6 +6316,23 @@ export default function HomePage() {
 
   const exportKml =
     () => {
+      if (!outputAcknowledged) {
+        setSaveMessage(
+          "Acknowledge the preliminary disclaimer and pricing before export.",
+        );
+
+        return;
+      }
+
+      const kmlPricing =
+        getSabahLotOutputPricing(
+          "pdf-kml-export-pack",
+        );
+      const kmlPriceText =
+        formatSabahLotPrice(
+          kmlPricing,
+        );
+
       const lotName =
         formData.lotNumber.trim() ||
         "SabahLot";
@@ -6181,8 +6469,12 @@ export default function HomePage() {
                   "Preliminary",
                 ],
                 [
+                  "Price",
+                  kmlPriceText,
+                ],
+                [
                   "Generated By",
-                  "SabahLot powered by Myukur",
+                  OUTPUT_POWERED_BY,
                 ],
               ]) +
               `<Point><coordinates>${coordinateText([
@@ -6229,12 +6521,16 @@ export default function HomePage() {
                         "Preliminary",
                       ],
                       [
+                        "Price",
+                        kmlPriceText,
+                      ],
+                      [
                         "Estimated Area",
                         `${object.areaSqm.toFixed(2)} m2`,
                       ],
                       [
                         "Generated By",
-                        "SabahLot powered by Myukur",
+                        OUTPUT_POWERED_BY,
                       ],
                     ]) +
                     `<LineString><tessellate>1</tessellate><coordinates>` +
@@ -6279,12 +6575,16 @@ export default function HomePage() {
                       "Preliminary",
                     ],
                     [
+                      "Price",
+                      kmlPriceText,
+                    ],
+                    [
                       "Length",
                       `${object.lengthM.toFixed(2)} m`,
                     ],
                     [
                       "Generated By",
-                      "SabahLot powered by Myukur",
+                      OUTPUT_POWERED_BY,
                     ],
                   ]) +
                   `<LineString><tessellate>1</tessellate><coordinates>` +
@@ -6312,6 +6612,16 @@ export default function HomePage() {
           lotName,
           drawingObjects,
           manualPoints,
+          {
+            outputName:
+              kmlPricing.outputName,
+            outputPrice:
+              kmlPriceText,
+            riskFlags:
+              riskSummaryText,
+            generatedBy:
+              OUTPUT_POWERED_BY,
+          },
         ).content,
         `${lotName.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.kml`,
         "application/vnd.google-earth.kml+xml",
@@ -6324,6 +6634,23 @@ export default function HomePage() {
 
   const exportDxf =
     () => {
+      if (!outputAcknowledged) {
+        setSaveMessage(
+          "Acknowledge the preliminary disclaimer and pricing before export.",
+        );
+
+        return;
+      }
+
+      const dxfPricing =
+        getSabahLotOutputPricing(
+          "professional-gis-cad-export-pack",
+        );
+      const dxfPriceText =
+        formatSabahLotPrice(
+          dxfPricing,
+        );
+
       const visibleObjects =
         drawingObjects.filter(
           (object) =>
@@ -6546,6 +6873,16 @@ export default function HomePage() {
         buildDxfDocument(
           drawingObjects,
           manualPoints,
+          {
+            outputName:
+              dxfPricing.outputName,
+            outputPrice:
+              dxfPriceText,
+            riskFlags:
+              riskSummaryText,
+            generatedBy:
+              OUTPUT_POWERED_BY,
+          },
         ).content,
         `${safeFileName}.dxf`,
         "application/dxf",
@@ -6749,6 +7086,7 @@ export default function HomePage() {
             <p className="sl-alpha-privacy-note">
               For Alpha testing, avoid entering highly sensitive personal information.
               {` ${PRELIMINARY_DISCLAIMER}`}
+              {` ${SABAHLOT_PRIVACY_NOTE}`}
             </p>
           </div>
 
@@ -6808,6 +7146,7 @@ export default function HomePage() {
                   text.lotPlaceholder
                 }
                 autoComplete="off"
+                required
               />
             </label>
 
@@ -6858,6 +7197,7 @@ export default function HomePage() {
                   text.districtPlaceholder
                 }
                 autoComplete="address-level2"
+                required
               />
             </label>
 
@@ -6916,6 +7256,92 @@ export default function HomePage() {
                     ))}
                   </select>
                 </label>
+
+                <label>
+                  <span>Title number (optional)</span>
+                  <input
+                    type="text"
+                    value={formData.landRecord.titleNumber}
+                    onChange={(event) =>
+                      updateLandRecordField(
+                        "titleNumber",
+                        event.target.value,
+                      )
+                    }
+                    placeholder="Private by default"
+                    autoComplete="off"
+                  />
+                </label>
+
+                <label>
+                  <span>Land application number (optional)</span>
+                  <input
+                    type="text"
+                    value={formData.landRecord.applicationNumber}
+                    onChange={(event) =>
+                      updateLandRecordField(
+                        "applicationNumber",
+                        event.target.value,
+                      )
+                    }
+                    autoComplete="off"
+                  />
+                </label>
+
+                <label>
+                  <span>Record purpose</span>
+                  <input
+                    type="text"
+                    value={formData.landRecord.recordPurpose}
+                    onChange={(event) =>
+                      updateLandRecordField(
+                        "recordPurpose",
+                        event.target.value,
+                      )
+                    }
+                    placeholder="Example: family discussion, site planning, document sorting"
+                    autoComplete="off"
+                  />
+                </label>
+
+                <label>
+                  <span>Coordinate system</span>
+                  <select
+                    value={formData.landRecord.coordinateSystem}
+                    onChange={(event) =>
+                      updateLandRecordField(
+                        "coordinateSystem",
+                        event.target.value as LandRecordDetails["coordinateSystem"],
+                      )
+                    }
+                  >
+                    <option value="unknown">Not sure</option>
+                    <option value="wgs84">WGS84 / GPS / KML</option>
+                    <option value="rso_borneo_placeholder">
+                      RSO Borneo placeholder - professional phase
+                    </option>
+                  </select>
+                </label>
+
+                <label className="sl-checkbox-line">
+                  <input
+                    type="checkbox"
+                    checked={formData.landRecord.intendedOfficialUse}
+                    onChange={(event) =>
+                      updateLandRecordField(
+                        "intendedOfficialUse",
+                        event.target.checked,
+                      )
+                    }
+                  />
+                  <span>
+                    User wants to use this output for official matters
+                  </span>
+                </label>
+
+                <small className="sl-alpha-privacy-note">
+                  {SABAHLOT_OFFICIAL_SOURCE_NOTE}
+                </small>
               </div>
             </details>
 
@@ -7006,6 +7432,123 @@ export default function HomePage() {
                     </label>
                   ))}
                 </fieldset>
+
+                <div className={`sl-risk-panel is-${riskAssessment.level}`}>
+                  <span className="sl-output-options-title">
+                    Risk flagging
+                  </span>
+                  <strong>
+                    {riskAssessment.manualReviewRequired
+                      ? "Manual Review Recommended"
+                      : "Preliminary risk only"}
+                  </strong>
+                  <small>
+                    Level: {riskAssessment.level.replace(/_/g, " ")}
+                  </small>
+                  {riskAssessment.flags.length > 0 ? (
+                    <ul>
+                      {riskAssessment.flags.map((flag) => (
+                        <li key={flag.ruleId}>
+                          <strong>{flag.label}</strong>
+                          <span>{flag.userFacingMessage}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p>
+                      No major risk flag from current user input.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </details>
+
+            <details className="sl-record-section">
+              <summary>Documents</summary>
+              <div className="sl-record-section-body">
+                <label>
+                  <span>Document type</span>
+                  <select
+                    value={selectedDocumentType}
+                    onChange={(event) =>
+                      setSelectedDocumentType(
+                        event.target.value as LandDocumentType,
+                      )
+                    }
+                  >
+                    {DOCUMENT_TYPE_OPTIONS.map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label>
+                  <span>Document source</span>
+                  <input
+                    type="text"
+                    value={documentSource}
+                    onChange={(event) =>
+                      setDocumentSource(event.target.value)
+                    }
+                    placeholder="Example: owner copy, JTU letter, family record"
+                    autoComplete="off"
+                  />
+                </label>
+
+                <label>
+                  <span>Document note</span>
+                  <input
+                    type="text"
+                    value={documentNote}
+                    onChange={(event) =>
+                      setDocumentNote(event.target.value)
+                    }
+                    placeholder="Optional"
+                    autoComplete="off"
+                  />
+                </label>
+
+                <label className="sl-import-file">
+                  <span>Add document / photo metadata</span>
+                  <input
+                    type="file"
+                    multiple
+                    onChange={addDocumentMetadata}
+                  />
+                </label>
+
+                <small className="sl-alpha-privacy-note">
+                  SabahLot Alpha records document metadata only here. Sensitive documents default private.
+                </small>
+
+                {formData.landRecord.documents.length > 0 ? (
+                  <div className="sl-document-list">
+                    {formData.landRecord.documents.map((document) => (
+                      <article key={document.id}>
+                        <div>
+                          <strong>{document.fileName}</strong>
+                          <span>
+                            {document.documentType.replace(/_/g, " ")} - {document.sensitivityLevel} - {document.privacyLevel}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            removeDocumentMetadata(document.id)
+                          }
+                        >
+                          Remove
+                        </button>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="sl-empty-summary">
+                    No document metadata added yet.
+                  </p>
+                )}
               </div>
             </details>
 
@@ -7248,7 +7791,7 @@ export default function HomePage() {
                   onClick={
                     exportCurrentPolygonGeoJson
                   }
-                  disabled={!polygon}
+                  disabled={!polygon || !outputAcknowledged}
                 >
                   Export GeoJSON
                 </button>
@@ -7258,7 +7801,7 @@ export default function HomePage() {
                   onClick={
                     exportCurrentPolygonKml
                   }
-                  disabled={!polygon}
+                  disabled={!polygon || !outputAcknowledged}
                 >
                   Export KML
                 </button>
@@ -7268,7 +7811,7 @@ export default function HomePage() {
                   onClick={
                     exportCurrentPolygonCsv
                   }
-                  disabled={!polygon}
+                  disabled={!polygon || !outputAcknowledged}
                 >
                   Export CSV
                 </button>
@@ -7278,7 +7821,7 @@ export default function HomePage() {
                   onClick={
                     printCurrentPolygonOutput
                   }
-                  disabled={!polygon}
+                  disabled={!polygon || !outputAcknowledged}
                 >
                   Print / Preliminary PDF
                 </button>
@@ -7634,6 +8177,52 @@ export default function HomePage() {
                       )
                     : "Not available"}
                 </small>
+                <small>
+                  Price: {selectedOutputPriceText} - {selectedOutputPricing.outputName}
+                </small>
+                <small>
+                  Risk: {riskAssessment.level.replace(/_/g, " ")}
+                </small>
+              </div>
+
+              <div className="sl-output-pricing-panel">
+                <span className="sl-output-options-title">
+                  Output & Pricing
+                </span>
+                <strong>
+                  {selectedOutputPricing.outputName} - {selectedOutputPriceText}
+                </strong>
+                <small>
+                  Payment / proof of payment placeholder for Alpha. Export is locked until acknowledgement.
+                </small>
+                <small>
+                  Pricing registry covers {SABAHLOT_OUTPUT_CATALOG.length} preliminary output types. Minimum paid output price is RM59.
+                </small>
+                <input
+                  type="text"
+                  value={proofOfPaymentReference}
+                  onChange={(event) =>
+                    setProofOfPaymentReference(
+                      event.target.value,
+                    )
+                  }
+                  placeholder="Proof / receipt reference (optional in Alpha)"
+                  autoComplete="off"
+                />
+                <label className="sl-checkbox-line">
+                  <input
+                    type="checkbox"
+                    checked={outputAcknowledged}
+                    onChange={(event) =>
+                      setOutputAcknowledged(
+                        event.target.checked,
+                      )
+                    }
+                  />
+                  <span>
+                    I acknowledge this is preliminary only and this output has a SabahLot price.
+                  </span>
+                </label>
               </div>
             </div>
 
@@ -7645,7 +8234,13 @@ export default function HomePage() {
               }
               disabled={
                 !polygon ||
-                isExportingPdf
+                isExportingPdf ||
+                !outputAcknowledged
+              }
+              title={
+                outputAcknowledged
+                  ? "Generate preliminary output"
+                  : "Acknowledge disclaimer and pricing first"
               }
             >
               <span aria-hidden="true">

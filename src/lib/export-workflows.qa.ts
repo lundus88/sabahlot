@@ -91,7 +91,7 @@ assert(
   "KML polygon ring is not closed",
 );
 assert(kml.content.includes("Status</strong>: Preliminary"), "KML preliminary status missing");
-assert(kml.content.includes("SabahLot powered by Myukur"), "KML attribution missing");
+assert(kml.content.includes("SabahLot powered by Lundus Surveyor"), "KML attribution missing");
 
 assert(dxf.visibleCount === 6, "DXF visible-object count mismatch");
 assert(!dxf.content.includes("polygon-hidden"), "DXF contains hidden polygon");
@@ -101,6 +101,6 @@ assert(dxf.content.includes("8\nLOT_BOUNDARY\n90\n3\n70\n1"), "DXF polygon is no
 assert(dxf.content.includes("8\nPROPOSED_BOUNDARY"), "DXF dashed layer missing");
 assert(occurrences(dxf.content, "0\nPOINT\n8\nPOINT\n") === 2, "DXF point count mismatch");
 assert(dxf.content.includes(DXF_CRS_NOTICE), "DXF CRS notice missing");
-assert(dxf.content.includes("Not an official survey or cadastral plan"), "DXF preliminary note missing");
+assert(dxf.content.includes("preliminary/indikatif sahaja"), "DXF preliminary note missing");
 
 console.log("Export workflow QA: PASS");

@@ -2,15 +2,24 @@ import type {
   Coordinate,
   PolygonResult,
 } from "@/app/components/Map";
+import {
+  SABAHLOT_PRELIMINARY_DISCLAIMER,
+} from "./sabahlot-disclaimers";
 
 export const PRELIMINARY_EXPORT_DISCLAIMER =
-  "SabahLot output is for preliminary reference only. It is not an official survey plan, not a certified boundary plan, and must not be used as legal proof of boundary, ownership, approval, subdivision or land title status. All coordinates, boundaries and areas must be verified by the relevant authority, licensed surveyor or professional adviser before official use.";
+  SABAHLOT_PRELIMINARY_DISCLAIMER;
 
 export interface PreliminaryExportMetadata {
   recordTitle: string;
   village: string;
   district: string;
   generatedAt: string;
+  outputId?: string;
+  outputName?: string;
+  outputPrice?: string;
+  riskLevel?: string;
+  riskFlags?: string;
+  proofOfPaymentReference?: string;
 }
 
 export interface PreliminaryExportInput {
@@ -104,6 +113,14 @@ function metadataRows(input: PreliminaryExportInput): Array<[string, string]> {
 
   return [
     [
+      "Output",
+      metadata.outputName || "Preliminary output",
+    ],
+    [
+      "Price",
+      metadata.outputPrice || "Price not available",
+    ],
+    [
       "Record Title",
       metadata.recordTitle,
     ],
@@ -130,6 +147,18 @@ function metadataRows(input: PreliminaryExportInput): Array<[string, string]> {
     [
       "Date Generated",
       metadata.generatedAt,
+    ],
+    [
+      "Risk Flags",
+      metadata.riskFlags || "No major risk flag from current user input.",
+    ],
+    [
+      "Risk Level",
+      metadata.riskLevel || "low",
+    ],
+    [
+      "Payment Reference",
+      metadata.proofOfPaymentReference || "Pricing acknowledged / pending confirmation",
     ],
     [
       "Disclaimer",
@@ -163,9 +192,17 @@ export function buildPreliminaryGeoJson(
             area_estimate_m2: polygon.areaM2,
             perimeter_estimate_m: polygon.perimeterM,
             point_count: polygon.coordinates.length,
+            output_id: metadata.outputId,
+            output_name: metadata.outputName,
+            output_price: metadata.outputPrice,
+            risk_level: metadata.riskLevel,
+            risk_flags: metadata.riskFlags,
+            payment_reference:
+              metadata.proofOfPaymentReference ||
+              "Pricing acknowledged / pending confirmation",
             date_generated: metadata.generatedAt,
             disclaimer: PRELIMINARY_EXPORT_DISCLAIMER,
-            generated_by: "SabahLot",
+            generated_by: "SabahLot powered by Lundus Surveyor",
             status: "preliminary_reference_only",
           },
           geometry: {
@@ -246,6 +283,11 @@ export function buildPreliminaryCsv(
     "area_estimate_m2",
     "perimeter_estimate_m",
     "date_generated",
+    "output_name",
+    "output_price",
+    "risk_level",
+    "risk_flags",
+    "payment_reference",
     "disclaimer",
   ];
   const rows = polygon.coordinates.map((coordinate, index) => [
@@ -258,6 +300,12 @@ export function buildPreliminaryCsv(
     formatNumber(polygon.areaM2),
     formatNumber(polygon.perimeterM),
     metadata.generatedAt,
+    metadata.outputName || "Preliminary output",
+    metadata.outputPrice || "Price not available",
+    metadata.riskLevel || "low",
+    metadata.riskFlags || "No major risk flag from current user input.",
+    metadata.proofOfPaymentReference ||
+      "Pricing acknowledged / pending confirmation",
     PRELIMINARY_EXPORT_DISCLAIMER,
   ]);
   const content = [
@@ -319,6 +367,13 @@ export function buildPreliminaryPrintHtml(
     <h1>SabahLot Preliminary Output</h1>
     <p>${htmlEscape(metadata.recordTitle)} - generated ${htmlEscape(
       metadata.generatedAt,
+    )}</p>
+    <p><strong>Output:</strong> ${htmlEscape(
+      metadata.outputName || "Preliminary output",
+    )} | <strong>Price:</strong> ${htmlEscape(
+      metadata.outputPrice || "Price not available",
+    )} | <strong>Risk:</strong> ${htmlEscape(
+      metadata.riskLevel || "low",
     )}</p>
     <h2>Record Summary</h2>
     <table>${summaryRows}</table>

@@ -54,6 +54,35 @@ export type LandIssueTag =
 
 export type ApplicantStatus = "alive" | "deceased" | "unknown" | "";
 export type HeirLocationKnowledge = "yes" | "no" | "not_sure" | "";
+export type LandRecordPrivacyStatus = "private" | "controlled_share";
+export type DocumentSensitivityLevel = "low" | "medium" | "high";
+
+export type LandDocumentType =
+  | "title"
+  | "jtu_letter"
+  | "plan"
+  | "site_photo"
+  | "fence_photo"
+  | "boundary_stone_photo"
+  | "road_photo"
+  | "river_photo"
+  | "heir_document"
+  | "power_of_attorney"
+  | "ncr_supporting_document"
+  | "other";
+
+export interface LandDocumentRecord {
+  id: string;
+  documentType: LandDocumentType;
+  fileName: string;
+  uploadedBy: string;
+  uploadedAt: string;
+  relatedLandRecordId: string | null;
+  sensitivityLevel: DocumentSensitivityLevel;
+  privacyLevel: LandRecordPrivacyStatus;
+  source: string;
+  note: string;
+}
 
 export interface LandRecordDetails {
   landCaseType: LandCaseType;
@@ -66,6 +95,15 @@ export interface LandRecordDetails {
   relationshipToApplicant: string;
   heirsCanIdentifyLocation: HeirLocationKnowledge;
   landHistoryNotes: string;
+  titleNumber: string;
+  applicationNumber: string;
+  estimatedAreaText: string;
+  userKnowledgeStatus: string;
+  recordPurpose: string;
+  coordinateSystem: "wgs84" | "rso_borneo_placeholder" | "unknown" | "";
+  intendedOfficialUse: boolean;
+  privacyStatus: LandRecordPrivacyStatus;
+  documents: LandDocumentRecord[];
 }
 
 export const EMPTY_LAND_RECORD: LandRecordDetails = {
@@ -79,6 +117,15 @@ export const EMPTY_LAND_RECORD: LandRecordDetails = {
   relationshipToApplicant: "",
   heirsCanIdentifyLocation: "",
   landHistoryNotes: "",
+  titleNumber: "",
+  applicationNumber: "",
+  estimatedAreaText: "",
+  userKnowledgeStatus: "",
+  recordPurpose: "",
+  coordinateSystem: "unknown",
+  intendedOfficialUse: false,
+  privacyStatus: "private",
+  documents: [],
 };
 
 export type LocalLotSyncStatus =
@@ -210,6 +257,8 @@ export function normalizeLandRecordDetails(value: unknown): LandRecordDetails {
   const source = isRecord(value) ? value : {};
   const stringValue = (key: keyof LandRecordDetails) =>
     typeof source[key] === "string" ? source[key] : "";
+  const booleanValue = (key: keyof LandRecordDetails) =>
+    typeof source[key] === "boolean" ? source[key] : false;
   const enumValue = <T extends string>(key: keyof LandRecordDetails, values: readonly T[]) => {
     const candidate = stringValue(key);
     return values.includes(candidate as T) ? (candidate as T) : "";
@@ -271,7 +320,132 @@ export function normalizeLandRecordDetails(value: unknown): LandRecordDetails {
       "not_sure",
     ]),
     landHistoryNotes: stringValue("landHistoryNotes"),
+    titleNumber: stringValue("titleNumber"),
+    applicationNumber: stringValue("applicationNumber"),
+    estimatedAreaText: stringValue("estimatedAreaText"),
+    userKnowledgeStatus: stringValue("userKnowledgeStatus"),
+    recordPurpose: stringValue("recordPurpose"),
+    coordinateSystem: enumValue("coordinateSystem", [
+      "wgs84",
+      "rso_borneo_placeholder",
+      "unknown",
+    ]) || "unknown",
+    intendedOfficialUse: booleanValue("intendedOfficialUse"),
+    privacyStatus: enumValue("privacyStatus", [
+      "private",
+      "controlled_share",
+    ]) || "private",
+    documents: sanitizeLandDocuments(source.documents),
   };
+}
+
+function isLandDocumentType(
+  value: unknown,
+): value is LandDocumentType {
+  return (
+    value === "title" ||
+    value === "jtu_letter" ||
+    value === "plan" ||
+    value === "site_photo" ||
+    value === "fence_photo" ||
+    value === "boundary_stone_photo" ||
+    value === "road_photo" ||
+    value === "river_photo" ||
+    value === "heir_document" ||
+    value === "power_of_attorney" ||
+    value === "ncr_supporting_document" ||
+    value === "other"
+  );
+}
+
+function isSensitivityLevel(
+  value: unknown,
+): value is DocumentSensitivityLevel {
+  return value === "low" || value === "medium" || value === "high";
+}
+
+function isPrivacyStatus(
+  value: unknown,
+): value is LandRecordPrivacyStatus {
+  return value === "private" || value === "controlled_share";
+}
+
+function sanitizeLandDocuments(
+  value: unknown,
+): LandDocumentRecord[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const ids = new Set<string>();
+
+  return value
+    .map((item) => {
+      if (!isRecord(item)) {
+        return null;
+      }
+
+      const id =
+        typeof item.id === "string" &&
+        item.id.trim()
+          ? item.id
+          : createId();
+
+      if (ids.has(id)) {
+        return null;
+      }
+
+      const fileName =
+        typeof item.fileName === "string"
+          ? item.fileName.trim()
+          : "";
+
+      if (!fileName) {
+        return null;
+      }
+
+      ids.add(id);
+
+      return {
+        id,
+        documentType: isLandDocumentType(item.documentType)
+          ? item.documentType
+          : "other",
+        fileName,
+        uploadedBy:
+          typeof item.uploadedBy === "string"
+            ? item.uploadedBy
+            : "",
+        uploadedAt:
+          typeof item.uploadedAt === "string"
+            ? item.uploadedAt
+            : new Date().toISOString(),
+        relatedLandRecordId:
+          typeof item.relatedLandRecordId === "string"
+            ? item.relatedLandRecordId
+            : null,
+        sensitivityLevel: isSensitivityLevel(item.sensitivityLevel)
+          ? item.sensitivityLevel
+          : "high",
+        privacyLevel: isPrivacyStatus(item.privacyLevel)
+          ? item.privacyLevel
+          : "private",
+        source:
+          typeof item.source === "string"
+            ? item.source
+            : "",
+        note:
+          typeof item.note === "string"
+            ? item.note
+            : "",
+      } satisfies LandDocumentRecord;
+    })
+    .filter(
+      (
+        document,
+      ): document is LandDocumentRecord =>
+        Boolean(document),
+    );
 }
 
 function isGeometryType(
