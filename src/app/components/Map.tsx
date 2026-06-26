@@ -2709,6 +2709,15 @@ export default function Map({
   ] =
     useState(false);
 
+  const [
+    bulkGeometrySelected,
+    setBulkGeometrySelected,
+  ] =
+    useState(false);
+
+  const bulkGeometrySelectedRef =
+    useRef(false);
+
   const previousSavingRef =
     useRef(isSavingLot);
 
@@ -10016,4 +10025,6 @@ export default function Map({
     </div>
     );
 }
+
+
 
