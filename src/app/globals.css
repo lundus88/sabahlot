@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@600;700&display=swap");
+﻿@import url("https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@600;700&display=swap");
 
  :root {
   --sl-primary: #2563eb;
@@ -2508,7 +2508,7 @@ select:focus-visible {
 
   .sl-search > button::after {
     color: #ffffff;
-    content: "→";
+    content: "â†’";
     font-size: 14px;
   }
 
@@ -5758,5 +5758,58 @@ select:focus-visible {
 
   .sl-map-status {
     display: none;
+  }
+}
+
+.sl-bulk-geometry-actions {
+  position: absolute;
+  top: 86px;
+  right: 16px;
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 150px;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.9);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.28);
+  backdrop-filter: blur(8px);
+}
+
+.sl-bulk-geometry-actions button {
+  border: 0;
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: #f59e0b;
+  color: #111827;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.sl-bulk-geometry-actions button.is-danger {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.sl-bulk-geometry-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.sl-bulk-geometry-actions span {
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  .sl-bulk-geometry-actions {
+    top: auto;
+    right: 12px;
+    bottom: 108px;
+    width: 138px;
   }
 }

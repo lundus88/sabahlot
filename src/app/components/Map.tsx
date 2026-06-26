@@ -1,4 +1,4 @@
- "use client";
+﻿ "use client";
 
 import {
   type ChangeEvent,
@@ -364,9 +364,9 @@ const BASE_MAPS: BaseMapDefinition[] = [
   {
     id: "cartoVoyagerNoLabels",
     nameEn:
-      "CARTO Voyager — No Labels",
+      "CARTO Voyager â€” No Labels",
     nameMs:
-      "CARTO Voyager — Tanpa Label",
+      "CARTO Voyager â€” Tanpa Label",
     url:
       "https://{s}.basemaps.cartocdn.com/" +
       "rastertiles/voyager_nolabels/" +
@@ -393,9 +393,9 @@ const BASE_MAPS: BaseMapDefinition[] = [
   {
     id: "cartoPositronNoLabels",
     nameEn:
-      "CARTO Positron — No Labels",
+      "CARTO Positron â€” No Labels",
     nameMs:
-      "CARTO Positron — Tanpa Label",
+      "CARTO Positron â€” Tanpa Label",
     url:
       "https://{s}.basemaps.cartocdn.com/" +
       "light_nolabels/{z}/{x}/{y}{r}.png",
@@ -421,9 +421,9 @@ const BASE_MAPS: BaseMapDefinition[] = [
   {
     id: "cartoDarkMatterNoLabels",
     nameEn:
-      "CARTO Dark Matter — No Labels",
+      "CARTO Dark Matter â€” No Labels",
     nameMs:
-      "CARTO Tema Gelap — Tanpa Label",
+      "CARTO Tema Gelap â€” Tanpa Label",
     url:
       "https://{s}.basemaps.cartocdn.com/" +
       "dark_nolabels/{z}/{x}/{y}{r}.png",
@@ -709,8 +709,8 @@ const MAP_TEXT = {
     locationSuccess: (
       accuracy: number,
     ) =>
-      `Location tracked · ` +
-      `±${accuracy.toFixed(1)} m`,
+      `Location tracked Â· ` +
+      `Â±${accuracy.toFixed(1)} m`,
 
     locationUnsupported:
       "Location services are not supported.",
@@ -900,8 +900,8 @@ const MAP_TEXT = {
     locationSuccess: (
       accuracy: number,
     ) =>
-      `Lokasi dijejaki · ` +
-      `±${accuracy.toFixed(1)} m`,
+      `Lokasi dijejaki Â· ` +
+      `Â±${accuracy.toFixed(1)} m`,
 
     locationUnsupported:
       "Perkhidmatan lokasi tidak disokong.",
@@ -1332,20 +1332,20 @@ function bearingToDms(
     ).padStart(
       3,
       "0",
-    )}°` +
+    )}Â°` +
     " " +
     `${String(
       minutes,
     ).padStart(
       2,
       "0",
-    )}′ ` +
+    )}â€² ` +
     `${String(
       seconds,
     ).padStart(
       2,
       "0",
-    )}″`
+    )}â€³`
   );
 }
 
@@ -1472,7 +1472,7 @@ export function formatAreaDisplay(
           ),
 
         symbol:
-          "ft²",
+          "ftÂ²",
       };
 
     case "ha":
@@ -1513,7 +1513,7 @@ export function formatAreaDisplay(
           ),
 
         symbol:
-          "m²",
+          "mÂ²",
       };
   }
 }
@@ -3525,6 +3525,7 @@ export default function Map({
           }
 
           const isSelected =
+            bulkGeometrySelectedRef.current ||
             selectedManualPointId ===
             point.id;
           const marker =
@@ -4710,6 +4711,7 @@ export default function Map({
         }
 
         const isActiveObject =
+          bulkGeometrySelectedRef.current ||
           object.id === activeObjectIdRef.current;
         const objectRenderColor =
           isActiveObject
@@ -8595,7 +8597,7 @@ export default function Map({
                   <br />
 
                   ${activeText.accuracy}:
-                  ±${accuracy.toFixed(1)} m
+                  Â±${accuracy.toFixed(1)} m
                 `,
               )
               .addTo(
@@ -9312,7 +9314,7 @@ export default function Map({
             }
             aria-label="Close Objects"
           >
-            ×
+            Ã—
           </button>
         </div>
 
@@ -9350,12 +9352,12 @@ export default function Map({
                   <span>
                     {object.geometryType ===
                     "polygon"
-                      ? `Polygon · ${formatNumber(
+                      ? `Polygon Â· ${formatNumber(
                           object.areaSqm,
                           2,
                           language,
-                        )} m²`
-                      : `Line · ${formatNumber(
+                        )} mÂ²`
+                      : `Line Â· ${formatNumber(
                           object.lengthM,
                           2,
                           language,
@@ -9541,7 +9543,7 @@ export default function Map({
           </label>
 
           <small>
-            {dashedDraftCount} draft points · {dashedLineCount} lines
+            {dashedDraftCount} draft points Â· {dashedLineCount} lines
           </small>
         </aside>
       )}
@@ -9779,7 +9781,7 @@ export default function Map({
               }
               aria-label="Close settings"
             >
-              ×
+              Ã—
             </button>
           </div>
 
@@ -9896,7 +9898,7 @@ export default function Map({
                 distanceUnit,
                 language,
               )}
-              {" · "}
+              {" Â· "}
               {currentArea.symbol}
             </strong>
           </div>
@@ -10000,7 +10002,7 @@ export default function Map({
         {locationAccuracy !==
           null && (
           <strong className="sl-location-accuracy">
-            ±
+            Â±
             {formatNumber(
               locationAccuracy,
               1,
@@ -10014,3 +10016,4 @@ export default function Map({
     </div>
     );
 }
+
