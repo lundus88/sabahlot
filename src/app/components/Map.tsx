@@ -1,5 +1,9 @@
-﻿ "use client";
+﻿"use client";
 
+import GpsHandheldPanel from "./GpsHandheldPanel";
+import type {
+  ParsedGpsFile,
+} from "@/lib/gps/gps-types";
 import {
   type ChangeEvent,
   type FormEvent,
@@ -8577,6 +8581,145 @@ export default function Map({
       }
     };
 
+  const gpsImportLayerRef =
+    useRef<LayerGroup | null>(
+      null,
+    );
+
+  const escapeGpsPopupText =
+    (value: string) =>
+      value
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+  const handleGpsHandheldImport =
+    async (data: ParsedGpsFile) => {
+      const map =
+        mapRef.current;
+
+      if (!map) {
+        setMessage(
+          "Map is not ready for GPS import.",
+        );
+        return;
+      }
+
+      const L =
+        await import("leaflet");
+
+      if (!gpsImportLayerRef.current) {
+        gpsImportLayerRef.current =
+          L.layerGroup().addTo(map);
+      }
+
+      gpsImportLayerRef.current.clearLayers();
+
+      data.waypoints.forEach((point) => {
+        L.circleMarker(
+          [point.lat, point.lng],
+          {
+            radius: 6,
+            color: "#2563eb",
+            weight: 2,
+            fillColor: "#60a5fa",
+            fillOpacity: 0.85,
+          },
+        )
+          .bindPopup(
+            `<strong>${escapeGpsPopupText(point.name)}</strong><br/>${point.lat}, ${point.lng}<br/>Source: ${point.source}`,
+          )
+          .addTo(gpsImportLayerRef.current!);
+      });
+
+      data.tracks.forEach((track) => {
+        const latLngs =
+          track.points.map(
+            (point) =>
+              [
+                point.lat,
+                point.lng,
+              ] as [number, number],
+          );
+
+        if (latLngs.length === 0) {
+          return;
+        }
+
+        L.polyline(
+          latLngs,
+          {
+            color: "#f97316",
+            weight: 4,
+            opacity: 0.9,
+          },
+        )
+          .bindPopup(
+            `<strong>${escapeGpsPopupText(track.name)}</strong><br/>Track points: ${track.points.length}`,
+          )
+          .addTo(gpsImportLayerRef.current!);
+      });
+
+      const allPoints = [
+        ...data.waypoints.map(
+          (point) =>
+            [
+              point.lat,
+              point.lng,
+            ] as [number, number],
+        ),
+        ...data.tracks.flatMap((track) =>
+          track.points.map(
+            (point) =>
+              [
+                point.lat,
+                point.lng,
+              ] as [number, number],
+          ),
+        ),
+      ];
+
+      if (allPoints.length > 0) {
+        map.fitBounds(
+          L.latLngBounds(allPoints),
+          {
+            padding: [40, 40],
+          },
+        );
+      }
+
+      setMessage(
+        `Imported ${data.waypoints.length} GPS waypoint(s) and ${data.tracks.length} GPS track(s).`,
+      );
+    };
+
+  const handleGpsHandheldZoomTo =
+    (
+      lat: number,
+      lng: number,
+    ) => {
+      mapRef.current?.flyTo(
+        [lat, lng],
+        18,
+        {
+          duration: 1,
+        },
+      );
+
+      setMessage(
+        `Zoomed to GPS coordinate ${lat.toFixed(6)}, ${lng.toFixed(6)}.`,
+      );
+    };
+
+  const getSelectedGpsLotPoints =
+    () =>
+      pointsRef.current.map((point) => ({
+        lat: point[0],
+        lng: point[1],
+      }));
+
   const startLocationTracking =
     () => {
       if (
@@ -9118,6 +9261,14 @@ export default function Map({
         ref={mapContainerRef}
         className="sl-map-canvas"
         aria-label="SabahLot powered by Myukur interactive preliminary map"
+      />
+      <GpsHandheldPanel
+        lotName="SabahLot Preliminary Lot"
+        selectedLotPoints={getSelectedGpsLotPoints()}
+        onGpsImport={handleGpsHandheldImport}
+        onZoomTo={handleGpsHandheldZoomTo}
+        onUseDeviceGps={handleGpsTopbarClick}
+        isTracking={isTracking}
       />
 
       <header className="sl-topbar">
@@ -10152,6 +10303,8 @@ export default function Map({
     </div>
     );
 }
+
+
 
 
 
