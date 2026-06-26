@@ -8463,6 +8463,120 @@ export default function Map({
       );
     };
 
+  const [
+    gpsButtonActive,
+    setGpsButtonActive,
+  ] =
+    useState(false);
+
+  const handleGpsTopbarClick =
+    () => {
+      if (
+        gpsButtonActive ||
+        isTracking
+      ) {
+        setGpsButtonActive(false);
+        setIsTracking(false);
+        setLocationAccuracy(null);
+        setLocationStatus(
+          MAP_TEXT[
+            language
+          ].locationNotTracked,
+        );
+        setMessage(
+          "GPS tracking stopped.",
+        );
+
+        scheduleGpsVisualCleanup();
+      } else {
+        setGpsButtonActive(true);
+      }
+
+      void startLocationTracking();
+    };
+
+  const clearGpsVisualLayers =
+    () => {
+      if (
+        typeof document === "undefined"
+      ) {
+        return;
+      }
+
+      document
+        .querySelectorAll(
+          ".sl-current-location-icon, .sl-current-location-marker",
+        )
+        .forEach((element) => {
+          const markerIcon =
+            element.closest(
+              ".leaflet-marker-icon",
+            );
+
+          if (markerIcon) {
+            markerIcon.remove();
+            return;
+          }
+
+          element.remove();
+        });
+
+      document
+        .querySelectorAll(
+          ".sl-device-gps-accuracy-circle",
+        )
+        .forEach((element) => {
+          element.remove();
+        });
+
+      document
+        .querySelectorAll(
+          ".leaflet-overlay-pane svg path",
+        )
+        .forEach((element) => {
+          const path =
+            element as SVGPathElement;
+
+          const stroke =
+            path
+              .getAttribute("stroke")
+              ?.toLowerCase();
+
+          const fill =
+            path
+              .getAttribute("fill")
+              ?.toLowerCase();
+
+          if (
+            stroke === "#2563eb" ||
+            fill === "#2563eb" ||
+            stroke === "#3b82f6" ||
+            fill === "#3b82f6"
+          ) {
+            path.remove();
+          }
+        });
+    };
+
+  const scheduleGpsVisualCleanup =
+    () => {
+      clearGpsVisualLayers();
+
+      if (
+        typeof window !== "undefined"
+      ) {
+        window.setTimeout(
+          clearGpsVisualLayers,
+          100,
+        );
+
+        window.setTimeout(
+          clearGpsVisualLayers,
+          500,
+        );
+      }
+    };
+
   const startLocationTracking =
     () => {
       if (
@@ -9085,15 +9199,15 @@ export default function Map({
         <div className="sl-topbar-actions">
           <button
             type="button"
-            className={isTracking ? "sl-gps-topbar-button is-tracking" : "sl-gps-topbar-button"}
-            onClick={startLocationTracking}
+            className={gpsButtonActive ? "sl-gps-topbar-button is-tracking" : "sl-gps-topbar-button"}
+            onClick={handleGpsTopbarClick}
             disabled={!mapReady}
-            title={isTracking ? "Stop GPS" : "Track GPS"}
-            aria-label={isTracking ? "Stop GPS" : "Track GPS"}
+            title={gpsButtonActive ? "Stop GPS" : "Track GPS"}
+            aria-label={gpsButtonActive ? "Stop GPS" : "Track GPS"}
           >
             <span className="sl-gps-dot" />
             <span>
-              {isTracking ? "Stop GPS" : "Track GPS"}
+              {gpsButtonActive ? "Stop GPS" : "Track GPS"}
             </span>
           </button>
           <button
@@ -10038,6 +10152,9 @@ export default function Map({
     </div>
     );
 }
+
+
+
 
 
 
