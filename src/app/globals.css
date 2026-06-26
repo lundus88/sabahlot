@@ -2017,7 +2017,8 @@ select:focus-visible {
 }
 
 @media (max-width: 420px) {
-  .sl-import-actions {
+  .sl-import-actions,
+  .sl-preliminary-export-actions {
     grid-template-columns: 1fr;
   }
 }
@@ -2062,6 +2063,60 @@ select:focus-visible {
   overflow-wrap: anywhere;
 
   font-size: 11px;
+}
+
+.sl-preliminary-export-panel {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+}
+
+.sl-preliminary-export-panel small {
+  display: block;
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.sl-preliminary-export-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.sl-preliminary-export-actions button {
+  min-height: 38px;
+  padding: 0 9px;
+  color: #ffffff;
+  background: #0f172a;
+  border: 0;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.sl-preliminary-export-actions button:nth-child(1) {
+  background: #2563eb;
+}
+
+.sl-preliminary-export-actions button:nth-child(2) {
+  background: #059669;
+}
+
+.sl-preliminary-export-actions button:nth-child(3) {
+  background: #7c3aed;
+}
+
+.sl-preliminary-export-actions button:disabled {
+  color: #94a3b8;
+  background: #e2e8f0;
+  cursor: not-allowed;
 }
 
 .sl-output-options {

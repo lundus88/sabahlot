@@ -24,6 +24,12 @@ import {
   buildDxfDocument,
   buildKmlDocument,
 } from "@/lib/export-workflows";
+import {
+  buildPreliminaryCsv,
+  buildPreliminaryGeoJson,
+  buildPreliminaryKml,
+  buildPreliminaryPrintHtml,
+} from "@/lib/export-geometries";
 
 import {
   deleteLocalLot,
@@ -5894,6 +5900,149 @@ export default function HomePage() {
     );
   };
 
+  const createPreliminaryExportInput =
+    () => {
+      if (
+        !polygon ||
+        polygon.coordinates.length < 3
+      ) {
+        setSaveMessage(
+          "Draw, import or load a polygon before exporting.",
+        );
+
+        return null;
+      }
+
+      return {
+        polygon,
+        metadata: {
+          recordTitle:
+            formData.lotNumber.trim() ||
+            "SabahLot Preliminary Record",
+          village:
+            formData.village.trim(),
+          district:
+            formData.district.trim(),
+          generatedAt:
+            new Date().toISOString(),
+        },
+      };
+    };
+
+  const exportCurrentPolygonGeoJson =
+    () => {
+      const input =
+        createPreliminaryExportInput();
+
+      if (!input) {
+        return;
+      }
+
+      const document =
+        buildPreliminaryGeoJson(
+          input,
+        );
+
+      downloadTextFile(
+        document.content,
+        document.fileName,
+        document.mimeType,
+      );
+      setSaveMessage(
+        "GeoJSON preliminary output generated.",
+      );
+    };
+
+  const exportCurrentPolygonKml =
+    () => {
+      const input =
+        createPreliminaryExportInput();
+
+      if (!input) {
+        return;
+      }
+
+      const document =
+        buildPreliminaryKml(
+          input,
+        );
+
+      downloadTextFile(
+        document.content,
+        document.fileName,
+        document.mimeType,
+      );
+      setSaveMessage(
+        "KML preliminary output generated.",
+      );
+    };
+
+  const exportCurrentPolygonCsv =
+    () => {
+      const input =
+        createPreliminaryExportInput();
+
+      if (!input) {
+        return;
+      }
+
+      const document =
+        buildPreliminaryCsv(
+          input,
+        );
+
+      downloadTextFile(
+        document.content,
+        document.fileName,
+        document.mimeType,
+      );
+      setSaveMessage(
+        "CSV preliminary output generated.",
+      );
+    };
+
+  const printCurrentPolygonOutput =
+    () => {
+      const input =
+        createPreliminaryExportInput();
+
+      if (!input) {
+        return;
+      }
+
+      const printWindow =
+        window.open(
+          "",
+          "_blank",
+          "noopener,noreferrer",
+        );
+
+      if (!printWindow) {
+        setSaveMessage(
+          "Print window was blocked. Allow pop-ups to print this output.",
+        );
+        return;
+      }
+
+      printWindow.document.open();
+      printWindow.document.write(
+        buildPreliminaryPrintHtml(
+          input,
+        ),
+      );
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.setTimeout(
+        () => {
+          printWindow.print();
+        },
+        250,
+      );
+      setSaveMessage(
+        "Print / Preliminary PDF output opened.",
+      );
+    };
+
   const exportKml =
     () => {
       const lotName =
@@ -7082,6 +7231,59 @@ export default function HomePage() {
                 {text.noPolygon}
               </p>
             )}
+
+            <div className="sl-preliminary-export-panel">
+              <div>
+                <span className="sl-output-options-title">
+                  Preliminary export
+                </span>
+                <small>
+                  Current polygon only. Includes metadata, estimates and disclaimer.
+                </small>
+              </div>
+
+              <div className="sl-preliminary-export-actions">
+                <button
+                  type="button"
+                  onClick={
+                    exportCurrentPolygonGeoJson
+                  }
+                  disabled={!polygon}
+                >
+                  Export GeoJSON
+                </button>
+
+                <button
+                  type="button"
+                  onClick={
+                    exportCurrentPolygonKml
+                  }
+                  disabled={!polygon}
+                >
+                  Export KML
+                </button>
+
+                <button
+                  type="button"
+                  onClick={
+                    exportCurrentPolygonCsv
+                  }
+                  disabled={!polygon}
+                >
+                  Export CSV
+                </button>
+
+                <button
+                  type="button"
+                  onClick={
+                    printCurrentPolygonOutput
+                  }
+                  disabled={!polygon}
+                >
+                  Print / Preliminary PDF
+                </button>
+              </div>
+            </div>
 
             <div className="sl-output-options">
               <span className="sl-output-options-title">
