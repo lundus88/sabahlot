@@ -1911,6 +1911,117 @@ select:focus-visible {
   border-top: 1px solid #e2e8f0;
 }
 
+.sl-import-panel {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.sl-import-controls {
+  display: grid;
+  gap: 10px;
+}
+
+.sl-import-file {
+  display: grid;
+  gap: 6px;
+}
+
+.sl-import-file span,
+.sl-import-preview span,
+.sl-import-status span {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.sl-import-file input {
+  width: 100%;
+  min-width: 0;
+  padding: 9px;
+  color: #0f172a;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.sl-import-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.sl-import-actions button {
+  min-height: 38px;
+  padding: 0 10px;
+  color: #ffffff;
+  background: #2563eb;
+  border: 0;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.sl-import-actions button:nth-child(2) {
+  background: #059669;
+}
+
+.sl-import-actions button:nth-child(3) {
+  background: #0f172a;
+}
+
+.sl-import-actions button:disabled {
+  color: #94a3b8;
+  background: #e2e8f0;
+  cursor: not-allowed;
+}
+
+.sl-import-status,
+.sl-import-preview {
+  display: grid;
+  gap: 3px;
+  padding: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.sl-import-status strong,
+.sl-import-preview strong {
+  font-size: 13px;
+}
+
+.sl-import-preview small,
+.sl-import-disclaimer,
+.sl-import-error {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.sl-import-disclaimer {
+  color: #475569;
+}
+
+.sl-import-error {
+  padding: 8px;
+  color: #991b1b;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  font-weight: 800;
+}
+
+@media (max-width: 420px) {
+  .sl-import-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
 .sl-summary-heading h2 {
   margin: 5px 0 0;
   font-size: 15px;

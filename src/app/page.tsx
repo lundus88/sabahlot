@@ -1,6 +1,7 @@
 ﻿ "use client";
 
 import {
+  type ChangeEvent,
   type FormEvent,
   useEffect,
   useState,
@@ -37,6 +38,12 @@ import {
   normalizeLandRecordDetails,
   saveLocalLot,
 } from "@/lib/local-lots";
+import {
+  createImportedDrawingObject,
+  parseImportedGeometry,
+  type ImportedGeometryPreview,
+  type ImportFileStatus,
+} from "@/lib/import-geometries";
 
 import type {
   AppLanguage,
@@ -158,6 +165,17 @@ const FIELD_GPS_STORAGE_KEY =
 
 const PRELIMINARY_DISCLAIMER =
   "Preliminary output only. This is not a legal survey plan, not proof of land boundary, and not an official approval by JTU, Land Office, or any authority. Final boundary and land matters must be verified through the proper Sabah land and survey procedures.";
+
+const IMPORT_DISCLAIMER =
+  "Imported files are used for preliminary reference only. Coordinates, boundaries and areas must be verified by the relevant authority, licensed surveyor or professional adviser before any official use.";
+
+const IMPORT_STATUS_LABEL: Record<ImportFileStatus, string> = {
+  no_file: "No file selected",
+  file_loaded: "File loaded",
+  preview_ready: "Geometry preview ready",
+  failed: "Import failed",
+  unsupported: "Unsupported file",
+};
 
 function subscribeFieldGpsFlag(
   onStoreChange: () => void,
@@ -864,6 +882,35 @@ export default function HomePage() {
     setOfflineMapNote,
   ] = useState("");
 
+  const [
+    importFile,
+    setImportFile,
+  ] = useState<File | null>(null);
+
+  const [
+    importStatus,
+    setImportStatus,
+  ] = useState<ImportFileStatus>(
+    "no_file",
+  );
+
+  const [
+    importPreview,
+    setImportPreview,
+  ] = useState<ImportedGeometryPreview | null>(
+    null,
+  );
+
+  const [
+    importError,
+    setImportError,
+  ] = useState("");
+
+  const [
+    isPreviewingImport,
+    setIsPreviewingImport,
+  ] = useState(false);
+
   const text =
     PAGE_TEXT[language];
 
@@ -1285,6 +1332,125 @@ export default function HomePage() {
     ) {
       setHasUnsavedChanges(true);
     }
+  };
+
+  const handleImportFileChange = (
+    event: ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file =
+      event.target.files?.[0] ?? null;
+
+    setImportFile(file);
+    setImportPreview(null);
+    setImportError("");
+    setImportStatus(
+      file
+        ? "file_loaded"
+        : "no_file",
+    );
+  };
+
+  const previewImportFile = async () => {
+    if (!importFile) {
+      setImportStatus("no_file");
+      setImportError("Select a KML, GeoJSON or CSV file first.");
+      return;
+    }
+
+    setIsPreviewingImport(true);
+    setImportError("");
+
+    try {
+      const source =
+        await importFile.text();
+      const preview =
+        parseImportedGeometry(
+          importFile.name,
+          source,
+          {
+            language,
+            areaUnit:
+              selectedAreaUnit,
+          },
+        );
+
+      setImportPreview(preview);
+      setImportStatus("preview_ready");
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "The file could not be imported.";
+
+      setImportPreview(null);
+      setImportError(message);
+      setImportStatus(
+        message.toLowerCase().includes("unsupported") ||
+          message.toLowerCase().includes("dxf")
+          ? "unsupported"
+          : "failed",
+      );
+    } finally {
+      setIsPreviewingImport(false);
+    }
+  };
+
+  const useImportedGeometry = () => {
+    if (!importPreview) {
+      setImportError("Preview a valid import file first.");
+      return;
+    }
+
+    if (
+      importPreview.kind !== "polygon" ||
+      !importPreview.polygon
+    ) {
+      setImportError(
+        "Only polygon imports can be used as a SabahLot record in this build.",
+      );
+      return;
+    }
+
+    const importedObject =
+      createImportedDrawingObject(
+        importPreview,
+      );
+
+    if (!importedObject) {
+      setImportError("Imported geometry is not a valid polygon.");
+      setImportStatus("failed");
+      return;
+    }
+
+    setPolygon(importPreview.polygon);
+    setLoadedCoordinates(
+      importPreview.polygon.coordinates,
+    );
+    setDrawingObjects([
+      importedObject,
+    ]);
+    setActiveObjectId(
+      importedObject.id,
+    );
+    setCurrentProjectId(null);
+    setHasUnsavedChanges(true);
+    setImportError("");
+    setImportStatus("preview_ready");
+
+    if (
+      formData.lotNumber.trim()
+        .length === 0
+    ) {
+      setFormData((current) => ({
+        ...current,
+        lotNumber:
+          importPreview.name,
+      }));
+    }
+
+    setSaveMessage(
+      "Imported polygon applied as a preliminary SabahLot record.",
+    );
   };
 
   const saveLotRecord = (
@@ -2679,6 +2845,7 @@ export default function HomePage() {
               9,
           );
         };
+        void addPlanInfoPanel;
 
         const addStationSchedulePanel = (
           x: number,
@@ -2907,6 +3074,7 @@ export default function HomePage() {
             );
           }
         };
+        void addStationSchedulePanel;
 
         const addBottomTitleBlock = (
           x: number,
@@ -3130,6 +3298,7 @@ export default function HomePage() {
             },
           );
         };
+        void addBottomTitleBlock;
 
         const addNorthArrow = (
           x: number,
@@ -3289,6 +3458,8 @@ export default function HomePage() {
           height: number,
           _snapshotData: string | null,
         ) => {
+          void _snapshotData;
+
           const calculateSiteCentre =
             () => {
               let signedArea =
@@ -5393,6 +5564,7 @@ export default function HomePage() {
           return overlapWidth *
             overlapHeight;
         };
+        void overlapArea;
         const keyPlanPosition =
           keyPlanCandidates[0];
 
@@ -6735,6 +6907,122 @@ export default function HomePage() {
               </p>
             )}
           </form>
+
+          <section className="sl-import-panel">
+            <div className="sl-summary-heading">
+              <span className="sl-eyebrow">
+                Private preliminary import
+              </span>
+
+              <h2>
+                Import Data
+              </h2>
+            </div>
+
+            <div className="sl-import-controls">
+              <label className="sl-import-file">
+                <span>
+                  Import File
+                </span>
+
+                <input
+                  type="file"
+                  accept=".kml,.geojson,.json,.csv,.dxf,application/vnd.google-earth.kml+xml,application/geo+json,application/json,text/csv"
+                  onChange={handleImportFileChange}
+                />
+              </label>
+
+              <div className="sl-import-actions">
+                <button
+                  type="button"
+                  onClick={previewImportFile}
+                  disabled={
+                    !importFile ||
+                    isPreviewingImport
+                  }
+                >
+                  {isPreviewingImport
+                    ? "Previewing..."
+                    : "Preview"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={useImportedGeometry}
+                  disabled={
+                    !importPreview ||
+                    importPreview.kind !==
+                      "polygon"
+                  }
+                >
+                  Use Geometry
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    saveLotRecord()
+                  }
+                  disabled={
+                    isSaving ||
+                    !polygon
+                  }
+                >
+                  Save Record
+                </button>
+              </div>
+            </div>
+
+            <div className="sl-import-status">
+              <strong>
+                {IMPORT_STATUS_LABEL[importStatus]}
+              </strong>
+
+              <span>
+                {importFile?.name ??
+                  "KML, GeoJSON and CSV are supported in this build."}
+              </span>
+            </div>
+
+            {importPreview && (
+              <div className="sl-import-preview">
+                <span>
+                  {importPreview.format} - {importPreview.kind}
+                </span>
+
+                <strong>
+                  {importPreview.name}
+                </strong>
+
+                <small>
+                  {importPreview.pointCount} vertices
+                  {importPreview.polygon
+                    ? ` - ${displayArea(
+                        importPreview.polygon.areaM2,
+                      )} - ${formatNumber(
+                        importPreview.polygon
+                          .perimeterM,
+                        language,
+                      )} m perimeter`
+                    : ""}
+                </small>
+              </div>
+            )}
+
+            {importError && (
+              <p className="sl-import-error">
+                {importError}
+              </p>
+            )}
+
+            <p className="sl-import-disclaimer">
+              {IMPORT_DISCLAIMER}
+            </p>
+
+            <small className="sl-alpha-privacy-note">
+              Imported data stays private-by-default on this device unless you explicitly save and sync a record.
+            </small>
+          </section>
 
           <section className="sl-drawing-summary">
             <div className="sl-summary-heading">
