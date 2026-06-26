@@ -9085,6 +9085,19 @@ export default function Map({
         <div className="sl-topbar-actions">
           <button
             type="button"
+            className={isTracking ? "sl-gps-topbar-button is-tracking" : "sl-gps-topbar-button"}
+            onClick={startLocationTracking}
+            disabled={!mapReady}
+            title={isTracking ? "Stop GPS" : "Track GPS"}
+            aria-label={isTracking ? "Stop GPS" : "Track GPS"}
+          >
+            <span className="sl-gps-dot" />
+            <span>
+              {isTracking ? "Stop GPS" : "Track GPS"}
+            </span>
+          </button>
+          <button
+            type="button"
             className={
               `sl-icon-button ${
                 settingsOpen
@@ -10025,6 +10038,8 @@ export default function Map({
     </div>
     );
 }
+
+
 
 
 
