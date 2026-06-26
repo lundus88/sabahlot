@@ -170,7 +170,7 @@ const FIELD_GPS_STORAGE_KEY =
   "sabahlot_field_gps_enabled";
 
 const PRELIMINARY_DISCLAIMER =
-  "Preliminary output only. This is not a legal survey plan, not proof of land boundary, and not an official approval by JTU, Land Office, or any authority. Final boundary and land matters must be verified through the proper Sabah land and survey procedures.";
+  "SabahLot output is for preliminary reference only. It is not an official survey plan, not a certified boundary plan, and must not be used as legal proof of boundary, ownership, approval, subdivision or land title status. All coordinates, boundaries and areas must be verified by the relevant authority, licensed surveyor or professional adviser before official use.";
 
 const IMPORT_DISCLAIMER =
   "Imported files are used for preliminary reference only. Coordinates, boundaries and areas must be verified by the relevant authority, licensed surveyor or professional adviser before any official use.";
