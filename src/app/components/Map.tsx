@@ -1,5 +1,7 @@
 ﻿"use client";
 
+
+import PecahGeranPlannerPanel from "./PecahGeranPlannerPanel";
 import GpsHandheldPanel from "./GpsHandheldPanel";
 import type {
   ParsedGpsFile,
@@ -9271,6 +9273,8 @@ export default function Map({
         isTracking={isTracking}
       />
 
+      <PecahGeranPlannerPanel />
+
       <header className="sl-topbar">
         <button
           type="button"
@@ -10303,6 +10307,7 @@ export default function Map({
     </div>
     );
 }
+
 
 
 

@@ -5965,3 +5965,212 @@ select:focus-visible {
     grid-template-columns: 66px 1fr 68px;
   }
 }
+
+.sl-pecah-geran-panel {
+  position: absolute;
+  left: 16px;
+  bottom: 92px;
+  z-index: 1450;
+  width: 390px;
+  max-width: calc(100vw - 32px);
+  font-size: 12px;
+}
+
+.sl-pecah-geran-toggle {
+  width: 100%;
+  min-height: 44px;
+  border: 0;
+  border-radius: 16px;
+  padding: 10px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #111827;
+  color: #ffffff;
+  font-weight: 900;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.3);
+  cursor: pointer;
+}
+
+.sl-pecah-geran-toggle strong {
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  font-size: 11px;
+}
+
+.sl-pecah-geran-body {
+  margin-top: 8px;
+  max-height: min(72vh, 680px);
+  overflow: auto;
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.28);
+  backdrop-filter: blur(10px);
+}
+
+.sl-pecah-geran-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 950;
+  color: #111827;
+}
+
+.sl-pecah-geran-header p {
+  margin: 6px 0 0;
+  color: #475569;
+  line-height: 1.45;
+}
+
+.sl-pecah-geran-warning {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid #fbbf24;
+  border-radius: 14px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 11px;
+  line-height: 1.45;
+  font-weight: 700;
+}
+
+.sl-pecah-geran-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.sl-pecah-geran-panel label {
+  display: grid;
+  gap: 5px;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.sl-pecah-geran-panel input,
+.sl-pecah-geran-panel select,
+.sl-pecah-geran-panel textarea {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  padding: 8px 9px;
+  font-size: 12px;
+  font-weight: 700;
+  background: #ffffff;
+  color: #111827;
+}
+
+.sl-pecah-geran-panel textarea {
+  min-height: 64px;
+  resize: vertical;
+}
+
+.sl-pecah-geran-section-title {
+  margin-top: 14px;
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sl-pecah-geran-lots {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.sl-pecah-geran-lot-card {
+  padding: 10px;
+  border: 1px solid #dbeafe;
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.sl-pecah-geran-lot-head {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.sl-pecah-geran-lot-head input {
+  font-weight: 950;
+}
+
+.sl-pecah-geran-lot-head button {
+  border: 0;
+  border-radius: 10px;
+  padding: 7px 9px;
+  background: #fee2e2;
+  color: #991b1b;
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.sl-pecah-geran-add {
+  width: 100%;
+  margin-top: 10px;
+  min-height: 38px;
+  border: 0;
+  border-radius: 12px;
+  background: #2563eb;
+  color: #ffffff;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.sl-pecah-geran-access {
+  margin-top: 10px;
+}
+
+.sl-pecah-geran-summary {
+  margin-top: 12px;
+  padding: 10px;
+  border-radius: 14px;
+  background: #ecfdf5;
+  color: #064e3b;
+  font-size: 12px;
+}
+
+.sl-pecah-geran-summary strong {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 950;
+}
+
+.sl-pecah-geran-summary div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 0;
+  font-weight: 800;
+}
+
+.sl-pecah-geran-risk {
+  margin-top: 10px;
+  padding: 9px;
+  border-radius: 12px;
+  background: #fef2f2;
+  color: #991b1b;
+  font-size: 11px;
+  font-weight: 900;
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  .sl-pecah-geran-panel {
+    left: 10px;
+    right: 10px;
+    bottom: 78px;
+    width: auto;
+  }
+
+  .sl-pecah-geran-grid {
+    grid-template-columns: 1fr;
+  }
+}
