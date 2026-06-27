@@ -146,6 +146,30 @@ export default function PecahGeranPlannerPanel({
       }
     };
 
+  const handleCaptureCurrentPolygonAsSubLot =
+    () => {
+      if (!hasCurrentMapPolygon) {
+        return;
+      }
+
+      setProposedLots(
+        (current) => [
+          ...current,
+          {
+            ...createProposedLot(
+              current.length,
+            ),
+            areaSqm:
+              parentAreaSqmFromMap.toFixed(2),
+            purpose:
+              "Family Allocation",
+            notes:
+              `Captured from current map polygon. Perimeter approx. ${parentPerimeterMFromMap.toFixed(2)} m, vertices ${parentVertexCountFromMap}. Preliminary only.`,
+          },
+        ],
+      );
+    };
+
   const addProposedLot =
     () => {
       setProposedLots(
@@ -257,6 +281,15 @@ export default function PecahGeranPlannerPanel({
               disabled={!hasCurrentMapPolygon}
             >
               Use Current Map Polygon as Parent Lot
+            </button>
+
+            <button
+              type="button"
+              className="sl-pecah-geran-map-button is-secondary"
+              onClick={handleCaptureCurrentPolygonAsSubLot}
+              disabled={!hasCurrentMapPolygon}
+            >
+              Capture Current Polygon as Proposed Sub-Lot
             </button>
 
             {!hasCurrentMapPolygon && (
@@ -483,3 +516,4 @@ export default function PecahGeranPlannerPanel({
     </section>
   );
 }
+

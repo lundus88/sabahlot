@@ -6223,3 +6223,17 @@ select:focus-visible {
   font-size: 11px;
   line-height: 1.4;
 }
+
+.sl-pecah-geran-map-button.is-secondary {
+  margin-top: 8px;
+  background: #0f766e;
+}
+
+.sl-pecah-geran-map-button.is-secondary:hover {
+  background: #115e59;
+}
+
+.sl-pecah-geran-map-button.is-secondary:disabled {
+  background: #cbd5e1;
+  color: #64748b;
+}
