@@ -6174,3 +6174,52 @@ select:focus-visible {
     grid-template-columns: 1fr;
   }
 }
+
+.sl-pecah-geran-map-link {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid #bfdbfe;
+  border-radius: 14px;
+  background: #eff6ff;
+  color: #1e3a8a;
+}
+
+.sl-pecah-geran-map-link strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.sl-pecah-geran-map-stats {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 8px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.sl-pecah-geran-map-button {
+  width: 100%;
+  min-height: 36px;
+  border: 0;
+  border-radius: 10px;
+  background: #1d4ed8;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.sl-pecah-geran-map-button:disabled {
+  background: #cbd5e1;
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+.sl-pecah-geran-map-link p {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.4;
+}

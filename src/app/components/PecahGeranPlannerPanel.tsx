@@ -21,6 +21,12 @@ interface ProposedSubLot {
   notes: string;
 }
 
+interface PecahGeranPlannerPanelProps {
+  parentAreaSqmFromMap?: number;
+  parentPerimeterMFromMap?: number;
+  parentVertexCountFromMap?: number;
+}
+
 function createProposedLot(
   index: number,
 ): ProposedSubLot {
@@ -39,7 +45,31 @@ function createProposedLot(
   };
 }
 
-export default function PecahGeranPlannerPanel() {
+function formatNumber(
+  value?: number,
+  digits = 2,
+) {
+  if (
+    value === undefined ||
+    value === null ||
+    !Number.isFinite(value)
+  ) {
+    return "Not available";
+  }
+
+  return value.toLocaleString(
+    undefined,
+    {
+      maximumFractionDigits: digits,
+    },
+  );
+}
+
+export default function PecahGeranPlannerPanel({
+  parentAreaSqmFromMap = 0,
+  parentPerimeterMFromMap = 0,
+  parentVertexCountFromMap = 0,
+}: PecahGeranPlannerPanelProps) {
   const [
     isOpen,
     setIsOpen,
@@ -73,6 +103,10 @@ export default function PecahGeranPlannerPanel() {
       createProposedLot(1),
     ]);
 
+  const hasCurrentMapPolygon =
+    parentVertexCountFromMap >= 3 &&
+    parentAreaSqmFromMap > 0;
+
   const totalProposedArea =
     useMemo(
       () =>
@@ -94,6 +128,23 @@ export default function PecahGeranPlannerPanel() {
     parentArea > 0
       ? parentArea - totalProposedArea
       : null;
+
+  const handleUseCurrentMapPolygon =
+    () => {
+      if (!hasCurrentMapPolygon) {
+        return;
+      }
+
+      setParentAreaSqm(
+        parentAreaSqmFromMap.toFixed(2),
+      );
+
+      if (!parentLotName.trim()) {
+        setParentLotName(
+          "Current Map Polygon",
+        );
+      }
+    };
 
   const addProposedLot =
     () => {
@@ -180,6 +231,40 @@ export default function PecahGeranPlannerPanel() {
             bukan bukti sempadan, bukan pengesahan hakmilik, dan bukan
             kelulusan JTU / PBT / pihak berkuasa. Semua cadangan perlu disemak
             oleh juruukur berlesen atau pihak profesional berkaitan.
+          </div>
+
+          <div className="sl-pecah-geran-map-link">
+            <strong>
+              Current Map Polygon
+            </strong>
+
+            <div className="sl-pecah-geran-map-stats">
+              <span>
+                Area: {formatNumber(parentAreaSqmFromMap)} sqm
+              </span>
+              <span>
+                Perimeter: {formatNumber(parentPerimeterMFromMap)} m
+              </span>
+              <span>
+                Vertices: {parentVertexCountFromMap}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              className="sl-pecah-geran-map-button"
+              onClick={handleUseCurrentMapPolygon}
+              disabled={!hasCurrentMapPolygon}
+            >
+              Use Current Map Polygon as Parent Lot
+            </button>
+
+            {!hasCurrentMapPolygon && (
+              <p>
+                Draw or load a polygon with at least 3 vertices before using
+                this function.
+              </p>
+            )}
           </div>
 
           <div className="sl-pecah-geran-grid">

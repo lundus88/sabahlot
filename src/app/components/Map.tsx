@@ -9273,7 +9273,180 @@ export default function Map({
         isTracking={isTracking}
       />
 
-      <PecahGeranPlannerPanel />
+      <PecahGeranPlannerPanel
+        {...(() => {
+          const points =
+            pointsRef.current;
+
+          if (
+            !points ||
+            points.length < 3
+          ) {
+            return {
+              parentAreaSqmFromMap: 0,
+              parentPerimeterMFromMap: 0,
+              parentVertexCountFromMap:
+                points?.length ?? 0,
+            };
+          }
+
+          const earthRadius =
+            6378137;
+
+          const averageLatRad =
+            (
+              points.reduce(
+                (sum, point) =>
+                  sum + point[0],
+                0,
+              ) / points.length
+            ) *
+            Math.PI /
+            180;
+
+          const projected =
+            points.map((point) => {
+              const latRad =
+                point[0] *
+                Math.PI /
+                180;
+
+              const lngRad =
+                point[1] *
+                Math.PI /
+                180;
+
+              return {
+                x:
+                  earthRadius *
+                  lngRad *
+                  Math.cos(
+                    averageLatRad,
+                  ),
+                y:
+                  earthRadius *
+                  latRad,
+              };
+            });
+
+          let doubleArea =
+            0;
+
+          for (
+            let index = 0;
+            index < projected.length;
+            index += 1
+          ) {
+            const current =
+              projected[index];
+
+            const next =
+              projected[
+                (
+                  index + 1
+                ) %
+                  projected.length
+              ];
+
+            doubleArea +=
+              current.x * next.y -
+              next.x * current.y;
+          }
+
+          const areaSqm =
+            Math.abs(
+              doubleArea,
+            ) / 2;
+
+          const toRadians =
+            (value: number) =>
+              value *
+              Math.PI /
+              180;
+
+          const distanceMeters =
+            (
+              first: [number, number],
+              second: [number, number],
+            ) => {
+              const dLat =
+                toRadians(
+                  second[0] -
+                    first[0],
+                );
+
+              const dLng =
+                toRadians(
+                  second[1] -
+                    first[1],
+                );
+
+              const lat1 =
+                toRadians(
+                  first[0],
+                );
+
+              const lat2 =
+                toRadians(
+                  second[0],
+                );
+
+              const a =
+                Math.sin(
+                  dLat / 2,
+                ) ** 2 +
+                Math.cos(
+                  lat1,
+                ) *
+                  Math.cos(
+                    lat2,
+                  ) *
+                  Math.sin(
+                    dLng / 2,
+                  ) ** 2;
+
+              const c =
+                2 *
+                Math.atan2(
+                  Math.sqrt(a),
+                  Math.sqrt(
+                    1 - a,
+                  ),
+                );
+
+              return earthRadius * c;
+            };
+
+          let perimeterM =
+            0;
+
+          for (
+            let index = 0;
+            index < points.length;
+            index += 1
+          ) {
+            perimeterM +=
+              distanceMeters(
+                points[index],
+                points[
+                  (
+                    index + 1
+                  ) %
+                    points.length
+                ],
+              );
+          }
+
+          return {
+            parentAreaSqmFromMap:
+              areaSqm,
+            parentPerimeterMFromMap:
+              perimeterM,
+            parentVertexCountFromMap:
+              points.length,
+          };
+        })()}
+      />
 
       <header className="sl-topbar">
         <button
@@ -10307,6 +10480,8 @@ export default function Map({
     </div>
     );
 }
+
+
 
 
 
