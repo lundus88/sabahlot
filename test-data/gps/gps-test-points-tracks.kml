@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>SabahLot GPS QAQC Test</name>
+
+    <Placemark>
+      <name>KML TEST POINT 01</name>
+      <Point>
+        <coordinates>116.0735,5.9804,0</coordinates>
+      </Point>
+    </Placemark>
+
+    <Placemark>
+      <name>KML TEST TRACK 01</name>
+      <LineString>
+        <coordinates>
+          116.0735,5.9804,0
+          116.0740,5.9810,0
+          116.0748,5.9815,0
+        </coordinates>
+      </LineString>
+    </Placemark>
+
+  </Document>
+</kml>
