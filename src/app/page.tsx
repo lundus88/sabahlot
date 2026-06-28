@@ -1,10 +1,15 @@
-﻿import Map from "./components/Map";
+﻿"use client";
+
+import Map from "./components/Map";
 import LandRecordOrganizerPanel from "./components/LandRecordOrganizerPanel";
 
 export default function Home() {
   return (
     <>
-      <Map />
+      <Map
+        language="en"
+        onPolygonChange={() => undefined}
+      />
       <LandRecordOrganizerPanel />
     </>
   );
