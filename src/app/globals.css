@@ -1,5 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@600;700&display=swap");
-
+﻿
  :root {
   --sl-primary: #2563eb;
   --sl-primary-dark: #1d4ed8;
@@ -409,7 +408,7 @@ select:focus-visible {
   position: absolute;
   top: 10px;
   right: 10px;
-  left: 10px;
+  left: 104px;
   z-index: 1100;
 
   display: flex;
@@ -734,7 +733,7 @@ select:focus-visible {
 
 .sl-drawing-toolbar-vertical {
   top: 68px;
-  left: 10px;
+  left: 104px;
 
   align-items: center;
   flex-direction: column;
@@ -1106,7 +1105,7 @@ select:focus-visible {
 .sl-map-status {
   position: absolute;
   bottom: 12px;
-  left: 10px;
+  left: 104px;
   z-index: 1060;
 
   display: flex;
@@ -2342,7 +2341,7 @@ select:focus-visible {
 
     flex: 1;
 
-    padding-left: 10px;
+    padding-left: 104px;
 
     border-radius: 11px;
   }
@@ -2375,7 +2374,7 @@ select:focus-visible {
 
   .sl-search > button::after {
     color: #ffffff;
-    content: "→";
+    content: "â†’";
     font-size: 14px;
   }
 
@@ -3432,7 +3431,7 @@ select:focus-visible {
   }
 
   .sl-object-list {
-    top: 112px;
+    top: 160px;
     right: 8px;
     left: 64px;
     width: auto;
@@ -5210,7 +5209,7 @@ select:focus-visible {
   .sl-context-toolbar {
     right: 10px;
     bottom: calc(8px + env(safe-area-inset-bottom));
-    left: 10px;
+    left: 104px;
     max-height: 64px;
   }
 
@@ -5625,5 +5624,312 @@ select:focus-visible {
 
   .sl-map-status {
     display: none;
+  }
+}
+
+
+/* LAND RECORD FORCE VISIBILITY PATCH */
+
+.sl-land-record-panel {
+  position: fixed !important;
+  left: 110px !important;
+  top: 170px !important;
+  z-index: 999999 !important;
+  width: 390px !important;
+  max-width: calc(100vw - 130px) !important;
+  pointer-events: auto !important;
+}
+
+.sl-land-record-toggle {
+  min-height: 52px !important;
+}
+
+@media (max-width: 760px) {
+  .sl-land-record-panel {
+    left: 12px !important;
+    right: 12px !important;
+    top: 96px !important;
+    width: auto !important;
+    max-width: calc(100vw - 24px) !important;
+  }
+}
+
+/* LAND RECORD UI POLISH FINAL */
+
+.sl-land-record-panel {
+  position: fixed !important;
+  left: 108px !important;
+  top: 150px !important;
+  z-index: 999999 !important;
+  width: 390px !important;
+  max-width: calc(100vw - 130px) !important;
+  max-height: calc(100vh - 230px) !important;
+  border-radius: 22px !important;
+  overflow: hidden !important;
+  background: rgba(255, 255, 255, 0.98) !important;
+  border: 1px solid rgba(226, 232, 240, 0.95) !important;
+  box-shadow: 0 24px 65px rgba(15, 23, 42, 0.28) !important;
+  color: #0f172a !important;
+  font-family: Arial, sans-serif !important;
+  pointer-events: auto !important;
+}
+
+.sl-land-record-toggle {
+  width: 100% !important;
+  min-height: 54px !important;
+  border: 0 !important;
+  padding: 12px 16px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  background: #0f172a !important;
+  color: #ffffff !important;
+  font-size: 14px !important;
+  font-weight: 900 !important;
+  cursor: pointer !important;
+}
+
+.sl-land-record-toggle span {
+  color: #ffffff !important;
+}
+
+.sl-land-record-toggle strong {
+  padding: 7px 11px !important;
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, 0.16) !important;
+  color: #ffffff !important;
+  font-size: 12px !important;
+}
+
+.sl-land-record-body {
+  max-height: calc(100vh - 285px) !important;
+  overflow-y: auto !important;
+  padding: 14px !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
+.sl-land-record-header h3 {
+  margin: 0 0 5px !important;
+  color: #0f172a !important;
+  font-size: 18px !important;
+  font-weight: 950 !important;
+  line-height: 1.2 !important;
+}
+
+.sl-land-record-header p {
+  margin: 0 0 12px !important;
+  color: #475569 !important;
+  font-size: 12px !important;
+  line-height: 1.45 !important;
+}
+
+.sl-land-record-warning {
+  margin: 0 0 12px !important;
+  padding: 10px 11px !important;
+  border: 1px solid #fbbf24 !important;
+  border-radius: 14px !important;
+  background: #fffbeb !important;
+  color: #92400e !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  line-height: 1.45 !important;
+}
+
+.sl-land-record-grid {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 10px !important;
+}
+
+.sl-land-record-grid label,
+.sl-land-record-notes {
+  display: grid !important;
+  gap: 5px !important;
+  color: #334155 !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  line-height: 1.25 !important;
+}
+
+.sl-land-record-grid input,
+.sl-land-record-grid select,
+.sl-land-record-notes textarea {
+  width: 100% !important;
+  min-height: 38px !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 12px !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  padding: 9px 10px !important;
+  outline: none !important;
+  box-sizing: border-box !important;
+}
+
+.sl-land-record-notes {
+  margin-top: 12px !important;
+}
+
+.sl-land-record-notes textarea {
+  min-height: 72px !important;
+  resize: vertical !important;
+}
+
+.sl-land-record-section-title {
+  margin: 14px 0 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  color: #1d4ed8 !important;
+  font-size: 11px !important;
+  font-weight: 950 !important;
+  letter-spacing: 0.07em !important;
+  text-transform: uppercase !important;
+}
+
+.sl-land-record-checklist {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 7px !important;
+}
+
+.sl-land-record-checklist label {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 9px 10px !important;
+  border: 1px solid #dbeafe !important;
+  border-radius: 12px !important;
+  background: #f8fafc !important;
+  color: #334155 !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+}
+
+.sl-land-record-checklist input {
+  width: 16px !important;
+  height: 16px !important;
+  flex: 0 0 auto !important;
+}
+
+.sl-land-record-tags {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 7px !important;
+}
+
+.sl-land-record-tags button {
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 999px !important;
+  padding: 7px 10px !important;
+  background: #ffffff !important;
+  color: #334155 !important;
+  font-size: 11px !important;
+  font-weight: 850 !important;
+  cursor: pointer !important;
+}
+
+.sl-land-record-tags button.is-active {
+  border-color: #f97316 !important;
+  background: #fff7ed !important;
+  color: #9a3412 !important;
+}
+
+.sl-land-record-save {
+  width: 100% !important;
+  min-height: 44px !important;
+  margin-top: 12px !important;
+  border: 0 !important;
+  border-radius: 14px !important;
+  background: #2563eb !important;
+  color: #ffffff !important;
+  font-size: 13px !important;
+  font-weight: 950 !important;
+  cursor: pointer !important;
+}
+
+.sl-land-record-summary {
+  margin-top: 12px !important;
+  padding: 10px !important;
+  border-radius: 14px !important;
+  background: #f1f5f9 !important;
+  color: #334155 !important;
+  font-size: 12px !important;
+}
+
+.sl-land-record-summary strong {
+  color: #0f172a !important;
+  font-weight: 950 !important;
+}
+
+.sl-land-record-summary p {
+  margin: 8px 0 0 !important;
+  color: #64748b !important;
+  font-size: 12px !important;
+}
+
+.sl-land-record-latest {
+  margin: 8px 0 !important;
+  font-weight: 900 !important;
+  color: #0f172a !important;
+}
+
+.sl-land-record-list {
+  display: grid !important;
+  gap: 8px !important;
+  margin-top: 8px !important;
+}
+
+.sl-land-record-list article {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  padding: 9px !important;
+  border-radius: 12px !important;
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+.sl-land-record-list article div {
+  display: grid !important;
+  gap: 2px !important;
+}
+
+.sl-land-record-list span {
+  color: #64748b !important;
+  font-size: 11px !important;
+}
+
+.sl-land-record-list button {
+  border: 0 !important;
+  border-radius: 999px !important;
+  padding: 7px 10px !important;
+  background: #fee2e2 !important;
+  color: #991b1b !important;
+  font-size: 11px !important;
+  font-weight: 950 !important;
+  cursor: pointer !important;
+}
+
+@media (max-width: 760px) {
+  .sl-land-record-panel {
+    left: 12px !important;
+    right: 12px !important;
+    top: 96px !important;
+    width: auto !important;
+    max-width: calc(100vw - 24px) !important;
+    max-height: calc(100vh - 190px) !important;
+  }
+
+  .sl-land-record-body {
+    max-height: calc(100vh - 245px) !important;
+  }
+
+  .sl-land-record-grid {
+    grid-template-columns: 1fr !important;
   }
 }

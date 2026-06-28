@@ -1,4 +1,4 @@
- "use client";
+﻿ "use client";
 
 import {
   type ChangeEvent,
@@ -364,9 +364,9 @@ const BASE_MAPS: BaseMapDefinition[] = [
   {
     id: "cartoVoyagerNoLabels",
     nameEn:
-      "CARTO Voyager — No Labels",
+      "CARTO Voyager â€” No Labels",
     nameMs:
-      "CARTO Voyager — Tanpa Label",
+      "CARTO Voyager â€” Tanpa Label",
     url:
       "https://{s}.basemaps.cartocdn.com/" +
       "rastertiles/voyager_nolabels/" +
@@ -393,9 +393,9 @@ const BASE_MAPS: BaseMapDefinition[] = [
   {
     id: "cartoPositronNoLabels",
     nameEn:
-      "CARTO Positron — No Labels",
+      "CARTO Positron â€” No Labels",
     nameMs:
-      "CARTO Positron — Tanpa Label",
+      "CARTO Positron â€” Tanpa Label",
     url:
       "https://{s}.basemaps.cartocdn.com/" +
       "light_nolabels/{z}/{x}/{y}{r}.png",
@@ -421,9 +421,9 @@ const BASE_MAPS: BaseMapDefinition[] = [
   {
     id: "cartoDarkMatterNoLabels",
     nameEn:
-      "CARTO Dark Matter — No Labels",
+      "CARTO Dark Matter â€” No Labels",
     nameMs:
-      "CARTO Tema Gelap — Tanpa Label",
+      "CARTO Tema Gelap â€” Tanpa Label",
     url:
       "https://{s}.basemaps.cartocdn.com/" +
       "dark_nolabels/{z}/{x}/{y}{r}.png",
@@ -709,8 +709,8 @@ const MAP_TEXT = {
     locationSuccess: (
       accuracy: number,
     ) =>
-      `Location tracked · ` +
-      `±${accuracy.toFixed(1)} m`,
+      `Location tracked Â· ` +
+      `Â±${accuracy.toFixed(1)} m`,
 
     locationUnsupported:
       "Location services are not supported.",
@@ -900,8 +900,8 @@ const MAP_TEXT = {
     locationSuccess: (
       accuracy: number,
     ) =>
-      `Lokasi dijejaki · ` +
-      `±${accuracy.toFixed(1)} m`,
+      `Lokasi dijejaki Â· ` +
+      `Â±${accuracy.toFixed(1)} m`,
 
     locationUnsupported:
       "Perkhidmatan lokasi tidak disokong.",
@@ -1332,20 +1332,20 @@ function bearingToDms(
     ).padStart(
       3,
       "0",
-    )}°` +
+    )}Â°` +
     " " +
     `${String(
       minutes,
     ).padStart(
       2,
       "0",
-    )}′ ` +
+    )}â€² ` +
     `${String(
       seconds,
     ).padStart(
       2,
       "0",
-    )}″`
+    )}â€³`
   );
 }
 
@@ -1472,7 +1472,7 @@ export function formatAreaDisplay(
           ),
 
         symbol:
-          "ft²",
+          "ftÂ²",
       };
 
     case "ha":
@@ -1513,7 +1513,7 @@ export function formatAreaDisplay(
           ),
 
         symbol:
-          "m²",
+          "mÂ²",
       };
   }
 }
@@ -2252,10 +2252,15 @@ function locationErrorMessage(
   error: GeolocationPositionError,
   language: AppLanguage,
 ): string {
-  const text =
-    MAP_TEXT[
-      language
-    ];
+    type MapTextValue =
+    (typeof MAP_TEXT)[keyof typeof MAP_TEXT];
+
+  const mapTextFallback: MapTextValue =
+    MAP_TEXT.en;
+
+  const text: MapTextValue =
+    (MAP_TEXT as Record<string, MapTextValue>)[String(language || "en")] ??
+    mapTextFallback;
 
   if (
     error.code ===
@@ -2733,9 +2738,7 @@ export default function Map({
     setLocationStatus,
   ] =
     useState<string>(
-      MAP_TEXT[
-        language
-      ].locationNotTracked,
+      ((MAP_TEXT[(language || "en") as keyof typeof MAP_TEXT]) ?? Object.values(MAP_TEXT)[0]).locationNotTracked,
     );
 
   const [
@@ -2743,9 +2746,7 @@ export default function Map({
     setMessage,
   ] =
     useState<string>(
-      MAP_TEXT[
-        language
-      ].mapReady,
+      ((MAP_TEXT[(language || "en") as keyof typeof MAP_TEXT]) ?? Object.values(MAP_TEXT)[0]).mapReady,
     );
 
   const [
@@ -2772,10 +2773,15 @@ export default function Map({
       "",
     );
 
-  const text =
-    MAP_TEXT[
-      language
-    ];
+    type MapTextValue =
+    (typeof MAP_TEXT)[keyof typeof MAP_TEXT];
+
+  const mapTextFallback: MapTextValue =
+    MAP_TEXT.en;
+
+  const text: MapTextValue =
+    (MAP_TEXT as Record<string, MapTextValue>)[String(language || "en")] ??
+    mapTextFallback;
 
   const coordinatePairsToCoordinates = (
     points: CoordinatePair[],
@@ -3381,7 +3387,7 @@ export default function Map({
           3 &&
         polygonFinishedRef.current
       ) {
-        callbackRef.current(
+        ((typeof callbackRef.current === "function" ? callbackRef.current : () => undefined))(
           createPolygonResult(
             points,
             distanceUnitRef.current,
@@ -3397,7 +3403,7 @@ export default function Map({
       const primaryPolygon =
         getPrimaryPolygon();
 
-      callbackRef.current(
+      ((typeof callbackRef.current === "function" ? callbackRef.current : () => undefined))(
         primaryPolygon
           ? createPolygonResult(
               coordinatesToPairs(
@@ -6225,23 +6231,17 @@ export default function Map({
               drawingRef.current
             ) {
               setMessage(
-                MAP_TEXT[
-                  language
-                ].drawingActive,
+                ((MAP_TEXT[(language || "en") as keyof typeof MAP_TEXT]) ?? Object.values(MAP_TEXT)[0]).drawingActive,
               );
             } else if (
               polygonFinishedRef.current
             ) {
               setMessage(
-                MAP_TEXT[
-                  language
-                ].polygonCompleted,
+                ((MAP_TEXT[(language || "en") as keyof typeof MAP_TEXT]) ?? Object.values(MAP_TEXT)[0]).polygonCompleted,
               );
             } else {
               setMessage(
-                MAP_TEXT[
-                  language
-                ].mapReady,
+                ((MAP_TEXT[(language || "en") as keyof typeof MAP_TEXT]) ?? Object.values(MAP_TEXT)[0]).mapReady,
               );
             }
 
@@ -6251,9 +6251,7 @@ export default function Map({
                 null
             ) {
               setLocationStatus(
-                MAP_TEXT[
-                  language
-                ].locationNotTracked,
+                ((MAP_TEXT[(language || "en") as keyof typeof MAP_TEXT]) ?? Object.values(MAP_TEXT)[0]).locationNotTracked,
               );
             }
           },
@@ -7064,7 +7062,7 @@ export default function Map({
 
       redrawPolygon();
 
-      callbackRef.current(
+      ((typeof callbackRef.current === "function" ? callbackRef.current : () => undefined))(
         null,
       );
     };
@@ -7207,7 +7205,7 @@ export default function Map({
         ].polygonDeleted,
       );
 
-      callbackRef.current(
+      ((typeof callbackRef.current === "function" ? callbackRef.current : () => undefined))(
         null,
       );
     };
@@ -8595,7 +8593,7 @@ export default function Map({
                   <br />
 
                   ${activeText.accuracy}:
-                  ±${accuracy.toFixed(1)} m
+                  Â±${accuracy.toFixed(1)} m
                 `,
               )
               .addTo(
@@ -9312,7 +9310,7 @@ export default function Map({
             }
             aria-label="Close Objects"
           >
-            ×
+            Ã—
           </button>
         </div>
 
@@ -9350,12 +9348,12 @@ export default function Map({
                   <span>
                     {object.geometryType ===
                     "polygon"
-                      ? `Polygon · ${formatNumber(
+                      ? `Polygon Â· ${formatNumber(
                           object.areaSqm,
                           2,
                           language,
-                        )} m²`
-                      : `Line · ${formatNumber(
+                        )} mÂ²`
+                      : `Line Â· ${formatNumber(
                           object.lengthM,
                           2,
                           language,
@@ -9541,7 +9539,7 @@ export default function Map({
           </label>
 
           <small>
-            {dashedDraftCount} draft points · {dashedLineCount} lines
+            {dashedDraftCount} draft points Â· {dashedLineCount} lines
           </small>
         </aside>
       )}
@@ -9779,7 +9777,7 @@ export default function Map({
               }
               aria-label="Close settings"
             >
-              ×
+              Ã—
             </button>
           </div>
 
@@ -9896,7 +9894,7 @@ export default function Map({
                 distanceUnit,
                 language,
               )}
-              {" · "}
+              {" Â· "}
               {currentArea.symbol}
             </strong>
           </div>
@@ -10000,7 +9998,7 @@ export default function Map({
         {locationAccuracy !==
           null && (
           <strong className="sl-location-accuracy">
-            ±
+            Â±
             {formatNumber(
               locationAccuracy,
               1,
@@ -10014,3 +10012,9 @@ export default function Map({
     </div>
     );
 }
+
+
+
+
+
+
