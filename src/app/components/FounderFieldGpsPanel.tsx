@@ -1,10 +1,9 @@
-﻿"use client";
+"use client";
 
 import {
   type ChangeEvent,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 
@@ -12,8 +11,7 @@ type GpsStatus =
   | "Ready"
   | "Capturing"
   | "Captured"
-  
-  | "Tracking"| "Error";
+  | "Error";
 
 type FounderGpsCategory =
   | "Boundary point"
@@ -73,67 +71,6 @@ function isStoredPoint(value: unknown): value is Record<string, unknown> {
   }
 
   const point = value as Record<string, unknown>;
-  const startTrackingPosition = () => {
-    if (!navigator.geolocation) {
-      setGpsStatus("Error");
-      setGpsMessage("GPS tidak disokong oleh browser ini.");
-      return;
-    }
-
-    if (watchIdRef.current !== null) {
-      navigator.geolocation.clearWatch(watchIdRef.current);
-    }
-
-    setIsTracking(true);
-    setGpsStatus("Tracking");
-    setGpsMessage("Tracking current position...");
-
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      (position) => {
-        const coords = position.coords;
-        const capturedAt = new Date();
-
-        setCurrentGps({
-          latitude: coords.latitude,
-          longitude: coords.longitude,
-          accuracy: typeof coords.accuracy === "number" ? coords.accuracy : null,
-          capturedAt,
-        });
-
-        setGpsStatus("Tracking");
-        setGpsMessage("Current GPS refreshed for approximate navigation.");
-      },
-      (error) => {
-        setGpsStatus("Error");
-        setGpsMessage(error.message || "Gagal mendapatkan lokasi GPS.");
-        setIsTracking(false);
-      },
-      {
-        enableHighAccuracy: true,
-        maximumAge: 2000,
-        timeout: 15000,
-      }
-    );
-  };
-
-  const stopTrackingPosition = () => {
-    if (watchIdRef.current !== null) {
-      navigator.geolocation.clearWatch(watchIdRef.current);
-      watchIdRef.current = null;
-    }
-
-    setIsTracking(false);
-    setGpsStatus(currentGps ? "Captured" : "Ready");
-    setGpsMessage("GPS tracking stopped.");
-  };
-
-  useEffect(() => {
-    return () => {
-      if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-      }
-    };
-  }, []);
 
   return (
     typeof point.id === "string" &&
@@ -223,134 +160,10 @@ function nextPointId(points: FounderGpsPoint[]): string {
 }
 
 function degreesToRadians(value: number): number {
-  const startTrackingPosition = () => {
-    if (!navigator.geolocation) {
-      setGpsStatus("Error");
-      setGpsMessage("GPS tidak disokong oleh browser ini.");
-      return;
-    }
-
-    if (watchIdRef.current !== null) {
-      navigator.geolocation.clearWatch(watchIdRef.current);
-    }
-
-    setIsTracking(true);
-    setGpsStatus("Tracking");
-    setGpsMessage("Tracking current position...");
-
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      (position) => {
-        const coords = position.coords;
-        const capturedAt = new Date();
-
-        setCurrentGps({
-          latitude: coords.latitude,
-          longitude: coords.longitude,
-          accuracy: typeof coords.accuracy === "number" ? coords.accuracy : null,
-          capturedAt,
-        });
-
-        setGpsStatus("Tracking");
-        setGpsMessage("Current GPS refreshed for approximate navigation.");
-      },
-      (error) => {
-        setGpsStatus("Error");
-        setGpsMessage(error.message || "Gagal mendapatkan lokasi GPS.");
-        setIsTracking(false);
-      },
-      {
-        enableHighAccuracy: true,
-        maximumAge: 2000,
-        timeout: 15000,
-      }
-    );
-  };
-
-  const stopTrackingPosition = () => {
-    if (watchIdRef.current !== null) {
-      navigator.geolocation.clearWatch(watchIdRef.current);
-      watchIdRef.current = null;
-    }
-
-    setIsTracking(false);
-    setGpsStatus(currentGps ? "Captured" : "Ready");
-    setGpsMessage("GPS tracking stopped.");
-  };
-
-  useEffect(() => {
-    return () => {
-      if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-      }
-    };
-  }, []);
-
   return (value * Math.PI) / 180;
 }
 
 function radiansToDegrees(value: number): number {
-  const startTrackingPosition = () => {
-    if (!navigator.geolocation) {
-      setGpsStatus("Error");
-      setGpsMessage("GPS tidak disokong oleh browser ini.");
-      return;
-    }
-
-    if (watchIdRef.current !== null) {
-      navigator.geolocation.clearWatch(watchIdRef.current);
-    }
-
-    setIsTracking(true);
-    setGpsStatus("Tracking");
-    setGpsMessage("Tracking current position...");
-
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      (position) => {
-        const coords = position.coords;
-        const capturedAt = new Date();
-
-        setCurrentGps({
-          latitude: coords.latitude,
-          longitude: coords.longitude,
-          accuracy: typeof coords.accuracy === "number" ? coords.accuracy : null,
-          capturedAt,
-        });
-
-        setGpsStatus("Tracking");
-        setGpsMessage("Current GPS refreshed for approximate navigation.");
-      },
-      (error) => {
-        setGpsStatus("Error");
-        setGpsMessage(error.message || "Gagal mendapatkan lokasi GPS.");
-        setIsTracking(false);
-      },
-      {
-        enableHighAccuracy: true,
-        maximumAge: 2000,
-        timeout: 15000,
-      }
-    );
-  };
-
-  const stopTrackingPosition = () => {
-    if (watchIdRef.current !== null) {
-      navigator.geolocation.clearWatch(watchIdRef.current);
-      watchIdRef.current = null;
-    }
-
-    setIsTracking(false);
-    setGpsStatus(currentGps ? "Captured" : "Ready");
-    setGpsMessage("GPS tracking stopped.");
-  };
-
-  useEffect(() => {
-    return () => {
-      if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-      }
-    };
-  }, []);
-
   return (value * 180) / Math.PI;
 }
 
@@ -388,67 +201,6 @@ function calculateBearingDegrees(
   const x =
     Math.cos(startLat) * Math.sin(endLat) -
     Math.sin(startLat) * Math.cos(endLat) * Math.cos(lngDelta);
-  const startTrackingPosition = () => {
-    if (!navigator.geolocation) {
-      setGpsStatus("Error");
-      setGpsMessage("GPS tidak disokong oleh browser ini.");
-      return;
-    }
-
-    if (watchIdRef.current !== null) {
-      navigator.geolocation.clearWatch(watchIdRef.current);
-    }
-
-    setIsTracking(true);
-    setGpsStatus("Tracking");
-    setGpsMessage("Tracking current position...");
-
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      (position) => {
-        const coords = position.coords;
-        const capturedAt = new Date();
-
-        setCurrentGps({
-          latitude: coords.latitude,
-          longitude: coords.longitude,
-          accuracy: typeof coords.accuracy === "number" ? coords.accuracy : null,
-          capturedAt,
-        });
-
-        setGpsStatus("Tracking");
-        setGpsMessage("Current GPS refreshed for approximate navigation.");
-      },
-      (error) => {
-        setGpsStatus("Error");
-        setGpsMessage(error.message || "Gagal mendapatkan lokasi GPS.");
-        setIsTracking(false);
-      },
-      {
-        enableHighAccuracy: true,
-        maximumAge: 2000,
-        timeout: 15000,
-      }
-    );
-  };
-
-  const stopTrackingPosition = () => {
-    if (watchIdRef.current !== null) {
-      navigator.geolocation.clearWatch(watchIdRef.current);
-      watchIdRef.current = null;
-    }
-
-    setIsTracking(false);
-    setGpsStatus(currentGps ? "Captured" : "Ready");
-    setGpsMessage("GPS tracking stopped.");
-  };
-
-  useEffect(() => {
-    return () => {
-      if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-      }
-    };
-  }, []);
 
   return (radiansToDegrees(Math.atan2(y, x)) + 360) % 360;
 }
@@ -832,69 +584,8 @@ export default function FounderFieldGpsPanel() {
       () => syncFounderMarkers(points, selectedPointId),
       800,
     );
-  const startTrackingPosition = () => {
-    if (!navigator.geolocation) {
-      setGpsStatus("Error");
-      setGpsMessage("GPS tidak disokong oleh browser ini.");
-      return;
-    }
 
-    if (watchIdRef.current !== null) {
-      navigator.geolocation.clearWatch(watchIdRef.current);
-    }
-
-    setIsTracking(true);
-    setGpsStatus("Tracking");
-    setGpsMessage("Tracking current position...");
-
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      (position) => {
-        const coords = position.coords;
-        const capturedAt = new Date();
-
-        setCurrentGps({
-          latitude: coords.latitude,
-          longitude: coords.longitude,
-          accuracy: typeof coords.accuracy === "number" ? coords.accuracy : null,
-          capturedAt,
-        });
-
-        setGpsStatus("Tracking");
-        setGpsMessage("Current GPS refreshed for approximate navigation.");
-      },
-      (error) => {
-        setGpsStatus("Error");
-        setGpsMessage(error.message || "Gagal mendapatkan lokasi GPS.");
-        setIsTracking(false);
-      },
-      {
-        enableHighAccuracy: true,
-        maximumAge: 2000,
-        timeout: 15000,
-      }
-    );
-  };
-
-  const stopTrackingPosition = () => {
-    if (watchIdRef.current !== null) {
-      navigator.geolocation.clearWatch(watchIdRef.current);
-      watchIdRef.current = null;
-    }
-
-    setIsTracking(false);
-    setGpsStatus(currentGps ? "Captured" : "Ready");
-    setGpsMessage("GPS tracking stopped.");
-  };
-
-  useEffect(() => {
-    return () => {
-      if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-      }
-    };
-  }, []);
-
-  return () => window.clearTimeout(timer);
+    return () => window.clearTimeout(timer);
   }, [points, selectedPointId]);
 
   function updatePoints(nextPoints: FounderGpsPoint[]) {
@@ -1096,67 +787,6 @@ export default function FounderFieldGpsPanel() {
   function handleNoteChange(event: ChangeEvent<HTMLTextAreaElement>) {
     setNote(event.target.value);
   }
-  const startTrackingPosition = () => {
-    if (!navigator.geolocation) {
-      setGpsStatus("Error");
-      setGpsMessage("GPS tidak disokong oleh browser ini.");
-      return;
-    }
-
-    if (watchIdRef.current !== null) {
-      navigator.geolocation.clearWatch(watchIdRef.current);
-    }
-
-    setIsTracking(true);
-    setGpsStatus("Tracking");
-    setGpsMessage("Tracking current position...");
-
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      (position) => {
-        const coords = position.coords;
-        const capturedAt = new Date();
-
-        setCurrentGps({
-          latitude: coords.latitude,
-          longitude: coords.longitude,
-          accuracy: typeof coords.accuracy === "number" ? coords.accuracy : null,
-          capturedAt,
-        });
-
-        setGpsStatus("Tracking");
-        setGpsMessage("Current GPS refreshed for approximate navigation.");
-      },
-      (error) => {
-        setGpsStatus("Error");
-        setGpsMessage(error.message || "Gagal mendapatkan lokasi GPS.");
-        setIsTracking(false);
-      },
-      {
-        enableHighAccuracy: true,
-        maximumAge: 2000,
-        timeout: 15000,
-      }
-    );
-  };
-
-  const stopTrackingPosition = () => {
-    if (watchIdRef.current !== null) {
-      navigator.geolocation.clearWatch(watchIdRef.current);
-      watchIdRef.current = null;
-    }
-
-    setIsTracking(false);
-    setGpsStatus(currentGps ? "Captured" : "Ready");
-    setGpsMessage("GPS tracking stopped.");
-  };
-
-  useEffect(() => {
-    return () => {
-      if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-      }
-    };
-  }, []);
 
   return (
     <section className="sl-field-gps-stack" aria-label="Founder GPS Handheld Mode">
@@ -1432,4 +1062,3 @@ export default function FounderFieldGpsPanel() {
     </section>
   );
 }
-
