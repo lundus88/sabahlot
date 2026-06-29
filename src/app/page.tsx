@@ -2,7 +2,7 @@
 
 import Map from "./components/Map";
 import FounderFieldGpsPanel from "./components/FounderFieldGpsPanel";
-import LandRecordOrganizerPanel from "./components/LandRecordOrganizerPanel";
+// LandRecordOrganizerPanel hidden in handheld branch
 
 export default function Home() {
   return (
@@ -12,7 +12,8 @@ export default function Home() {
         onPolygonChange={() => undefined}
       />
       <FounderFieldGpsPanel />
-      <LandRecordOrganizerPanel />
+      {false && {false && <LandRecordOrganizerPanel />}}
     </>
   );
 }
+
