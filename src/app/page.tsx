@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import Map from "./components/Map";
+import FounderFieldGpsPanel from "./components/FounderFieldGpsPanel";
 import LandRecordOrganizerPanel from "./components/LandRecordOrganizerPanel";
 
 export default function Home() {
@@ -10,6 +11,7 @@ export default function Home() {
         language="en"
         onPolygonChange={() => undefined}
       />
+      <FounderFieldGpsPanel />
       <LandRecordOrganizerPanel />
     </>
   );
