@@ -7654,3 +7654,138 @@ body {
 
 /* === SABAHLOT FORCE LAND RECORD MOBILE POSITION END === */
 
+/* === SABAHLOT MOBILE GPS ICON FORCE SHOW START === */
+
+@media (max-width: 760px) {
+  /*
+    Force Founder GPS launcher to appear clearly on phone.
+    It becomes a compact floating GPS button.
+  */
+
+  .sl-field-gps-stack.is-closed,
+  .sl-founder-gps-stack.is-closed {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: fixed !important;
+    top: auto !important;
+    left: auto !important;
+    right: 14px !important;
+    bottom: calc(env(safe-area-inset-bottom) + 156px) !important;
+    width: 72px !important;
+    height: 72px !important;
+    max-width: 72px !important;
+    max-height: 72px !important;
+    overflow: visible !important;
+    z-index: 900 !important;
+    transform: none !important;
+    pointer-events: auto !important;
+  }
+
+  .sl-field-gps-launcher,
+  .sl-founder-gps-launcher {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    width: 72px !important;
+    height: 72px !important;
+    min-width: 72px !important;
+    min-height: 72px !important;
+    max-width: 72px !important;
+    max-height: 72px !important;
+    padding: 8px !important;
+    border: 1px solid rgba(203, 213, 225, 0.95) !important;
+    border-radius: 22px !important;
+    background: rgba(255, 255, 255, 0.98) !important;
+    color: #0f172a !important;
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.25) !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+    pointer-events: auto !important;
+  }
+
+  .sl-field-gps-launcher span,
+  .sl-founder-gps-launcher span {
+    font-size: 0 !important;
+    line-height: 1 !important;
+  }
+
+  .sl-field-gps-launcher span::before,
+  .sl-founder-gps-launcher span::before {
+    content: "📍";
+    display: block;
+    font-size: 24px;
+    line-height: 1;
+    margin-bottom: 2px;
+  }
+
+  .sl-field-gps-launcher span::after,
+  .sl-founder-gps-launcher span::after {
+    content: "GPS";
+    display: block;
+    font-size: 12px;
+    line-height: 1;
+    font-weight: 900;
+    color: #0f172a;
+  }
+
+  .sl-field-gps-launcher strong,
+  .sl-founder-gps-launcher strong {
+    position: absolute !important;
+    top: -8px !important;
+    right: -8px !important;
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+    border-radius: 999px !important;
+    background: #0f172a !important;
+    color: #ffffff !important;
+    font-size: 12px !important;
+    font-weight: 900 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.25) !important;
+  }
+
+  /*
+    When GPS panel is opened, it must become bottom sheet.
+  */
+  .sl-field-gps-stack.is-open,
+  .sl-founder-gps-stack.is-open {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: fixed !important;
+    left: 12px !important;
+    right: 12px !important;
+    top: auto !important;
+    bottom: calc(env(safe-area-inset-bottom) + 78px) !important;
+    width: auto !important;
+    height: auto !important;
+    max-width: none !important;
+    max-height: 36dvh !important;
+    z-index: 920 !important;
+    overflow: hidden !important;
+    pointer-events: auto !important;
+  }
+
+  .sl-field-gps-panel,
+  .sl-founder-gps-panel {
+    max-height: 36dvh !important;
+    overflow: hidden !important;
+    border-radius: 20px !important;
+  }
+
+  .sl-field-gps-content,
+  .sl-founder-gps-content,
+  .sl-field-gps-body {
+    max-height: calc(36dvh - 64px) !important;
+    overflow-y: auto !important;
+  }
+}
+
+/* === SABAHLOT MOBILE GPS ICON FORCE SHOW END === */
+
