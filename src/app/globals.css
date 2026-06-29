@@ -7228,3 +7228,143 @@ body {
     max-height: clamp(120px, calc(100dvh - 352px), 36dvh) !important;
   }
 }
+
+/* === SABAHLOT MOBILE GPS OVERLAP FIX START === */
+
+@media (max-width: 760px) {
+  html,
+  body {
+    overflow-x: hidden !important;
+  }
+
+  .sl-map-shell {
+    --sl-mobile-edge: 12px;
+    --sl-mobile-toolbar-width: 68px;
+    --sl-mobile-toolbar-gap: 14px;
+    --sl-mobile-header-height: 118px;
+  }
+
+  .sl-floating-toolbar,
+  .sl-map-toolbar,
+  .sl-left-toolbar {
+    position: fixed !important;
+    left: var(--sl-mobile-edge) !important;
+    top: calc(env(safe-area-inset-top) + var(--sl-mobile-header-height)) !important;
+    width: var(--sl-mobile-toolbar-width) !important;
+    z-index: 520 !important;
+  }
+
+  .sl-land-record-card,
+  .sl-land-record-shell,
+  .sl-land-record-floating {
+    position: fixed !important;
+    left: calc(
+      var(--sl-mobile-edge) + var(--sl-mobile-toolbar-width) + var(--sl-mobile-toolbar-gap)
+    ) !important;
+    right: var(--sl-mobile-edge) !important;
+    top: calc(env(safe-area-inset-top) + var(--sl-mobile-header-height)) !important;
+    width: auto !important;
+    max-width: none !important;
+    z-index: 510 !important;
+    box-sizing: border-box !important;
+  }
+
+  .sl-field-gps-stack,
+  .sl-founder-gps-stack,
+  .sl-founder-gps-panel,
+  .sl-field-gps-panel {
+    position: fixed !important;
+    left: var(--sl-mobile-edge) !important;
+    right: var(--sl-mobile-edge) !important;
+    bottom: calc(env(safe-area-inset-bottom) + 76px) !important;
+    width: auto !important;
+    max-width: none !important;
+    max-height: 46dvh !important;
+    z-index: 760 !important;
+    border-radius: 20px !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  .sl-field-gps-content,
+  .sl-founder-gps-content,
+  .sl-field-gps-body {
+    max-height: calc(46dvh - 72px) !important;
+    overflow-y: auto !important;
+    padding-bottom: 16px !important;
+  }
+
+  .sl-field-gps-header,
+  .sl-founder-gps-header {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 2 !important;
+    background: rgba(255, 255, 255, 0.96) !important;
+    backdrop-filter: blur(10px);
+  }
+
+  .sl-field-gps-disclaimer,
+  .sl-gps-disclaimer {
+    font-size: 12px !important;
+    line-height: 1.45 !important;
+    padding: 10px 12px !important;
+    margin-bottom: 10px !important;
+  }
+
+  .sl-field-gps-card,
+  .sl-gps-card {
+    padding: 10px 12px !important;
+    margin-bottom: 10px !important;
+  }
+
+  .leaflet-control-container .leaflet-right {
+    right: 10px !important;
+  }
+
+  .leaflet-control {
+    z-index: 480 !important;
+  }
+
+  .sl-objects-card,
+  .sl-objects-panel {
+    right: 12px !important;
+    top: calc(env(safe-area-inset-top) + 76px) !important;
+    z-index: 500 !important;
+  }
+
+  .sl-bottom-status,
+  .sl-map-status {
+    left: 12px !important;
+    right: auto !important;
+    bottom: calc(env(safe-area-inset-bottom) + 10px) !important;
+    max-width: calc(100vw - 24px) !important;
+    z-index: 490 !important;
+  }
+}
+
+.sl-track-position-button {
+  width: 100%;
+  min-height: 48px;
+  border: 0;
+  border-radius: 14px;
+  background: #2563eb;
+  color: #ffffff;
+  font-weight: 900;
+  font-size: 15px;
+  cursor: pointer;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.25);
+  margin-bottom: 10px;
+}
+
+.sl-track-position-button.is-tracking {
+  background: #b91c1c;
+  box-shadow: 0 10px 22px rgba(185, 28, 28, 0.22);
+}
+
+.sl-track-position-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* === SABAHLOT MOBILE GPS OVERLAP FIX END === */
+
