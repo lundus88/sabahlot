@@ -6824,3 +6824,407 @@ select:focus-visible {
     min-height: 40px;
   }
 }
+
+/* Sprint 05B viewport-safe map chrome. Keep floating controls inside the map viewport. */
+html,
+body {
+  overflow-x: hidden;
+}
+
+.sl-topbar,
+.sl-search,
+.sl-tool-dock,
+.sl-drawing-toolbar,
+.sl-drawing-toolbar-vertical,
+.sl-context-toolbar,
+.sl-progressive-menu,
+.sl-tool-flyout,
+.sl-object-list,
+.sl-object-list-tab,
+.sl-land-record-panel,
+.sl-field-gps-stack,
+.sl-settings-card,
+.sl-map-navigation,
+.sl-map-status,
+.sl-floating-summary-card {
+  box-sizing: border-box;
+}
+
+.sl-map-shell {
+  --sl-map-edge: 16px;
+  --sl-toolbar-width: 76px;
+  --sl-toolbar-gap: 20px;
+  --sl-toolbar-top: calc(env(safe-area-inset-top) + 120px);
+  --sl-panel-top: calc(env(safe-area-inset-top) + 140px);
+  --sl-panel-left: calc(
+    var(--sl-map-edge) +
+    var(--sl-toolbar-width) +
+    var(--sl-toolbar-gap)
+  );
+  max-width: 100vw;
+  overflow: hidden;
+}
+
+.sl-topbar {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 10px);
+  right: var(--sl-map-edge);
+  left: var(--sl-map-edge);
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  width: auto;
+  max-width: calc(100vw - 32px);
+  min-width: 0;
+  min-height: 46px;
+  padding: 5px;
+  gap: 6px;
+  overflow: visible;
+  transform: none;
+}
+
+.sl-topbar > * {
+  min-width: 0;
+}
+
+.sl-topbar .sl-icon-button,
+.sl-topbar-actions .sl-icon-button {
+  flex: 0 0 36px;
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+}
+
+.sl-brand-chip {
+  flex: 0 1 154px;
+  width: auto;
+  max-width: min(154px, 22vw);
+  min-width: 0;
+  height: 36px;
+  overflow: hidden;
+}
+
+.sl-brand-chip > span:not(.sl-brand-mark) {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.sl-brand-chip strong,
+.sl-brand-chip small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sl-search {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(0, 1fr) 32px;
+  width: auto;
+  max-width: none;
+  min-width: 0;
+  height: 36px;
+  min-height: 36px;
+  padding: 0 3px 0 11px;
+  overflow: visible;
+}
+
+.sl-search input {
+  width: 100%;
+  min-width: 0;
+  height: 34px;
+  min-height: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sl-search button,
+.sl-search > button {
+  display: grid;
+  flex: 0 0 30px;
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
+  margin: 0;
+  padding: 0;
+  place-items: center;
+}
+
+.sl-topbar-actions {
+  position: static;
+  flex: 0 0 auto;
+  width: auto;
+  height: auto;
+  margin-left: 0;
+}
+
+.sl-search-message {
+  max-width: min(100%, calc(100vw - 32px));
+}
+
+.sl-tool-dock,
+.sl-drawing-toolbar-vertical {
+  top: var(--sl-toolbar-top) !important;
+  left: var(--sl-map-edge) !important;
+  z-index: 1086;
+  width: var(--sl-toolbar-width) !important;
+  max-width: var(--sl-toolbar-width) !important;
+  padding: 6px !important;
+}
+
+.sl-progressive-menu,
+.sl-tool-flyout {
+  top: var(--sl-toolbar-top) !important;
+  left: var(--sl-panel-left) !important;
+  z-index: 1088;
+  max-width: min(300px, calc(100vw - 144px)) !important;
+}
+
+.sl-context-toolbar {
+  top: calc(env(safe-area-inset-top) + 82px);
+  z-index: 1092;
+  max-width: calc(100vw - 32px);
+}
+
+.sl-object-list,
+.sl-object-list-tab {
+  right: var(--sl-map-edge) !important;
+  left: auto !important;
+  top: calc(env(safe-area-inset-top) + 72px) !important;
+  z-index: 1088;
+  max-width: calc(100vw - 32px);
+  transform: none !important;
+}
+
+.sl-object-list {
+  width: min(280px, calc(100vw - 32px));
+  max-height: min(420px, calc(100dvh - 116px));
+}
+
+.sl-object-list-tab {
+  max-width: min(180px, calc(100vw - 32px));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sl-land-record-panel {
+  top: var(--sl-panel-top) !important;
+  left: var(--sl-panel-left) !important;
+  right: auto !important;
+  z-index: 1089 !important;
+  width: min(420px, calc(100vw - 144px)) !important;
+  max-width: min(420px, calc(100vw - 144px)) !important;
+  max-height: calc(100dvh - 164px) !important;
+}
+
+.sl-land-record-panel.is-open {
+  width: min(420px, calc(100vw - 144px)) !important;
+  max-width: min(420px, calc(100vw - 144px)) !important;
+}
+
+@media (max-width: 1040px) {
+  .sl-map-shell {
+    --sl-toolbar-width: 72px;
+    --sl-toolbar-gap: 18px;
+  }
+
+  .sl-brand-chip {
+    max-width: 136px;
+  }
+
+  .sl-land-record-panel,
+  .sl-land-record-panel.is-open {
+    width: min(360px, calc(100vw - 128px)) !important;
+    max-width: min(360px, calc(100vw - 128px)) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .sl-map-shell {
+    --sl-map-edge: 8px;
+    --sl-toolbar-width: 72px;
+    --sl-toolbar-gap: 16px;
+    --sl-toolbar-top: calc(env(safe-area-inset-top) + 112px);
+    --sl-panel-top: calc(env(safe-area-inset-top) + 112px);
+    --sl-panel-left: 96px;
+  }
+
+  .sl-topbar {
+    top: calc(env(safe-area-inset-top) + 8px);
+    right: 8px;
+    left: 8px;
+    display: grid;
+    grid-template-columns: 36px 34px minmax(0, 1fr) 36px;
+    width: auto;
+    max-width: calc(100vw - 16px);
+    min-height: 46px;
+    padding: 5px;
+    gap: 5px;
+  }
+
+  .sl-brand-chip {
+    flex-basis: 34px;
+    width: 34px;
+    max-width: 34px;
+    min-width: 34px;
+    height: 34px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .sl-brand-chip > span:not(.sl-brand-mark) {
+    display: none;
+  }
+
+  .sl-brand-mark {
+    width: 30px;
+    height: 30px;
+  }
+
+  .sl-search {
+    grid-template-columns: minmax(0, 1fr) 30px;
+    height: 36px;
+    min-height: 36px;
+    padding: 0 3px 0 10px;
+  }
+
+  .sl-search input {
+    height: 34px;
+    min-height: 0;
+    font-size: 13px;
+  }
+
+  .sl-search button,
+  .sl-search > button {
+    display: grid;
+  }
+
+  .sl-topbar-actions {
+    position: static;
+    width: 36px;
+    height: 36px;
+  }
+
+  .sl-tool-dock {
+    top: var(--sl-toolbar-top) !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: 8px !important;
+    display: grid !important;
+    width: var(--sl-toolbar-width) !important;
+    max-width: var(--sl-toolbar-width) !important;
+    max-height: calc(100dvh - 128px) !important;
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+
+  .sl-dock-button {
+    width: 100%;
+    min-width: 0 !important;
+    min-height: 48px;
+    max-height: none;
+  }
+
+  .sl-progressive-menu,
+  .sl-tool-flyout {
+    top: calc(var(--sl-toolbar-top) + 2px) !important;
+    right: 8px !important;
+    bottom: auto !important;
+    left: var(--sl-panel-left) !important;
+    width: auto !important;
+    max-width: calc(100vw - 104px) !important;
+    max-height: min(42dvh, calc(100dvh - 136px)) !important;
+  }
+
+  .sl-context-toolbar {
+    position: fixed;
+    top: auto !important;
+    right: 8px;
+    bottom: calc(env(safe-area-inset-bottom) + 8px);
+    left: 8px;
+    max-width: calc(100vw - 16px);
+    transform: none;
+  }
+
+  .sl-object-list,
+  .sl-object-list-tab {
+    right: 8px !important;
+    max-width: calc(100vw - 16px);
+  }
+
+  .sl-object-list-tab {
+    top: calc(env(safe-area-inset-top) + 60px) !important;
+  }
+
+  .sl-object-list {
+    top: calc(env(safe-area-inset-top) + 102px) !important;
+    left: 8px !important;
+    width: auto;
+  }
+
+  .sl-land-record-panel {
+    top: var(--sl-panel-top) !important;
+    right: 8px !important;
+    left: var(--sl-panel-left) !important;
+    width: auto !important;
+    max-width: none !important;
+    max-height: min(48dvh, calc(100dvh - 136px)) !important;
+  }
+
+  .sl-land-record-panel.is-open {
+    top: var(--sl-panel-top) !important;
+    right: 8px !important;
+    left: var(--sl-panel-left) !important;
+    width: auto !important;
+    max-width: none !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .sl-topbar {
+    grid-template-columns: 34px 32px minmax(0, 1fr) 34px;
+    gap: 4px;
+    padding: 4px;
+  }
+
+  .sl-topbar .sl-icon-button,
+  .sl-topbar-actions,
+  .sl-topbar-actions .sl-icon-button {
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+    min-height: 34px;
+  }
+
+  .sl-brand-chip {
+    width: 32px;
+    max-width: 32px;
+    min-width: 32px;
+  }
+}
+
+@media (max-width: 480px) {
+  .sl-map-shell {
+    --sl-toolbar-width: 64px;
+    --sl-toolbar-top: calc(env(safe-area-inset-top) + 108px);
+  }
+
+  .sl-tool-dock {
+    width: var(--sl-toolbar-width) !important;
+    max-width: var(--sl-toolbar-width) !important;
+  }
+
+  .sl-land-record-panel,
+  .sl-land-record-panel.is-open {
+    top: calc(env(safe-area-inset-top) + 336px) !important;
+    right: 8px !important;
+    left: 8px !important;
+    width: auto !important;
+    max-width: calc(100vw - 16px) !important;
+    max-height: clamp(120px, calc(100dvh - 352px), 36dvh) !important;
+  }
+}
