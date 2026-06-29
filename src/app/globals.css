@@ -7563,4 +7563,94 @@ body {
 
 /* === SABAHLOT MOBILE OVERLAP FINAL FIX END === */
 
+/* === SABAHLOT FORCE LAND RECORD MOBILE POSITION START === */
+
+@media (max-width: 760px) {
+  /*
+    Force Land Record launcher/card away from middle of phone screen.
+    This targets the actual Land Record module broadly.
+  */
+
+  [class*="land-record" i]:not([class*="list" i]):not([class*="content" i]):not([class*="form" i]):not([class*="field" i]):not([class*="input" i]):not([class*="select" i]):not([class*="textarea" i]),
+  [class*="LandRecord" i]:not([class*="list" i]):not([class*="content" i]):not([class*="form" i]):not([class*="field" i]):not([class*="input" i]):not([class*="select" i]):not([class*="textarea" i]) {
+    position: fixed !important;
+    top: calc(env(safe-area-inset-top) + 92px) !important;
+    left: auto !important;
+    right: 12px !important;
+    bottom: auto !important;
+    width: min(220px, calc(100vw - 120px)) !important;
+    max-width: min(220px, calc(100vw - 120px)) !important;
+    min-width: 0 !important;
+    min-height: 48px !important;
+    max-height: 56px !important;
+    overflow: hidden !important;
+    z-index: 735 !important;
+    box-sizing: border-box !important;
+    transform: none !important;
+  }
+
+  /*
+    If the visible launcher has h2 / title / button inside,
+    keep it compact.
+  */
+  [class*="land-record" i] h1,
+  [class*="land-record" i] h2,
+  [class*="land-record" i] h3,
+  [class*="LandRecord" i] h1,
+  [class*="LandRecord" i] h2,
+  [class*="LandRecord" i] h3 {
+    font-size: 14px !important;
+    line-height: 1.1 !important;
+    margin: 0 !important;
+    white-space: nowrap !important;
+  }
+
+  [class*="land-record" i] button,
+  [class*="LandRecord" i] button {
+    min-height: 34px !important;
+    padding: 6px 10px !important;
+    font-size: 12px !important;
+    border-radius: 999px !important;
+  }
+
+  /*
+    If Land Record expanded panel opens, keep it as a bottom sheet
+    and do not leave it floating in the middle.
+  */
+  [class*="land-record" i].is-open,
+  [class*="LandRecord" i].is-open,
+  [class*="land-record" i][data-open="true"],
+  [class*="LandRecord" i][data-open="true"] {
+    left: 12px !important;
+    right: 12px !important;
+    top: auto !important;
+    bottom: calc(env(safe-area-inset-bottom) + 76px) !important;
+    width: auto !important;
+    max-width: none !important;
+    max-height: 42dvh !important;
+    overflow-y: auto !important;
+    z-index: 770 !important;
+  }
+
+  /*
+    Keep left toolbar free.
+  */
+  .sl-floating-toolbar,
+  .sl-map-toolbar,
+  .sl-left-toolbar {
+    z-index: 740 !important;
+  }
+
+  /*
+    Founder GPS bottom sheet stays lower than Land Record launcher.
+  */
+  .sl-field-gps-stack.is-open,
+  .sl-founder-gps-stack.is-open {
+    bottom: calc(env(safe-area-inset-bottom) + 76px) !important;
+    max-height: 34dvh !important;
+    z-index: 760 !important;
+  }
+}
+
+/* === SABAHLOT FORCE LAND RECORD MOBILE POSITION END === */
 
