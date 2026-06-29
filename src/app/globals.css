@@ -2334,11 +2334,11 @@ select:focus-visible {
 
 @media (max-width: 760px) {
   .sl-field-gps-stack {
-    right: 8px;
-    bottom: 74px;
-    left: 8px;
+    right: 10px;
+    bottom: calc(env(safe-area-inset-bottom) + 10px);
+    left: auto;
     width: auto;
-    max-height: calc(100dvh - 102px);
+    max-height: none;
   }
 
   .sl-field-gps-card {
@@ -2355,8 +2355,8 @@ select:focus-visible {
 
   .sl-topbar {
     top: 8px;
-    right: 8px;
-    left: 8px;
+    right: 10px;
+    left: auto;
     gap: 6px;
   }
 
@@ -2428,7 +2428,7 @@ select:focus-visible {
 
   .sl-drawing-toolbar-vertical {
     top: 56px;
-    left: 8px;
+    left: auto;
 
     gap: 5px;
     padding: 5px;
@@ -2459,7 +2459,7 @@ select:focus-visible {
 
   .sl-settings-card {
     top: 54px;
-    right: 8px;
+    right: 10px;
 
     width: min(285px, calc(100vw - 56px));
     max-height: calc(100dvh - 120px);
@@ -2488,7 +2488,7 @@ select:focus-visible {
   }
 
   .sl-map-navigation {
-    right: 8px;
+    right: 10px;
     bottom: 62px;
   }
 
@@ -2505,7 +2505,7 @@ select:focus-visible {
   .sl-map-status {
     right: 48px;
     bottom: 8px;
-    left: 8px;
+    left: auto;
 
     max-width: none;
     min-height: 34px;
@@ -3395,8 +3395,8 @@ select:focus-visible {
 @media (max-width: 760px) {
   .sl-topbar {
     top: 8px;
-    right: 8px;
-    left: 8px;
+    right: 10px;
+    left: auto;
   }
 
   .sl-search {
@@ -3417,7 +3417,7 @@ select:focus-visible {
 
   .sl-drawing-toolbar-vertical {
     top: 58px;
-    left: 8px;
+    left: auto;
     width: 52px;
     max-height: calc(100dvh - 126px);
     padding: 4px;
@@ -3475,7 +3475,7 @@ select:focus-visible {
 
   .sl-object-list {
     top: 160px;
-    right: 8px;
+    right: 10px;
     left: 64px;
     width: auto;
     max-height: 34dvh;
@@ -3887,9 +3887,9 @@ select:focus-visible {
 
   .sl-tool-dock {
     top: auto;
-    right: 8px;
+    right: 10px;
     bottom: 82px;
-    left: 8px;
+    left: auto;
     width: auto;
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
@@ -3907,16 +3907,16 @@ select:focus-visible {
 
   .sl-progressive-menu {
     top: auto;
-    right: 8px;
+    right: 10px;
     bottom: 150px;
-    left: 8px;
+    left: auto;
     width: auto;
   }
 
   .sl-floating-summary-card {
-    right: 8px;
+    right: 10px;
     bottom: 8px;
-    left: 8px;
+    left: auto;
     width: auto;
   }
 }
@@ -4098,9 +4098,9 @@ select:focus-visible {
   }
 
   .sl-tool-dock {
-    right: 8px;
+    right: 10px;
     bottom: 76px;
-    left: 8px;
+    left: auto;
     width: auto;
     padding: 6px;
     gap: 6px;
@@ -4367,24 +4367,24 @@ select:focus-visible {
   .sl-object-list,
   .sl-object-list-tab {
     top: 62px;
-    right: 8px;
+    right: 10px;
   }
 
   .sl-object-list {
-    left: 8px;
+    left: auto;
     width: auto;
     max-height: 34dvh;
   }
 
   .sl-map-navigation {
-    right: 8px;
+    right: 10px;
     bottom: 142px;
   }
 
   .sl-floating-summary-card {
-    right: 8px;
+    right: 10px;
     bottom: 8px;
-    left: 8px;
+    left: auto;
     width: auto;
   }
 }
@@ -4452,9 +4452,9 @@ select:focus-visible {
   }
 
   .sl-tool-dock {
-    right: 8px;
+    right: 10px;
     bottom: calc(58px + env(safe-area-inset-bottom));
-    left: 8px;
+    left: auto;
     width: auto;
     padding: 6px;
     gap: 6px;
@@ -4474,9 +4474,9 @@ select:focus-visible {
   }
 
   .sl-context-toolbar {
-    right: 8px;
+    right: 10px;
     bottom: calc(64px + env(safe-area-inset-bottom));
-    left: 8px;
+    left: auto;
     width: auto;
     transform: none;
   }
@@ -4489,9 +4489,9 @@ select:focus-visible {
   }
 
   .sl-progressive-menu {
-    right: 8px;
+    right: 10px;
     bottom: calc(124px + env(safe-area-inset-bottom));
-    left: 8px;
+    left: auto;
     width: auto;
     max-height: min(46dvh, calc(100dvh - 188px));
     overflow-y: auto;
@@ -4504,11 +4504,11 @@ select:focus-visible {
   .sl-object-list,
   .sl-object-list-tab {
     top: 58px;
-    right: 8px;
+    right: 10px;
   }
 
   .sl-object-list {
-    left: 8px;
+    left: auto;
     width: auto;
     max-height: min(42dvh, calc(100dvh - 190px));
     overflow-y: auto;
@@ -4537,7 +4537,7 @@ select:focus-visible {
   }
 
   .sl-map-navigation {
-    right: 8px;
+    right: 10px;
     bottom: calc(120px + env(safe-area-inset-bottom));
   }
 
@@ -4549,8 +4549,8 @@ select:focus-visible {
   .sl-dashed-line-options,
   .sl-field-point-options {
     top: 58px;
-    right: 8px;
-    left: 8px;
+    right: 10px;
+    left: auto;
     width: auto;
     max-height: min(42dvh, calc(100dvh - 188px));
     overflow-y: auto;
@@ -4558,8 +4558,8 @@ select:focus-visible {
 
   .sl-settings-card {
     top: 58px;
-    right: 8px;
-    left: 8px;
+    right: 10px;
+    left: auto;
     width: auto;
     max-height: calc(100dvh - 82px - env(safe-area-inset-bottom));
     overflow-y: auto;
@@ -4905,17 +4905,17 @@ select:focus-visible {
   .sl-object-list,
   .sl-object-list-tab {
     top: 60px;
-    right: 8px;
+    right: 10px;
   }
 
   .sl-object-list {
-    left: 8px;
+    left: auto;
     width: auto;
     max-height: min(40dvh, calc(100dvh - 184px));
   }
 
   .sl-map-navigation {
-    right: 8px;
+    right: 10px;
     bottom: 92px;
   }
 }
@@ -5117,7 +5117,7 @@ select:focus-visible {
   .sl-topbar {
     top: max(6px, env(safe-area-inset-top));
     right: 52px;
-    left: 8px;
+    left: auto;
     display: grid;
     grid-template-columns: 36px 34px minmax(0, 1fr);
     align-items: center;
@@ -5183,7 +5183,7 @@ select:focus-visible {
   .sl-topbar-actions {
     position: fixed;
     top: max(6px, env(safe-area-inset-top));
-    right: 8px;
+    right: 10px;
     display: flex;
     grid-column: auto;
     width: 42px;
@@ -5196,7 +5196,7 @@ select:focus-visible {
 
   .sl-object-list-tab {
     top: calc(52px + env(safe-area-inset-top));
-    right: 8px;
+    right: 10px;
     min-height: 36px;
     padding: 0 12px;
     border-radius: 999px;
@@ -5206,8 +5206,8 @@ select:focus-visible {
 
   .sl-object-list {
     top: calc(52px + env(safe-area-inset-top));
-    right: 8px;
-    left: 8px;
+    right: 10px;
+    left: auto;
     width: auto;
     max-height: min(30dvh, calc(100dvh - 170px));
     overflow-y: auto;
@@ -5280,14 +5280,14 @@ select:focus-visible {
   }
 
   .sl-map-navigation {
-    right: 8px;
+    right: 10px;
     bottom: calc(78px + env(safe-area-inset-bottom));
   }
 
   .sl-map-status {
-    right: 8px;
+    right: 10px;
     bottom: calc(76px + env(safe-area-inset-bottom));
-    left: 8px;
+    left: auto;
     min-height: 36px;
     padding: 6px 10px;
     font-size: 13px;
@@ -6428,7 +6428,7 @@ select:focus-visible {
   .sl-topbar {
     top: calc(env(safe-area-inset-top) + 8px);
     right: 54px;
-    left: 8px;
+    left: auto;
     display: grid;
     grid-template-columns: 36px 34px minmax(0, 1fr);
     width: auto;
@@ -6474,7 +6474,7 @@ select:focus-visible {
   .sl-topbar-actions {
     position: fixed;
     top: calc(env(safe-area-inset-top) + 8px);
-    right: 8px;
+    right: 10px;
     width: 42px;
     height: 42px;
   }
@@ -6494,8 +6494,8 @@ select:focus-visible {
   .sl-object-list {
     position: fixed;
     top: calc(env(safe-area-inset-top) + 102px);
-    right: 8px;
-    left: 8px;
+    right: 10px;
+    left: auto;
     width: auto;
     max-height: min(38dvh, calc(100dvh - 220px));
   }
@@ -6572,9 +6572,9 @@ select:focus-visible {
   .sl-context-toolbar {
     position: fixed;
     top: auto;
-    right: 8px;
+    right: 10px;
     bottom: calc(env(safe-area-inset-bottom) + 8px);
-    left: 8px;
+    left: auto;
     width: auto;
     max-height: 60px;
     transform: none;
@@ -6585,12 +6585,12 @@ select:focus-visible {
   }
 
   .sl-map-navigation {
-    right: 8px;
+    right: 10px;
     bottom: calc(env(safe-area-inset-bottom) + 82px);
   }
 
   .sl-field-gps-stack {
-    right: 8px;
+    right: 10px;
     bottom: calc(env(safe-area-inset-bottom) + 146px);
     width: min(232px, calc(100vw - 16px));
     max-height: min(44dvh, calc(100dvh - 194px));
@@ -6613,7 +6613,7 @@ select:focus-visible {
     display: flex !important;
     right: auto;
     bottom: calc(env(safe-area-inset-bottom) + 82px);
-    left: 8px;
+    left: auto;
     max-width: calc(100vw - 72px);
     min-height: 32px;
     padding: 5px 8px;
@@ -7055,8 +7055,8 @@ body {
 
   .sl-topbar {
     top: calc(env(safe-area-inset-top) + 8px);
-    right: 8px;
-    left: 8px;
+    right: 10px;
+    left: auto;
     display: grid;
     grid-template-columns: 36px 34px minmax(0, 1fr) 36px;
     width: auto;
@@ -7143,9 +7143,9 @@ body {
   .sl-context-toolbar {
     position: fixed;
     top: auto !important;
-    right: 8px;
+    right: 10px;
     bottom: calc(env(safe-area-inset-bottom) + 8px);
-    left: 8px;
+    left: auto;
     max-width: calc(100vw - 16px);
     transform: none;
   }
@@ -8350,4 +8350,36 @@ body {
 }
 
 /* === SABAHLOT GPS BUTTON BOTTOM RIGHT FIX END === */
+
+/* === SABAHLOT FIELD GPS FINAL OVERRIDE START === */
+
+@media (max-width: 760px) {
+  .sl-field-gps-stack {
+    position: fixed !important;
+    left: auto !important;
+    right: 10px !important;
+    top: auto !important;
+    bottom: calc(env(safe-area-inset-bottom) + 10px) !important;
+    width: auto !important;
+    max-width: none !important;
+    max-height: none !important;
+    transform: none !important;
+    z-index: 2147483647 !important;
+  }
+
+  .sl-field-gps-toggle {
+    width: 72px !important;
+    height: 72px !important;
+    min-width: 72px !important;
+    border-radius: 22px !important;
+    box-shadow: 0 18px 44px rgba(15, 23, 42, 0.36) !important;
+  }
+
+  .sl-field-gps-panel {
+    max-height: calc(100dvh - 120px) !important;
+    overflow-y: auto !important;
+  }
+}
+
+/* === SABAHLOT FIELD GPS FINAL OVERRIDE END === */
 
