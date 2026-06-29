@@ -7368,3 +7368,198 @@ body {
 
 /* === SABAHLOT MOBILE GPS OVERLAP FIX END === */
 
+/* === SABAHLOT MOBILE OVERLAP FINAL FIX START === */
+
+/*
+  FINAL MOBILE RULE:
+  - Header stays top.
+  - Toolbar stays left.
+  - Land Record stays as compact card.
+  - Founder GPS open panel becomes a short bottom sheet.
+  - Founder GPS must not climb up and overlap Land Record.
+*/
+
+@media (max-width: 760px) {
+  html,
+  body {
+    overflow-x: hidden !important;
+    overscroll-behavior: none;
+  }
+
+  .sl-map-shell {
+    --sl-mobile-edge: 12px;
+    --sl-mobile-toolbar-width: 68px;
+    --sl-mobile-toolbar-gap: 14px;
+    --sl-mobile-header-top: calc(env(safe-area-inset-top) + 76px);
+    --sl-mobile-toolbar-top: calc(env(safe-area-inset-top) + 122px);
+    --sl-mobile-landrecord-top: calc(env(safe-area-inset-top) + 428px);
+  }
+
+  /* Left toolbar: fixed and separate */
+  .sl-floating-toolbar,
+  .sl-map-toolbar,
+  .sl-left-toolbar {
+    position: fixed !important;
+    left: var(--sl-mobile-edge) !important;
+    top: var(--sl-mobile-toolbar-top) !important;
+    width: var(--sl-mobile-toolbar-width) !important;
+    z-index: 520 !important;
+  }
+
+  /* Land Record: keep as compact horizontal card above GPS bottom sheet */
+  .sl-land-record-card,
+  .sl-land-record-shell,
+  .sl-land-record-floating {
+    position: fixed !important;
+    left: var(--sl-mobile-edge) !important;
+    right: var(--sl-mobile-edge) !important;
+    top: var(--sl-mobile-landrecord-top) !important;
+    width: auto !important;
+    max-width: none !important;
+    min-height: 54px !important;
+    max-height: 64px !important;
+    overflow: hidden !important;
+    z-index: 560 !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Founder GPS CLOSED launcher */
+  .sl-field-gps-stack.is-closed,
+  .sl-founder-gps-stack.is-closed {
+    position: fixed !important;
+    right: 14px !important;
+    bottom: calc(env(safe-area-inset-bottom) + 156px) !important;
+    left: auto !important;
+    width: auto !important;
+    max-width: 220px !important;
+    z-index: 540 !important;
+  }
+
+  /* Founder GPS OPEN: force short bottom sheet */
+  .sl-field-gps-stack.is-open,
+  .sl-founder-gps-stack.is-open {
+    position: fixed !important;
+    left: var(--sl-mobile-edge) !important;
+    right: var(--sl-mobile-edge) !important;
+    top: auto !important;
+    bottom: calc(env(safe-area-inset-bottom) + 78px) !important;
+    width: auto !important;
+    max-width: none !important;
+    height: auto !important;
+    max-height: 34dvh !important;
+    z-index: 760 !important;
+    transform: none !important;
+    box-sizing: border-box !important;
+  }
+
+  .sl-field-gps-panel,
+  .sl-founder-gps-panel {
+    position: relative !important;
+    width: 100% !important;
+    height: auto !important;
+    max-height: 34dvh !important;
+    overflow: hidden !important;
+    border-radius: 20px 20px 18px 18px !important;
+    box-sizing: border-box !important;
+  }
+
+  .sl-field-gps-header,
+  .sl-founder-gps-header {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 3 !important;
+    padding: 10px 12px !important;
+    background: rgba(255, 255, 255, 0.98) !important;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.9) !important;
+  }
+
+  .sl-field-gps-header h2,
+  .sl-founder-gps-header h2 {
+    font-size: 16px !important;
+    line-height: 1.1 !important;
+    margin: 0 !important;
+  }
+
+  .sl-field-gps-header p,
+  .sl-founder-gps-header p {
+    font-size: 11px !important;
+    line-height: 1.25 !important;
+    margin: 3px 0 0 !important;
+  }
+
+  .sl-field-gps-content,
+  .sl-founder-gps-content,
+  .sl-field-gps-body {
+    max-height: calc(34dvh - 58px) !important;
+    overflow-y: auto !important;
+    padding: 10px 12px 14px !important;
+    box-sizing: border-box !important;
+  }
+
+  .sl-field-gps-disclaimer,
+  .sl-gps-disclaimer {
+    font-size: 11px !important;
+    line-height: 1.35 !important;
+    padding: 8px 10px !important;
+    margin-bottom: 8px !important;
+  }
+
+  .sl-field-gps-card,
+  .sl-gps-card {
+    padding: 8px 10px !important;
+    margin-bottom: 8px !important;
+  }
+
+  .sl-field-gps-card div {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 6px !important;
+  }
+
+  .sl-field-gps-input,
+  .sl-field-gps-textarea {
+    min-height: 42px !important;
+    font-size: 14px !important;
+  }
+
+  .sl-field-gps-textarea {
+    min-height: 58px !important;
+  }
+
+  .sl-field-gps-actions,
+  .sl-field-gps-export-row,
+  .sl-field-gps-point-actions {
+    gap: 8px !important;
+    margin-bottom: 8px !important;
+  }
+
+  /* Keep zoom controls clickable and away from bottom sheet */
+  .leaflet-control-container .leaflet-right {
+    right: 10px !important;
+  }
+
+  .leaflet-control {
+    z-index: 480 !important;
+  }
+
+  /* Objects panel stays top-right */
+  .sl-objects-card,
+  .sl-objects-panel {
+    right: 12px !important;
+    top: calc(env(safe-area-inset-top) + 92px) !important;
+    z-index: 530 !important;
+  }
+
+  /* Bottom status stays below map but below GPS sheet */
+  .sl-bottom-status,
+  .sl-map-status {
+    left: 12px !important;
+    right: auto !important;
+    bottom: calc(env(safe-area-inset-bottom) + 10px) !important;
+    max-width: calc(100vw - 24px) !important;
+    z-index: 490 !important;
+  }
+}
+
+/* === SABAHLOT MOBILE OVERLAP FINAL FIX END === */
+
