@@ -2,9 +2,26 @@
 
 import {
   type ChangeEvent,
+  useEffect,
   useMemo,
   useState,
 } from "react";
+
+type GpsStatus =
+  | "Ready"
+  | "Capturing"
+  | "Captured"
+  | "Error";
+
+type FounderGpsCategory =
+  | "Boundary point"
+  | "Access point"
+  | "Road edge"
+  | "River / drain"
+  | "Building / house"
+  | "Old peg / marker"
+  | "Photo location"
+  | "Other";
 
 interface FounderGpsPoint {
   id: string;
@@ -14,6 +31,7 @@ interface FounderGpsPoint {
   accuracy: number | null;
   createdAt: string;
   note: string;
+  category: FounderGpsCategory;
 }
 
 interface CurrentPosition {
@@ -24,9 +42,46 @@ interface CurrentPosition {
 }
 
 const STORAGE_KEY = "sabahlot-founder-field-gps-test-v1";
+const SESSION_STORAGE_KEY = "sabahlot-founder-field-gps-session-name-v1";
+const DEFAULT_SESSION_NAME = "Founder Field Test";
 const EARTH_RADIUS_METERS = 6371008.8;
 const DISCLAIMER =
   "Field GPS ini adalah untuk rujukan awal dan ujian lapangan sahaja. Ia bukan kerja ukur rasmi, bukan stakeout sempadan, bukan pengesahan koordinat sah, dan bukan pengganti juruukur berlesen.";
+
+const categoryOptions: FounderGpsCategory[] = [
+  "Boundary point",
+  "Access point",
+  "Road edge",
+  "River / drain",
+  "Building / house",
+  "Old peg / marker",
+  "Photo location",
+  "Other",
+];
+
+function normalizeCategory(value: unknown): FounderGpsCategory {
+  return categoryOptions.includes(value as FounderGpsCategory)
+    ? (value as FounderGpsCategory)
+    : "Other";
+}
+
+function isStoredPoint(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const point = value as Record<string, unknown>;
+
+  return (
+    typeof point.id === "string" &&
+    typeof point.pointId === "string" &&
+    typeof point.latitude === "number" &&
+    typeof point.longitude === "number" &&
+    (typeof point.accuracy === "number" || point.accuracy === null) &&
+    typeof point.createdAt === "string" &&
+    typeof point.note === "string"
+  );
+}
 
 function loadPoints(): FounderGpsPoint[] {
   if (typeof window === "undefined") {
@@ -46,7 +101,18 @@ function loadPoints(): FounderGpsPoint[] {
       return [];
     }
 
-    return parsed.filter(isFounderGpsPoint);
+    return parsed
+      .filter(isStoredPoint)
+      .map((point) => ({
+        id: point.id as string,
+        pointId: point.pointId as string,
+        latitude: point.latitude as number,
+        longitude: point.longitude as number,
+        accuracy: point.accuracy as number | null,
+        createdAt: point.createdAt as string,
+        note: point.note as string,
+        category: normalizeCategory(point.category),
+      }));
   } catch {
     return [];
   }
@@ -57,27 +123,25 @@ function savePoints(points: FounderGpsPoint[]) {
     return;
   }
 
-  window.localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify(points),
-  );
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(points));
 }
 
-function isFounderGpsPoint(value: unknown): value is FounderGpsPoint {
-  if (!value || typeof value !== "object") {
-    return false;
+function loadSessionName(): string {
+  if (typeof window === "undefined") {
+    return DEFAULT_SESSION_NAME;
   }
 
-  const point = value as Record<string, unknown>;
+  return window.localStorage.getItem(SESSION_STORAGE_KEY)?.trim() || DEFAULT_SESSION_NAME;
+}
 
-  return (
-    typeof point.id === "string" &&
-    typeof point.pointId === "string" &&
-    typeof point.latitude === "number" &&
-    typeof point.longitude === "number" &&
-    (typeof point.accuracy === "number" || point.accuracy === null) &&
-    typeof point.createdAt === "string" &&
-    typeof point.note === "string"
+function saveSessionName(value: string) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(
+    SESSION_STORAGE_KEY,
+    value.trim() || DEFAULT_SESSION_NAME,
   );
 }
 
@@ -120,14 +184,7 @@ function calculateDistanceMeters(
       Math.cos(endLat) *
       Math.sin(lngDelta / 2) ** 2;
 
-  return (
-    EARTH_RADIUS_METERS *
-    2 *
-    Math.atan2(
-      Math.sqrt(a),
-      Math.sqrt(1 - a),
-    )
-  );
+  return EARTH_RADIUS_METERS * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 function calculateBearingDegrees(
@@ -140,15 +197,10 @@ function calculateBearingDegrees(
   const endLat = degreesToRadians(endLatitude);
   const lngDelta = degreesToRadians(endLongitude - startLongitude);
 
-  const y =
-    Math.sin(lngDelta) *
-    Math.cos(endLat);
+  const y = Math.sin(lngDelta) * Math.cos(endLat);
   const x =
-    Math.cos(startLat) *
-      Math.sin(endLat) -
-    Math.sin(startLat) *
-      Math.cos(endLat) *
-      Math.cos(lngDelta);
+    Math.cos(startLat) * Math.sin(endLat) -
+    Math.sin(startLat) * Math.cos(endLat) * Math.cos(lngDelta);
 
   return (radiansToDegrees(Math.atan2(y, x)) + 360) % 360;
 }
@@ -189,20 +241,21 @@ function formatDistance(value: number): string {
   return `${value.toFixed(0)} m`;
 }
 
-function formatDateTime(value: string): string {
+function formatDateTime(value: string | null): string {
+  if (!value) {
+    return "Not captured";
+  }
+
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
     return value;
   }
 
-  return new Intl.DateTimeFormat(
-    "en-MY",
-    {
-      dateStyle: "medium",
-      timeStyle: "short",
-    },
-  ).format(date);
+  return new Intl.DateTimeFormat("en-MY", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
 }
 
 function escapeHtml(value: string): string {
@@ -214,10 +267,24 @@ function escapeHtml(value: string): string {
     "'": "&#039;",
   };
 
-  return value.replace(
-    /[&<>"']/g,
-    (character) => replacements[character],
-  );
+  return value.replace(/[&<>"']/g, (character) => replacements[character]);
+}
+
+function csvCell(value: string | number | null): string {
+  const text = value === null ? "" : String(value);
+
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function downloadTextFile(filename: string, mimeType: string, content: string) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 function focusMapToPoint(point: FounderGpsPoint) {
@@ -226,27 +293,127 @@ function focusMapToPoint(point: FounderGpsPoint) {
   }
 
   window.dispatchEvent(
-    new CustomEvent(
-      "sabahlot:find-coordinate",
-      {
-        detail: {
-          latitude: point.latitude,
-          longitude: point.longitude,
-          label: point.pointId,
-          note: point.note,
-        },
+    new CustomEvent("sabahlot:find-coordinate", {
+      detail: {
+        latitude: point.latitude,
+        longitude: point.longitude,
+        label: point.pointId,
+        note: `${point.category}${point.note ? ` - ${point.note}` : ""}`,
       },
-    ),
+    }),
   );
 }
 
-function buildPlanHtml(points: FounderGpsPoint[]): string {
+function syncFounderMarkers(points: FounderGpsPoint[], selectedPointId: string | null) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.dispatchEvent(
+    new CustomEvent("sabahlot:founder-gps-points", {
+      detail: {
+        points: points.map((point) => ({
+          pointId: point.pointId,
+          latitude: point.latitude,
+          longitude: point.longitude,
+          accuracy: point.accuracy,
+          createdAt: point.createdAt,
+          note: point.note,
+          category: point.category,
+          selected: point.id === selectedPointId,
+        })),
+      },
+    }),
+  );
+}
+
+function buildCsv(points: FounderGpsPoint[]): string {
+  const header = [
+    "Point ID",
+    "Category",
+    "Note",
+    "Latitude",
+    "Longitude",
+    "Accuracy (m)",
+    "Timestamp",
+  ];
+  const rows = points.map((point) => [
+    point.pointId,
+    point.category,
+    point.note,
+    point.latitude,
+    point.longitude,
+    point.accuracy,
+    point.createdAt,
+  ]);
+
+  return [header, ...rows].map((row) => row.map(csvCell).join(",")).join("\n");
+}
+
+function buildKml(points: FounderGpsPoint[], sessionName: string): string {
+  const placemarks = points
+    .map(
+      (point) => `
+        <Placemark>
+          <name>${escapeHtml(point.pointId)} - ${escapeHtml(point.category)}</name>
+          <description>${escapeHtml(
+            [
+              point.note || "No note",
+              `Accuracy: ${formatAccuracy(point.accuracy)}`,
+              `Captured: ${formatDateTime(point.createdAt)}`,
+              DISCLAIMER,
+            ].join("\n"),
+          )}</description>
+          <Point>
+            <coordinates>${point.longitude},${point.latitude},0</coordinates>
+          </Point>
+        </Placemark>`,
+    )
+    .join("");
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>${escapeHtml(sessionName || DEFAULT_SESSION_NAME)}</name>
+    ${placemarks}
+  </Document>
+</kml>`;
+}
+
+function buildGeoJson(points: FounderGpsPoint[], sessionName: string): string {
+  return JSON.stringify(
+    {
+      type: "FeatureCollection",
+      name: sessionName || DEFAULT_SESSION_NAME,
+      disclaimer: DISCLAIMER,
+      features: points.map((point) => ({
+        type: "Feature",
+        properties: {
+          pointId: point.pointId,
+          category: point.category,
+          note: point.note,
+          accuracy: point.accuracy,
+          timestamp: point.createdAt,
+        },
+        geometry: {
+          type: "Point",
+          coordinates: [point.longitude, point.latitude],
+        },
+      })),
+    },
+    null,
+    2,
+  );
+}
+
+function buildPlanHtml(points: FounderGpsPoint[], sessionName: string): string {
   const generatedAt = formatDateTime(new Date().toISOString());
   const rows = points
     .map(
       (point) => `
         <tr>
           <td>${escapeHtml(point.pointId)}</td>
+          <td>${escapeHtml(point.category)}</td>
           <td>${formatCoordinate(point.latitude)}</td>
           <td>${formatCoordinate(point.longitude)}</td>
           <td>${escapeHtml(formatAccuracy(point.accuracy))}</td>
@@ -260,7 +427,7 @@ function buildPlanHtml(points: FounderGpsPoint[]): string {
   return `<!doctype html>
     <html>
       <head>
-        <title>Preliminary Field Point Plan</title>
+        <title>SabahLot Preliminary Field Point Plan</title>
         <style>
           body {
             margin: 32px;
@@ -274,7 +441,7 @@ function buildPlanHtml(points: FounderGpsPoint[]): string {
           }
 
           p {
-            margin: 0 0 14px;
+            margin: 0 0 12px;
             color: #475569;
             font-size: 12px;
             line-height: 1.45;
@@ -283,7 +450,7 @@ function buildPlanHtml(points: FounderGpsPoint[]): string {
           table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 11px;
+            font-size: 10px;
           }
 
           th,
@@ -309,25 +476,27 @@ function buildPlanHtml(points: FounderGpsPoint[]): string {
         </style>
       </head>
       <body>
-        <h1>Preliminary Field Point Plan</h1>
-        <p>SabahLot Founder Field GPS Test - internal founder reference only</p>
-        <p>Generated: ${escapeHtml(generatedAt)}</p>
+        <h1>SabahLot Preliminary Field Point Plan</h1>
+        <p>Session: ${escapeHtml(sessionName || DEFAULT_SESSION_NAME)}</p>
+        <p>Project/session date: ${escapeHtml(generatedAt)}</p>
+        <p>Total saved points: ${points.length}</p>
         <div class="warning">${escapeHtml(DISCLAIMER)}</div>
         <table>
           <thead>
             <tr>
               <th>Point ID</th>
+              <th>Category</th>
               <th>Latitude</th>
               <th>Longitude</th>
               <th>Accuracy</th>
               <th>Date/time</th>
-              <th>Note</th>
+              <th>Notes</th>
             </tr>
           </thead>
           <tbody>
             ${
               rows ||
-              '<tr><td colspan="6">No field GPS points saved.</td></tr>'
+              '<tr><td colspan="7">No field GPS points saved.</td></tr>'
             }
           </tbody>
         </table>
@@ -340,10 +509,18 @@ export default function FounderFieldGpsPanel() {
   const [points, setPoints] = useState<FounderGpsPoint[]>(() => loadPoints());
   const [selectedPointId, setSelectedPointId] = useState<string | null>(null);
   const [note, setNote] = useState("");
+  const [category, setCategory] =
+    useState<FounderGpsCategory>("Boundary point");
+  const [sessionName, setSessionName] = useState(() => loadSessionName());
   const [currentPosition, setCurrentPosition] =
     useState<CurrentPosition | null>(null);
-  const [status, setStatus] = useState("Ready for internal founder field test.");
-  const [isLocating, setIsLocating] = useState(false);
+  const [gpsStatus, setGpsStatus] = useState<GpsStatus>("Ready");
+  const [statusMessage, setStatusMessage] =
+    useState("Ready for internal founder field test.");
+  const [permissionError, setPermissionError] = useState("");
+  const [editingPointId, setEditingPointId] = useState<string | null>(null);
+  const [editingNote, setEditingNote] = useState("");
+  const [pointSearch, setPointSearch] = useState("");
 
   const selectedPoint = useMemo(
     () =>
@@ -378,39 +555,85 @@ export default function FounderFieldGpsPanel() {
     };
   }, [currentPosition, selectedPoint]);
 
+  const lastUpdated = points[0]?.createdAt ?? null;
+  const visiblePoints = useMemo(() => {
+    const query = pointSearch.trim().toLowerCase();
+
+    if (!query) {
+      return points;
+    }
+
+    return points.filter((point) =>
+      [
+        point.pointId,
+        point.category,
+        point.note,
+        formatCoordinate(point.latitude),
+        formatCoordinate(point.longitude),
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(query),
+    );
+  }, [pointSearch, points]);
+
+  useEffect(() => {
+    syncFounderMarkers(points, selectedPointId);
+
+    const timer = window.setTimeout(
+      () => syncFounderMarkers(points, selectedPointId),
+      800,
+    );
+
+    return () => window.clearTimeout(timer);
+  }, [points, selectedPointId]);
+
   function updatePoints(nextPoints: FounderGpsPoint[]) {
     setPoints(nextPoints);
     savePoints(nextPoints);
   }
 
+  function updateSessionName(value: string) {
+    setSessionName(value);
+    saveSessionName(value);
+  }
+
   function handleGeolocationError(error: GeolocationPositionError) {
+    setGpsStatus("Error");
+
     if (error.code === error.PERMISSION_DENIED) {
-      setStatus("Location permission denied.");
+      setPermissionError("Browser GPS permission is blocked or denied.");
+      setStatusMessage("Location permission denied.");
       return;
     }
 
     if (error.code === error.TIMEOUT) {
-      setStatus("GPS request timed out. Try again outdoors.");
+      setPermissionError("");
+      setStatusMessage("GPS request timed out. Try again outdoors.");
       return;
     }
 
-    setStatus("Current GPS location is unavailable.");
+    setPermissionError("");
+    setStatusMessage("Current GPS location is unavailable.");
   }
 
   function requestCurrentPosition(
     onSuccess: (position: GeolocationPosition) => void,
   ) {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
-      setStatus("Location services are not supported on this browser.");
+      setGpsStatus("Error");
+      setPermissionError("Location services are not supported on this browser.");
+      setStatusMessage("Location services are not supported on this browser.");
       return;
     }
 
-    setIsLocating(true);
-    setStatus("Requesting phone GPS location...");
+    setGpsStatus("Capturing");
+    setPermissionError("");
+    setStatusMessage("Capturing phone GPS location...");
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setIsLocating(false);
+        setGpsStatus("Captured");
         setCurrentPosition({
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
@@ -422,7 +645,6 @@ export default function FounderFieldGpsPanel() {
         onSuccess(position);
       },
       (error) => {
-        setIsLocating(false);
         handleGeolocationError(error);
       },
       {
@@ -445,26 +667,27 @@ export default function FounderFieldGpsPanel() {
           : null,
         createdAt: new Date().toISOString(),
         note: note.trim(),
+        category,
       };
       const nextPoints = [point, ...points];
 
       updatePoints(nextPoints);
       setSelectedPointId(point.id);
       setNote("");
-      setStatus(`${point.pointId} saved to this device.`);
+      setStatusMessage(`${point.pointId} saved to this browser.`);
       focusMapToPoint(point);
     });
   }
 
   function handleRefreshCurrentLocation() {
     requestCurrentPosition(() => {
-      setStatus("Current location refreshed for navigation estimate.");
+      setStatusMessage("Current GPS refreshed for approximate navigation.");
     });
   }
 
   function handleSelectPoint(point: FounderGpsPoint) {
     setSelectedPointId(point.id);
-    setStatus(`${point.pointId} selected.`);
+    setStatusMessage(`${point.pointId} selected for Navigate.`);
     focusMapToPoint(point);
   }
 
@@ -477,46 +700,110 @@ export default function FounderFieldGpsPanel() {
       setSelectedPointId(nextPoints[0]?.id ?? null);
     }
 
-    setStatus("Field GPS point deleted.");
+    if (editingPointId === pointId) {
+      setEditingPointId(null);
+      setEditingNote("");
+    }
+
+    setStatusMessage("Field GPS point deleted.");
+  }
+
+  function beginEditNote(point: FounderGpsPoint) {
+    setEditingPointId(point.id);
+    setEditingNote(point.note);
+  }
+
+  function saveEditedNote(pointId: string) {
+    const nextPoints = points.map((point) =>
+      point.id === pointId
+        ? {
+            ...point,
+            note: editingNote.trim(),
+          }
+        : point,
+    );
+
+    updatePoints(nextPoints);
+    setEditingPointId(null);
+    setEditingNote("");
+    setStatusMessage("Point note updated.");
+  }
+
+  function handleClearAllPoints() {
+    if (points.length === 0) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Clear all Founder GPS saved points from this browser?",
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    updatePoints([]);
+    setSelectedPointId(null);
+    setEditingPointId(null);
+    setEditingNote("");
+    setStatusMessage("All Founder GPS points cleared.");
+  }
+
+  function handleExportCsv() {
+    downloadTextFile("sabahlot-founder-gps-points.csv", "text/csv", buildCsv(points));
+  }
+
+  function handleExportKml() {
+    downloadTextFile(
+      "sabahlot-founder-gps-points.kml",
+      "application/vnd.google-earth.kml+xml",
+      buildKml(points, sessionName),
+    );
+  }
+
+  function handleExportGeoJson() {
+    downloadTextFile(
+      "sabahlot-founder-gps-points.geojson",
+      "application/geo+json",
+      buildGeoJson(points, sessionName),
+    );
+  }
+
+  function handlePrintPlan() {
+    const printWindow = window.open("", "_blank");
+
+    if (!printWindow) {
+      setGpsStatus("Error");
+      setStatusMessage("Print window was blocked by the browser.");
+      return;
+    }
+
+    printWindow.document.write(buildPlanHtml(points, sessionName));
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
   }
 
   function handleNoteChange(event: ChangeEvent<HTMLTextAreaElement>) {
     setNote(event.target.value);
   }
 
-  function handlePrintPlan() {
-    const printWindow = window.open(
-      "",
-      "_blank",
-    );
-
-    if (!printWindow) {
-      setStatus("Print window was blocked by the browser.");
-      return;
-    }
-
-    printWindow.document.write(buildPlanHtml(points));
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
-  }
-
   return (
-    <section className="sl-field-gps-stack" aria-label="Founder Field GPS Test">
+    <section className="sl-field-gps-stack" aria-label="Founder GPS Handheld Mode">
       <div className="sl-field-gps-panel">
         <button
           type="button"
           className="sl-field-gps-toggle"
           onClick={() => setIsOpen((value) => !value)}
         >
-          {isOpen ? "Close Founder GPS" : "Founder Field GPS Test"}
+          {isOpen ? "Close Founder GPS" : "Founder GPS Handheld Mode"}
         </button>
 
         {isOpen && (
           <div className="sl-field-gps-card">
             <header className="sl-field-gps-heading">
               <div>
-                <span>Founder Field GPS Test</span>
+                <span>Founder GPS Handheld Mode</span>
                 <p className="sl-field-gps-note">
                   Internal founder field testing only. Not for Public Alpha users.
                 </p>
@@ -528,12 +815,78 @@ export default function FounderFieldGpsPanel() {
 
             <div className="sl-field-gps-section">
               <label className="sl-field-gps-label">
+                <span>Session name</span>
+                <input
+                  value={sessionName}
+                  onChange={(event) => updateSessionName(event.target.value)}
+                  placeholder={DEFAULT_SESSION_NAME}
+                />
+              </label>
+
+              <div className="sl-field-gps-session">
+                <span>Total points</span>
+                <strong>{points.length}</strong>
+                <span>Last updated</span>
+                <strong>{formatDateTime(lastUpdated)}</strong>
+                <small>Saved in this browser only.</small>
+              </div>
+            </div>
+
+            <div className="sl-field-gps-grid" aria-live="polite">
+              <span>GPS status</span>
+              <strong>{gpsStatus}</strong>
+
+              <span>Latitude</span>
+              <strong>
+                {currentPosition
+                  ? formatCoordinate(currentPosition.latitude)
+                  : "Not captured"}
+              </strong>
+
+              <span>Longitude</span>
+              <strong>
+                {currentPosition
+                  ? formatCoordinate(currentPosition.longitude)
+                  : "Not captured"}
+              </strong>
+
+              <span>Accuracy</span>
+              <strong>{formatAccuracy(currentPosition?.accuracy ?? null)}</strong>
+
+              <span>Last GPS time</span>
+              <strong>{formatDateTime(currentPosition?.capturedAt ?? null)}</strong>
+            </div>
+
+            {permissionError && (
+              <p className="sl-field-gps-error">{permissionError}</p>
+            )}
+
+            <p className="sl-field-gps-note">{statusMessage}</p>
+
+            <div className="sl-field-gps-section">
+              <label className="sl-field-gps-label">
+                <span>Point category</span>
+                <select
+                  value={category}
+                  onChange={(event) =>
+                    setCategory(event.target.value as FounderGpsCategory)
+                  }
+                >
+                  {categoryOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="sl-field-gps-label">
                 <span>Short note for next point</span>
                 <textarea
                   value={note}
                   onChange={handleNoteChange}
                   placeholder="Example: road edge, gate, old peg area..."
-                  maxLength={160}
+                  maxLength={180}
                 />
               </label>
 
@@ -542,14 +895,14 @@ export default function FounderFieldGpsPanel() {
                   type="button"
                   className="sl-field-gps-primary"
                   onClick={handleMarkCurrentLocation}
-                  disabled={isLocating}
+                  disabled={gpsStatus === "Capturing"}
                 >
-                  {isLocating ? "Locating..." : "Mark GPS"}
+                  {gpsStatus === "Capturing" ? "Capturing..." : "Mark Point"}
                 </button>
                 <button
                   type="button"
                   onClick={handleRefreshCurrentLocation}
-                  disabled={isLocating}
+                  disabled={gpsStatus === "Capturing"}
                 >
                   Refresh GPS
                 </button>
@@ -562,36 +915,86 @@ export default function FounderFieldGpsPanel() {
               </div>
             </div>
 
-            <div className="sl-field-gps-grid" aria-live="polite">
-              <span>Status</span>
-              <strong>{status}</strong>
-
-              <span>Current GPS</span>
-              <strong>
-                {currentPosition
-                  ? `${formatCoordinate(currentPosition.latitude)}, ${formatCoordinate(
-                      currentPosition.longitude,
-                    )}`
-                  : "Not captured"}
-              </strong>
-
-              <span>Accuracy</span>
-              <strong>{formatAccuracy(currentPosition?.accuracy ?? null)}</strong>
+            <div className="sl-field-gps-export-row">
+              <button type="button" onClick={handleExportCsv} disabled={points.length === 0}>
+                CSV
+              </button>
+              <button type="button" onClick={handleExportKml} disabled={points.length === 0}>
+                KML
+              </button>
+              <button
+                type="button"
+                onClick={handleExportGeoJson}
+                disabled={points.length === 0}
+              >
+                GeoJSON
+              </button>
+              <button
+                type="button"
+                className="sl-field-gps-danger"
+                onClick={handleClearAllPoints}
+                disabled={points.length === 0}
+              >
+                Clear All
+              </button>
             </div>
+
+            {selectedPoint && (
+              <div className="sl-field-gps-navigate">
+                <div className="sl-field-gps-status-row">
+                  <strong>Navigate to point</strong>
+                  <span>
+                    {selectedPoint.pointId} - {selectedPoint.category}
+                  </span>
+                </div>
+
+                <div className="sl-field-gps-grid">
+                  <span>Approx. distance</span>
+                  <strong>
+                    {navigationInfo
+                      ? formatDistance(navigationInfo.distanceMeters)
+                      : "Refresh GPS first"}
+                  </strong>
+
+                  <span>Approx. bearing</span>
+                  <strong>
+                    {navigationInfo
+                      ? `${navigationInfo.bearingDegrees.toFixed(0)} deg`
+                      : "Not available"}
+                  </strong>
+
+                  <span>Direction</span>
+                  <strong>{navigationInfo ? navigationInfo.direction : "Not available"}</strong>
+                </div>
+              </div>
+            )}
 
             <div className="sl-field-gps-section">
               <div className="sl-field-gps-status-row">
                 <strong>Saved points</strong>
-                <span>{selectedPoint ? selectedPoint.pointId : "None selected"}</span>
+                <span>{selectedPoint ? `Selected ${selectedPoint.pointId}` : "None selected"}</span>
               </div>
+
+              <label className="sl-field-gps-label">
+                <span>Search / select point</span>
+                <input
+                  value={pointSearch}
+                  onChange={(event) => setPointSearch(event.target.value)}
+                  placeholder="Search point ID, category or note"
+                />
+              </label>
 
               {points.length === 0 ? (
                 <p className="sl-field-gps-note">
                   No founder test points saved yet.
                 </p>
+              ) : visiblePoints.length === 0 ? (
+                <p className="sl-field-gps-note">
+                  No saved points match this search.
+                </p>
               ) : (
                 <div className="sl-field-gps-point-list">
-                  {points.map((point) => (
+                  {visiblePoints.map((point) => (
                     <article
                       key={point.id}
                       className={
@@ -600,12 +1003,12 @@ export default function FounderFieldGpsPanel() {
                           : "sl-field-gps-point"
                       }
                     >
-                      <button
-                        type="button"
-                        className="sl-field-gps-point-main"
-                        onClick={() => handleSelectPoint(point)}
-                      >
-                        <strong>{point.pointId}</strong>
+                      <div className="sl-field-gps-point-main">
+                        <div className="sl-field-gps-point-title">
+                          <strong>{point.pointId}</strong>
+                          <span>{point.category}</span>
+                        </div>
+                        {point.note && <small>{point.note}</small>}
                         <span>
                           {formatCoordinate(point.latitude)},{" "}
                           {formatCoordinate(point.longitude)}
@@ -614,55 +1017,44 @@ export default function FounderFieldGpsPanel() {
                           {formatAccuracy(point.accuracy)} -{" "}
                           {formatDateTime(point.createdAt)}
                         </small>
-                        {point.note && <small>{point.note}</small>}
-                      </button>
-
-                      <div className="sl-field-gps-point-actions">
-                        <button
-                          type="button"
-                          onClick={() => handleSelectPoint(point)}
-                        >
-                          Focus
-                        </button>
-                        <button
-                          type="button"
-                          className="sl-field-gps-danger"
-                          onClick={() => handleDeletePoint(point.id)}
-                        >
-                          Delete
-                        </button>
                       </div>
+
+                      {editingPointId === point.id ? (
+                        <div className="sl-field-gps-edit-note">
+                          <textarea
+                            value={editingNote}
+                            onChange={(event) => setEditingNote(event.target.value)}
+                            maxLength={180}
+                          />
+                          <button type="button" onClick={() => saveEditedNote(point.id)}>
+                            Save Note
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="sl-field-gps-point-actions">
+                          <button type="button" onClick={() => handleSelectPoint(point)}>
+                            Select
+                          </button>
+                          <button type="button" onClick={() => beginEditNote(point)}>
+                            Edit Note
+                          </button>
+                          <button
+                            type="button"
+                            className="sl-field-gps-danger"
+                            onClick={() => handleDeletePoint(point.id)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      )}
                     </article>
                   ))}
                 </div>
               )}
             </div>
 
-            {selectedPoint && (
-              <div className="sl-field-gps-grid">
-                <span>Selected</span>
-                <strong>{selectedPoint.pointId}</strong>
-
-                <span>Distance</span>
-                <strong>
-                  {navigationInfo
-                    ? formatDistance(navigationInfo.distanceMeters)
-                    : "Refresh GPS first"}
-                </strong>
-
-                <span>Direction</span>
-                <strong>
-                  {navigationInfo
-                    ? `${navigationInfo.direction} (${navigationInfo.bearingDegrees.toFixed(
-                        0,
-                      )} deg)`
-                    : "Not available"}
-                </strong>
-              </div>
-            )}
-
             <p className="sl-field-gps-disclaimer">
-              Data is stored only in this browser localStorage for now.
+              Coordinates, distance and bearing are approximate field references only.
             </p>
           </div>
         )}

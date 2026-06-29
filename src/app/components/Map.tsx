@@ -1933,10 +1933,11 @@ function getOfflineMapTileSource(
 function createFieldPointMarkerIcon(
   L: typeof import("leaflet"),
   label: string,
+  isSelected = false,
 ): import("leaflet").DivIcon {
   return L.divIcon({
     className:
-      "sabahlot-field-point-marker",
+      `sabahlot-field-point-marker ${isSelected ? "is-selected" : ""}`,
     html:
       `<div class="sabahlot-field-point-marker-wrap">` +
       `<div class="sabahlot-field-point-label">${escapeHtml(label)}</div>` +
@@ -6333,6 +6334,10 @@ export default function Map({
         | (() => void)
         | null =
         null;
+      let handleFounderGpsPoints:
+        | ((event: Event) => void)
+        | null =
+        null;
 
       async function initialiseMap() {
         if (
@@ -6524,6 +6529,91 @@ export default function Map({
             coordinateMarkerLayer.clearLayers();
           };
 
+        handleFounderGpsPoints = (
+          event: Event,
+        ) => {
+          const detail =
+            (
+              event as CustomEvent<{
+                points?: Array<{
+                  pointId?: string;
+                  latitude?: number;
+                  longitude?: number;
+                  accuracy?: number | null;
+                  createdAt?: string;
+                  note?: string;
+                  category?: string;
+                  selected?: boolean;
+                }>;
+              }>
+            ).detail;
+          const founderPoints =
+            detail?.points ?? [];
+
+          coordinateMarkerLayer.clearLayers();
+
+          founderPoints.forEach(
+            (point) => {
+              if (
+                typeof point.latitude !==
+                  "number" ||
+                typeof point.longitude !==
+                  "number"
+              ) {
+                return;
+              }
+
+              const markerLabel =
+                point.pointId?.trim() ||
+                "P";
+              const popupText = [
+                point.category,
+                point.note,
+                typeof point.accuracy ===
+                "number"
+                  ? `Accuracy +/- ${point.accuracy.toFixed(1)} m`
+                  : "Accuracy not available",
+                point.createdAt,
+                "Approximate Founder GPS point only",
+              ]
+                .filter(Boolean)
+                .map((value) =>
+                  escapeHtml(String(value)),
+                )
+                .join("<br/>");
+              const marker =
+                L.marker(
+                  [
+                    point.latitude,
+                    point.longitude,
+                  ],
+                  {
+                    icon:
+                      createFieldPointMarkerIcon(
+                        L,
+                        markerLabel,
+                        point.selected ===
+                          true,
+                      ),
+                  },
+                ).bindPopup(
+                  `<strong>${escapeHtml(markerLabel)}</strong><br/>${popupText}`,
+                );
+
+              marker.addTo(
+                coordinateMarkerLayer,
+              );
+
+              if (
+                point.selected ===
+                true
+              ) {
+                marker.openPopup();
+              }
+            },
+          );
+        };
+
         window.addEventListener(
           "sabahlot:find-coordinate",
           handleFindCoordinate,
@@ -6531,6 +6621,10 @@ export default function Map({
         window.addEventListener(
           "sabahlot:clear-coordinate-marker",
           handleClearCoordinateMarker,
+        );
+        window.addEventListener(
+          "sabahlot:founder-gps-points",
+          handleFounderGpsPoints,
         );
 
         const handleClick = (
@@ -6823,6 +6917,13 @@ export default function Map({
           window.removeEventListener(
             "sabahlot:clear-coordinate-marker",
             handleClearCoordinateMarker,
+          );
+        }
+
+        if (handleFounderGpsPoints) {
+          window.removeEventListener(
+            "sabahlot:founder-gps-points",
+            handleFounderGpsPoints,
           );
         }
 
