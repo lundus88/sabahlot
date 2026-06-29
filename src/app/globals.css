@@ -8303,3 +8303,51 @@ body {
 
 /* === SABAHLOT HH GPS STABLE UI END === */
 
+/* === SABAHLOT GPS BUTTON BOTTOM RIGHT FIX START === */
+
+/*
+  Handheld GPS launcher final position:
+  - Always bottom-right
+  - Above browser safe area
+  - Highest z-index
+  - Does not depend on old map/layout controls
+*/
+
+.sl-hh-gps-fab,
+.sl-handheld-gps-fab,
+.sl-mobile-gps-fab,
+.sl-mobile-gps-portal-button {
+  position: fixed !important;
+  right: 14px !important;
+  bottom: calc(env(safe-area-inset-bottom) + 18px) !important;
+  left: auto !important;
+  top: auto !important;
+  transform: none !important;
+  z-index: 2147483647 !important;
+}
+
+/* On very small phones, keep size compact */
+@media (max-width: 420px) {
+  .sl-hh-gps-fab,
+  .sl-handheld-gps-fab,
+  .sl-mobile-gps-fab,
+  .sl-mobile-gps-portal-button {
+    right: 12px !important;
+    bottom: calc(env(safe-area-inset-bottom) + 14px) !important;
+    width: 68px !important;
+    height: 68px !important;
+    border-radius: 22px !important;
+  }
+}
+
+/* Give bottom status a little room so GPS button does not cover it too much */
+@media (max-width: 760px) {
+  .sl-bottom-status,
+  .sl-map-status {
+    right: 96px !important;
+    max-width: calc(100vw - 120px) !important;
+  }
+}
+
+/* === SABAHLOT GPS BUTTON BOTTOM RIGHT FIX END === */
+
