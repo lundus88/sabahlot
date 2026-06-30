@@ -45,7 +45,6 @@ function formatAccuracy(value?: number | null) {
 }
 
 function FounderFieldGpsPanel() {
-  const [ready, setReady] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [status, setStatus] = useState<GpsStatus>("Ready");
   const [message, setMessage] = useState("Ready for handheld GPS field test.");
@@ -56,7 +55,6 @@ function FounderFieldGpsPanel() {
   const watchIdRef = useRef<number | null>(null);
 
   useEffect(() => {
-    setReady(true);
 
     try {
       const stored = window.localStorage.getItem(STORAGE_KEY);
@@ -259,7 +257,7 @@ th { background: #f1f5f9; }
     win.print();
   };
 
-  if (!ready) return null;
+  if (typeof document === "undefined") return null;
 
   return (
     <>
