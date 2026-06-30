@@ -7,24 +7,22 @@ type SavedPoint = {
   id: string;
   lat: number;
   lng: number;
-  label: string;
   source: string;
 };
 
 function toNumber(value: unknown) {
-  if (typeof value === "number") return value;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+
   if (typeof value === "string") {
     const parsed = Number(value.trim());
     return Number.isFinite(parsed) ? parsed : null;
   }
+
   return null;
 }
 
 function parseCoordinateInput(input: string) {
-  const cleaned = input
-    .trim()
-    .replace(/[，]/g, ",")
-    .replace(/\s+/g, " ");
+  const cleaned = input.trim().replace(/[，]/g, ",").replace(/\s+/g, " ");
 
   const parts = cleaned.includes(",")
     ? cleaned.split(",").map((item) => item.trim())
@@ -41,7 +39,7 @@ function parseCoordinateInput(input: string) {
   return { lat, lng };
 }
 
-function collectPointsFromLocalStorage() {
+function collectSavedPoints() {
   const results: SavedPoint[] = [];
 
   const visit = (value: unknown, source: string) => {
@@ -78,15 +76,12 @@ function collectPointsFromLocalStorage() {
       record.point_id ??
       record.name ??
       record.label ??
-      `Point ${results.length + 1}`;
-
-    const id = String(rawId);
+      `P${results.length + 1}`;
 
     results.push({
-      id,
+      id: String(rawId),
       lat,
       lng,
-      label: `${id} (${lat.toFixed(7)}, ${lng.toFixed(7)})`,
       source,
     });
   };
@@ -100,10 +95,9 @@ function collectPointsFromLocalStorage() {
       if (!raw) continue;
 
       try {
-        const parsed = JSON.parse(raw);
-        visit(parsed, key);
+        visit(JSON.parse(raw), key);
       } catch {
-        // Ignore non-JSON local storage value.
+        // Ignore non JSON localStorage values.
       }
     }
   } catch {
@@ -130,7 +124,7 @@ function HandheldCoordinateFinder() {
   const [ready, setReady] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [message, setMessage] = useState("Key-in coordinate or find saved point ID.");
+  const [message, setMessage] = useState("Masukkan Point ID atau koordinat WGS84.");
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -139,14 +133,14 @@ function HandheldCoordinateFinder() {
 
   const savedPoints = useMemo(() => {
     if (!ready) return [];
-    return collectPointsFromLocalStorage();
+    return collectSavedPoints();
   }, [ready, refreshKey]);
 
   const handleGo = () => {
     const value = query.trim();
 
     if (!value) {
-      setMessage("Please enter Point ID or coordinate.");
+      setMessage("Sila masukkan Point ID atau koordinat.");
       return;
     }
 
@@ -158,7 +152,7 @@ function HandheldCoordinateFinder() {
         coordinate.lng,
         `Key-in coordinate: ${coordinate.lat.toFixed(7)}, ${coordinate.lng.toFixed(7)}`
       );
-      setMessage("Map zoomed to key-in coordinate.");
+      setMessage("Peta zoom ke koordinat yang dimasukkan.");
       setIsOpen(false);
       return;
     }
@@ -168,38 +162,34 @@ function HandheldCoordinateFinder() {
     );
 
     if (found) {
-      goToCoordinate(found.lat, found.lng, `Find Point: ${found.label}`);
-      setMessage(`Map zoomed to ${found.id}.`);
+      goToCoordinate(found.lat, found.lng, `Find Point: ${found.id}`);
+      setMessage(`Peta zoom ke ${found.id}.`);
       setIsOpen(false);
       return;
     }
 
-    setMessage("Point not found. Try P1, P2 or key-in latitude, longitude.");
+    setMessage("Point tidak dijumpai. Cuba P1, P2 atau key-in lat, lng.");
   };
 
   const handleCurrentGps = () => {
     if (!navigator.geolocation) {
-      setMessage("GPS is not supported by this browser.");
+      setMessage("GPS tidak disokong oleh browser ini.");
       return;
     }
 
-    setMessage("Capturing current GPS...");
+    setMessage("Mendapatkan lokasi GPS semasa...");
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
-        const accuracy =
-          typeof position.coords.accuracy === "number"
-            ? ` ±${position.coords.accuracy.toFixed(1)}m`
-            : "";
 
-        goToCoordinate(lat, lng, `Current GPS${accuracy}`);
-        setMessage("Map zoomed to current GPS.");
+        goToCoordinate(lat, lng, "Current GPS");
+        setMessage("Peta zoom ke lokasi GPS semasa.");
         setIsOpen(false);
       },
       (error) => {
-        setMessage(error.message || "Failed to capture current GPS.");
+        setMessage(error.message || "Gagal mendapatkan lokasi GPS.");
       },
       {
         enableHighAccuracy: true,
@@ -221,21 +211,22 @@ function HandheldCoordinateFinder() {
             setRefreshKey((current) => current + 1);
             setIsOpen(true);
           }}
-          aria-label="Find Point or Key-in Coordinate"
+          aria-label="Find Point and Key-in Coordinate"
         >
           <span className="sl-hh-find-fab-icon">⌖</span>
           <span className="sl-hh-find-fab-text">Find</span>
+          <span className="sl-hh-find-fab-subtext">Key-in</span>
         </button>
       ) : null}
 
       {isOpen ? (
-        <section className="sl-hh-find-panel" aria-label="Find Point and Coordinate">
+        <section className="sl-hh-find-panel" aria-label="Find Point and Key-in Coordinate">
           <div className="sl-hh-find-header">
             <div>
-              <h2>Find Point</h2>
-              <p>Search saved point or key-in WGS84 coordinate.</p>
+              <h2>Find Point / Key-in</h2>
+              <p>Point ID atau koordinat WGS84.</p>
             </div>
-            <button type="button" onClick={() => setIsOpen(false)} aria-label="Close Find Point">
+            <button type="button" onClick={() => setIsOpen(false)} aria-label="Close">
               ×
             </button>
           </div>
@@ -246,7 +237,7 @@ function HandheldCoordinateFinder() {
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Example: P1 or 5.980400, 116.073500"
+                placeholder="Contoh: P1 atau 5.980400, 116.073500"
               />
             </label>
 
@@ -263,16 +254,17 @@ function HandheldCoordinateFinder() {
 
             <div className="sl-hh-find-list">
               <h3>Saved Points ({savedPoints.length})</h3>
+
               {savedPoints.length === 0 ? (
-                <p>No saved GPS point found in this browser yet.</p>
+                <p>Tiada saved point dijumpai dalam browser ini.</p>
               ) : (
                 savedPoints.slice(0, 20).map((point) => (
                   <button
                     key={`${point.source}-${point.id}-${point.lat}-${point.lng}`}
                     type="button"
                     onClick={() => {
-                      goToCoordinate(point.lat, point.lng, `Find Point: ${point.label}`);
-                      setMessage(`Map zoomed to ${point.id}.`);
+                      goToCoordinate(point.lat, point.lng, `Find Point: ${point.id}`);
+                      setMessage(`Peta zoom ke ${point.id}.`);
                       setIsOpen(false);
                     }}
                   >
