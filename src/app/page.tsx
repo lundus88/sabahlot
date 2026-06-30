@@ -1045,9 +1045,23 @@ export default function HomePage() {
   const warnCloudSyncFailure = (
     error: unknown,
   ) => {
+    const warning = cloudSyncWarning(error);
+
+    const warningMessage = String(
+      (warning as { message?: unknown }).message ?? "",
+    );
+
+    if (
+      warningMessage
+        .toLowerCase()
+        .includes("auth session missing")
+    ) {
+      return;
+    }
+
     console.warn(
       "SabahLot cloud sync unavailable:",
-      cloudSyncWarning(error),
+      warning,
     );
   };
 
@@ -7828,6 +7842,7 @@ export default function HomePage() {
     </main>
   );
 }
+
 
 
 
