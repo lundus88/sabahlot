@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -41,7 +41,7 @@ function formatCoord(value?: number | null) {
 
 function formatAccuracy(value?: number | null) {
   if (typeof value !== "number" || Number.isNaN(value)) return "Not available";
-  return `± ${value.toFixed(1)} m`;
+  return `Ã‚Â± ${value.toFixed(1)} m`;
 }
 
 function FounderFieldGpsPanel() {
@@ -51,27 +51,28 @@ function FounderFieldGpsPanel() {
   const [currentGps, setCurrentGps] = useState<CurrentGps | null>(null);
   const [isTracking, setIsTracking] = useState(false);
   const [note, setNote] = useState("");
-  const [points, setPoints] = useState<FieldPoint[]>([]);
+  const [points, setPoints] = useState<FieldPoint[]>(() => {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const savedPoints = window.localStorage.getItem(STORAGE_KEY);
+    if (!savedPoints) return [];
+
+    const parsedPoints = JSON.parse(savedPoints);
+    return Array.isArray(parsedPoints) ? parsedPoints : [];
+  } catch {
+    return [];
+  }
+});
   const watchIdRef = useRef<number | null>(null);
 
-  useEffect(() => {
 
-    try {
-      const stored = window.localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored) as FieldPoint[];
-        if (Array.isArray(parsed)) setPoints(parsed);
-      }
-    } catch {
-      setMessage("Saved GPS points could not be loaded.");
-    }
-  }, []);
 
   useEffect(() => {
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(points));
     } catch {
-      setMessage("GPS points could not be saved in this browser.");
+      console.warn("GPS points could not be saved in this browser.");
     }
   }, [points]);
 
@@ -269,7 +270,7 @@ th { background: #f1f5f9; }
               onClick={() => setIsOpen(true)}
               aria-label="Open GPS Handheld"
             >
-              <span className="sl-hh-gps-fab-icon">📍</span>
+              <span className="sl-hh-gps-fab-icon">Ã°Å¸â€œÂ</span>
               <span className="sl-hh-gps-fab-text">GPS</span>
               <span className="sl-hh-gps-fab-count">{points.length}</span>
             </button>,
@@ -286,7 +287,7 @@ th { background: #f1f5f9; }
                   <p>Field test / preliminary reference only.</p>
                 </div>
                 <button type="button" onClick={() => setIsOpen(false)} aria-label="Close GPS">
-                  ×
+                  Ãƒâ€”
                 </button>
               </div>
 
@@ -339,7 +340,7 @@ th { background: #f1f5f9; }
                       <article key={point.id}>
                         <strong>{point.id}</strong>
                         <small>
-                          {point.latitude.toFixed(7)}, {point.longitude.toFixed(7)} · {formatAccuracy(point.accuracy)}
+                          {point.latitude.toFixed(7)}, {point.longitude.toFixed(7)} Ã‚Â· {formatAccuracy(point.accuracy)}
                         </small>
                         <p>{point.note || "No note"}</p>
                       </article>
