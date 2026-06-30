@@ -30,6 +30,8 @@ import type {
   TileLayerOptions,
 } from "leaflet";
 
+import CoordinateJumpController from "./CoordinateJumpController";
+import HandheldCoordinateFinder from "./HandheldCoordinateFinder";
 export type AppLanguage = "en" | "ms";
 export type DistanceUnit = "m" | "ft" | "link" | "chain";
 export type AreaUnit = "m2" | "ft2" | "ha" | "acre";
@@ -1867,7 +1869,9 @@ function createBaseLayer(
       id,
     );
 
-  const baseLayer =
+  import CoordinateJumpController from "./CoordinateJumpController";
+import HandheldCoordinateFinder from "./HandheldCoordinateFinder";
+const baseLayer =
     L.tileLayer(
       definition.url,
       {
@@ -1950,6 +1954,8 @@ function createFieldPointMarkerIcon(
     popupAnchor:
       [0, -18],
   });
+import CoordinateJumpController from "./CoordinateJumpController";
+import HandheldCoordinateFinder from "./HandheldCoordinateFinder";
 }
 
 function parseCoordinates(
@@ -2347,7 +2353,9 @@ export default function Map({
       ) | null
     >(null);
 
-  const baseLayerRef =
+  import CoordinateJumpController from "./CoordinateJumpController";
+import HandheldCoordinateFinder from "./HandheldCoordinateFinder";
+const baseLayerRef =
     useRef<Layer | null>(
       null,
     );
@@ -6352,21 +6360,27 @@ export default function Map({
             "leaflet"
           );
 
-        const L = (
+        import CoordinateJumpController from "./CoordinateJumpController";
+import HandheldCoordinateFinder from "./HandheldCoordinateFinder";
+const L = (
           (
             leafletModule as {
               default?:
                 typeof import(
                   "leaflet"
                 );
-            }
+            import CoordinateJumpController from "./CoordinateJumpController";
+import HandheldCoordinateFinder from "./HandheldCoordinateFinder";
+}
           ).default ??
           leafletModule
         ) as typeof import(
           "leaflet"
         );
 
-        if (
+        import CoordinateJumpController from "./CoordinateJumpController";
+import HandheldCoordinateFinder from "./HandheldCoordinateFinder";
+if (
           cancelled ||
           !mapContainerRef.current
         ) {
@@ -6658,7 +6672,9 @@ export default function Map({
                   new Date().toISOString(),
               };
 
-            manualPointsRef.current = [
+            import CoordinateJumpController from "./CoordinateJumpController";
+import HandheldCoordinateFinder from "./HandheldCoordinateFinder";
+manualPointsRef.current = [
               ...manualPointsRef.current,
               newPoint,
             ];
@@ -10113,6 +10129,7 @@ export default function Map({
     </div>
     );
 }
+
 
 
 
