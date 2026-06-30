@@ -23,6 +23,47 @@ type FieldPoint = {
 
 const STORAGE_KEY = "sabahlot-handheld-gps-points-stable-v1";
 
+function isFieldPoint(value: unknown): value is FieldPoint {
+  if (!value || typeof value !== "object") return false;
+
+  const point = value as Record<string, unknown>;
+
+  return (
+    typeof point.id === "string" &&
+    typeof point.latitude === "number" &&
+    Number.isFinite(point.latitude) &&
+    typeof point.longitude === "number" &&
+    Number.isFinite(point.longitude) &&
+    (typeof point.accuracy === "number" || point.accuracy === null) &&
+    typeof point.timestamp === "string" &&
+    typeof point.note === "string"
+  );
+}
+
+function loadStoredPoints() {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const savedPoints = window.localStorage.getItem(STORAGE_KEY);
+    if (!savedPoints) return [];
+
+    const parsedPoints: unknown = JSON.parse(savedPoints);
+    return Array.isArray(parsedPoints) ? parsedPoints.filter(isFieldPoint) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveStoredPoints(points: FieldPoint[]) {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(points));
+  } catch {
+    console.warn("GPS points could not be saved in this browser.");
+  }
+}
+
 function formatTime() {
   return new Intl.DateTimeFormat("en-MY", {
     day: "2-digit",
@@ -51,29 +92,13 @@ function FounderFieldGpsPanel() {
   const [currentGps, setCurrentGps] = useState<CurrentGps | null>(null);
   const [isTracking, setIsTracking] = useState(false);
   const [note, setNote] = useState("");
-  const [points, setPoints] = useState<FieldPoint[]>(() => {
-  if (typeof window === "undefined") return [];
-
-  try {
-    const savedPoints = window.localStorage.getItem(STORAGE_KEY);
-    if (!savedPoints) return [];
-
-    const parsedPoints = JSON.parse(savedPoints);
-    return Array.isArray(parsedPoints) ? parsedPoints : [];
-  } catch {
-    return [];
-  }
-});
+  const [points, setPoints] = useState<FieldPoint[]>(() => loadStoredPoints());
   const watchIdRef = useRef<number | null>(null);
 
 
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(points));
-    } catch {
-      console.warn("GPS points could not be saved in this browser.");
-    }
+    saveStoredPoints(points);
   }, [points]);
 
   useEffect(() => {
@@ -194,6 +219,7 @@ function FounderFieldGpsPanel() {
     if (!window.confirm("Clear all saved GPS points?")) return;
 
     setPoints([]);
+    saveStoredPoints([]);
     setMessage("All GPS points cleared.");
   };
 
