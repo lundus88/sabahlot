@@ -1,8 +1,7 @@
-﻿"use client";
+"use client";
 
 import Map from "./components/Map";
 import FounderFieldGpsPanel from "./components/FounderFieldGpsPanel";
-import HandheldCoordinateFinder from "./components/HandheldCoordinateFinder";
 export default function Home() {
   return (
     <>
@@ -11,7 +10,6 @@ export default function Home() {
         onPolygonChange={() => undefined}
       />
       <FounderFieldGpsPanel />
-      <HandheldCoordinateFinder />
       
     </>
   );
