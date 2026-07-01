@@ -4306,7 +4306,7 @@ export default function HomePage() {
             const nameY =
               cellY +
               cellHeight -
-              6.1;
+              4.9;
 
             if (trimmedName) {
               pdf.text(
@@ -4347,7 +4347,7 @@ export default function HomePage() {
                   cellWidth /
                   2,
                 nameY +
-                  2.6,
+                  2.8,
                 {
                   align:
                     "center",
@@ -4361,7 +4361,7 @@ export default function HomePage() {
             const signatureLineY =
               cellY +
               cellHeight -
-              10.8;
+              8.6;
             pdf.setDrawColor(
               100,
               116,
