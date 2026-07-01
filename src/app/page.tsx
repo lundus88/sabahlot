@@ -1,4 +1,4 @@
-﻿ "use client";
+ "use client";
 
 import {
   type ChangeEvent,
@@ -267,8 +267,8 @@ const AVAILABLE_RECORD_OPTIONS: ReadonlyArray<readonly [AvailableRecord, string]
 
 const APPLICATION_AGE_OPTIONS = [
   ["under_5_years", "Kurang 5 tahun"],
-  ["5_to_10_years", "5Ã¢â‚¬â€œ10 tahun"],
-  ["10_to_20_years", "10Ã¢â‚¬â€œ20 tahun"],
+  ["5_to_10_years", "5-10 tahun"],
+  ["10_to_20_years", "10-20 tahun"],
   ["over_20_years", "Lebih 20 tahun"],
   ["unsure", "Tidak pasti"],
 ] as const;
@@ -2501,35 +2501,25 @@ export default function HomePage() {
           bearingDecimal?: number,
         ) => {
           if (
-            typeof bearingDecimal !==
-            "number"
+            typeof bearingDecimal !== "number" ||
+            !Number.isFinite(bearingDecimal)
           ) {
             return "";
           }
 
           const normalized =
-            (
-              (
-                bearingDecimal %
-                360
-              ) + 360
-            ) % 360;
-          let degrees =
-            Math.floor(normalized);
+            ((bearingDecimal % 360) + 360) % 360;
+
+          let degrees = Math.floor(normalized);
+
           const minuteValue =
-            (
-              normalized -
-              degrees
-            ) * 60;
-          let minutes =
-            Math.floor(minuteValue);
-          let seconds =
-            Math.round(
-              (
-                minuteValue -
-                minutes
-              ) * 60,
-            );
+            (normalized - degrees) * 60;
+
+          let minutes = Math.floor(minuteValue);
+
+          let seconds = Math.round(
+            (minuteValue - minutes) * 60,
+          );
 
           if (seconds === 60) {
             seconds = 0;
@@ -2538,19 +2528,19 @@ export default function HomePage() {
 
           if (minutes === 60) {
             minutes = 0;
-            degrees =
-              (
-                degrees + 1
-              ) % 360;
+            degrees = (degrees + 1) % 360;
           }
 
-          return `${String(
-            degrees,
-          ).padStart(3, "0")}Ã‚Â° ${String(
-            minutes,
-          ).padStart(2, "0")}Ã¢â‚¬Â² ${String(
-            seconds,
-          ).padStart(2, "0")}Ã¢â‚¬Â³`;
+          return `${String(degrees).padStart(
+            3,
+            "0",
+          )}\u00b0 ${String(minutes).padStart(
+            2,
+            "0",
+          )}' ${String(seconds).padStart(
+            2,
+            "0",
+          )}"`;
         };
 
         const reportText =
@@ -6742,7 +6732,7 @@ export default function HomePage() {
               text.close
             }
           >
-            Ãƒâ€”
+            {"\u00d7"}
           </button>
         </div>
 
@@ -7054,7 +7044,7 @@ export default function HomePage() {
               }
             >
               <span aria-hidden="true">
-                Ã¢Å“â€œ
+                {"\u2713"}
               </span>
 
               <span>
@@ -7632,8 +7622,8 @@ export default function HomePage() {
               <div className="sl-output-preview">
                 <span>Output summary</span>
                 <strong>
-                  {planTemplateLabel} Ã‚Â·{" "}
-                  {pdfPaperSize.toUpperCase()} Ã‚Â·{" "}
+                  {planTemplateLabel} ·{" "}
+                  {pdfPaperSize.toUpperCase()} ·{" "}
                   {pdfOrientation ===
                   "portrait"
                     ? "Portrait"
@@ -7734,7 +7724,7 @@ export default function HomePage() {
                       <small>
                         {displayArea(
                           lot.area_m2,
-                        )} Ã‚Â· {lot.point_count}{" "}
+                        )} · {lot.point_count}{" "}
                         {text.points}
                       </small>
 
