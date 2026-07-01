@@ -2060,7 +2060,7 @@ export default function HomePage() {
         visiblePdfObjects.length === 0
       ) {
         setSaveMessage(
-          "No visible drawing objects to export.",
+          "No current visible polygon to export.",
         );
 
         return;
