@@ -3650,28 +3650,16 @@ export default function HomePage() {
           const baseLngPadding =
             0.24;
           let viewMinLat =
-            Math.min(
-              outlineBounds.minLat,
-              centreLat,
-            ) -
+            outlineBounds.minLat -
             baseLatPadding;
           let viewMaxLat =
-            Math.max(
-              outlineBounds.maxLat,
-              centreLat,
-            ) +
+            outlineBounds.maxLat +
             baseLatPadding;
           let viewMinLng =
-            Math.min(
-              outlineBounds.minLng,
-              centreLng,
-            ) -
+            outlineBounds.minLng -
             baseLngPadding;
           let viewMaxLng =
-            Math.max(
-              outlineBounds.maxLng,
-              centreLng,
-            ) +
+            outlineBounds.maxLng +
             baseLngPadding;
           const mapAspect =
             mapWidth /
@@ -4094,9 +4082,7 @@ export default function HomePage() {
             42,
           );
           pdf.text(
-            formData.district.trim() ||
-              formData.village.trim() ||
-              "Sabah overview",
+            "PETA SABAH",
             x +
               width -
               3,
@@ -4192,7 +4178,10 @@ export default function HomePage() {
               "normal",
             );
             pdf.setFontSize(
-              smallFont,
+              Math.min(
+                smallFont,
+                5.1,
+              ),
             );
             pdf.setTextColor(
               71,
@@ -4316,7 +4305,8 @@ export default function HomePage() {
               nameValue.trim();
             const nameY =
               cellY +
-              7.4;
+              cellHeight -
+              6.1;
 
             if (trimmedName) {
               pdf.text(
@@ -4357,7 +4347,7 @@ export default function HomePage() {
                   cellWidth /
                   2,
                 nameY +
-                  3.4,
+                  2.6,
                 {
                   align:
                     "center",
@@ -4371,7 +4361,7 @@ export default function HomePage() {
             const signatureLineY =
               cellY +
               cellHeight -
-              5.2;
+              10.8;
             pdf.setDrawColor(
               100,
               116,
@@ -4402,8 +4392,7 @@ export default function HomePage() {
               cellY +
               cellHeight -
               1.7;
-            pdf.text(
-              "Signature / Date",
+            pdf.text("",
               cellX +
                 cellWidth /
                 2,
@@ -5443,6 +5432,58 @@ export default function HomePage() {
           availableMapHeight,
           undefined,
           "FAST",
+        );
+
+        
+        const pdfAreaLabelText =
+          displayArea(
+            polygon.areaM2,
+            "en",
+          );
+
+        const pdfAreaLabelX =
+          mapX +
+          mapWidth / 2;
+        const pdfAreaLabelY =
+          centredMapY +
+          mapHeight / 2;
+
+        pdf.setFont(
+          "helvetica",
+          "bold",
+        );
+        pdf.setFontSize(
+          10.5,
+        );
+
+        pdf.setTextColor(
+          15,
+          23,
+          42,
+        );
+        pdf.text(
+          pdfAreaLabelText,
+          pdfAreaLabelX + 0.35,
+          pdfAreaLabelY + 0.35,
+          {
+            align:
+              "center",
+          },
+        );
+
+        pdf.setTextColor(
+          255,
+          255,
+          255,
+        );
+        pdf.text(
+          pdfAreaLabelText,
+          pdfAreaLabelX,
+          pdfAreaLabelY,
+          {
+            align:
+              "center",
+          },
         );
 
         pdf.setDrawColor(
