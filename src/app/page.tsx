@@ -3544,7 +3544,7 @@ export default function HomePage() {
             "bold",
           );
           pdf.setFontSize(
-            11.5,
+            5.8,
           );
           pdf.setTextColor(
             0,
@@ -3553,16 +3553,18 @@ export default function HomePage() {
           );
           pdf.text(
             "KEY PLAN",
-            x + 3,
-            y + 5.4,
+            x + 2.2,
+            y + 4.7,
           );
           pdf.text(
             "PETA SABAH",
-            x + width - 3,
-            y + 5.4,
+            x + width - 2.2,
+            y + 4.7,
             {
               align:
                 "right",
+              maxWidth:
+                width * 0.48,
             },
           );
 
@@ -5463,8 +5465,8 @@ export default function HomePage() {
               0.8,
             centredMapY +
               0.8,
-            52,
-            52,
+            60,
+            60,
             planMapImageData,
           );
 
