@@ -3461,7 +3461,7 @@ export default function HomePage() {
           );
         };
 
-        const addKeyPlan = (
+        const addKeyPlan = async (
           x: number,
           y: number,
           width: number,
@@ -3472,80 +3472,26 @@ export default function HomePage() {
 
           const calculateSiteCentre =
             () => {
-              let signedArea =
-                0;
-              let centroidLng =
-                0;
-              let centroidLat =
-                0;
-
-              polygon.coordinates.forEach(
-                (
-                  coordinate,
-                  index,
-                ) => {
-                  const next =
-                    polygon.coordinates[
-                      (
-                        index +
-                        1
-                      ) %
-                        polygon.coordinates
-                          .length
-                    ];
-                  const factor =
-                    coordinate.lng *
-                      next.lat -
-                    next.lng *
-                      coordinate.lat;
-
-                  signedArea +=
-                    factor;
-                  centroidLng +=
-                    (
-                      coordinate.lng +
-                      next.lng
-                    ) *
-                    factor;
-                  centroidLat +=
-                    (
-                      coordinate.lat +
-                      next.lat
-                    ) *
-                    factor;
-                },
-              );
-
               if (
-                Math.abs(
-                  signedArea,
-                ) > 1e-10
+                polygon.coordinates.length === 0
               ) {
-                const divisor =
-                  3 *
-                  signedArea;
-
                 return {
-                  lat:
-                    centroidLat /
-                    divisor,
-                  lng:
-                    centroidLng /
-                    divisor,
+                  lat: 5.9804,
+                  lng: 116.0735,
                 };
               }
 
-              const average =
+              const total =
                 polygon.coordinates.reduce(
                   (
-                    total,
+                    sum,
                     coordinate,
                   ) => ({
                     lat:
-                      total.lat +
+                      sum.lat +
                       coordinate.lat,
                     lng:
-                      total.lng +
+                      sum.lng +
                       coordinate.lng,
                   }),
                   {
@@ -3556,197 +3502,34 @@ export default function HomePage() {
 
               return {
                 lat:
-                  average.lat /
-                  polygon.coordinates
-                    .length,
+                  total.lat /
+                  polygon.coordinates.length,
                 lng:
-                  average.lng /
-                  polygon.coordinates
-                    .length,
+                  total.lng /
+                  polygon.coordinates.length,
               };
             };
+
           const siteCentre =
             calculateSiteCentre();
+
           const centreLat =
             siteCentre.lat;
           const centreLng =
             siteCentre.lng;
-          const mapLeft =
-            x +
-            2;
-          const mapTop =
-            y +
-            7;
-          const mapWidth =
-            width -
-            4;
-          const mapHeight =
-            height -
-            13;
-          const footerTop =
-            y +
-            height -
-            6;
-          const sabahOutline: Coordinate[] = [
-            { lat: 7.33, lng: 116.72 },
-            { lat: 7.28, lng: 117.18 },
-            { lat: 7.08, lng: 117.74 },
-            { lat: 6.86, lng: 118.2 },
-            { lat: 6.53, lng: 118.72 },
-            { lat: 6.07, lng: 119.25 },
-            { lat: 5.48, lng: 119.34 },
-            { lat: 5.03, lng: 118.88 },
-            { lat: 4.64, lng: 118.17 },
-            { lat: 4.24, lng: 117.42 },
-            { lat: 4.03, lng: 116.78 },
-            { lat: 4.2, lng: 116.18 },
-            { lat: 4.64, lng: 115.76 },
-            { lat: 5.18, lng: 115.38 },
-            { lat: 5.78, lng: 115.26 },
-            { lat: 6.28, lng: 115.62 },
-            { lat: 6.75, lng: 116.08 },
-            { lat: 7.12, lng: 116.38 },
-          ];
-          const outlineBounds =
-            sabahOutline.reduce(
-              (
-                bounds,
-                point,
-              ) => ({
-                minLat:
-                  Math.min(
-                    bounds.minLat,
-                    point.lat,
-                  ),
-                maxLat:
-                  Math.max(
-                    bounds.maxLat,
-                    point.lat,
-                  ),
-                minLng:
-                  Math.min(
-                    bounds.minLng,
-                    point.lng,
-                  ),
-                maxLng:
-                  Math.max(
-                    bounds.maxLng,
-                    point.lng,
-                  ),
-              }),
-              {
-                minLat:
-                  Number.POSITIVE_INFINITY,
-                maxLat:
-                  Number.NEGATIVE_INFINITY,
-                minLng:
-                  Number.POSITIVE_INFINITY,
-                maxLng:
-                  Number.NEGATIVE_INFINITY,
-              },
-            );
-          const baseLatPadding =
-            0.22;
-          const baseLngPadding =
-            0.24;
-          let viewMinLat =
-            outlineBounds.minLat -
-            baseLatPadding;
-          let viewMaxLat =
-            outlineBounds.maxLat +
-            baseLatPadding;
-          let viewMinLng =
-            outlineBounds.minLng -
-            baseLngPadding;
-          let viewMaxLng =
-            outlineBounds.maxLng +
-            baseLngPadding;
-          const mapAspect =
-            mapWidth /
-            Math.max(
-              1,
-              mapHeight,
-            );
-          const boundsAspect =
-            (
-              viewMaxLng -
-              viewMinLng
-            ) /
-            Math.max(
-              0.0001,
-              viewMaxLat -
-                viewMinLat,
-            );
-
-          if (
-            boundsAspect >
-            mapAspect
-          ) {
-            const requiredLatSpan =
-              (
-                viewMaxLng -
-                viewMinLng
-              ) /
-              mapAspect;
-            const latCentre =
-              (
-                viewMinLat +
-                viewMaxLat
-              ) /
-              2;
-
-            viewMinLat =
-              latCentre -
-              requiredLatSpan / 2;
-            viewMaxLat =
-              latCentre +
-              requiredLatSpan / 2;
-          } else {
-            const requiredLngSpan =
-              (
-                viewMaxLat -
-                viewMinLat
-              ) *
-              mapAspect;
-            const lngCentre =
-              (
-                viewMinLng +
-                viewMaxLng
-              ) /
-              2;
-
-            viewMinLng =
-              lngCentre -
-              requiredLngSpan / 2;
-            viewMaxLng =
-              lngCentre +
-              requiredLngSpan / 2;
-          }
-          const project = (
-            longitude: number,
-            latitude: number,
-          ) => ({
-            x:
-              mapLeft +
-              ((longitude - viewMinLng) /
-                (viewMaxLng - viewMinLng)) *
-                mapWidth,
-            y:
-              mapTop +
-              ((viewMaxLat - latitude) /
-                (viewMaxLat - viewMinLat)) *
-                mapHeight,
-          });
 
           pdf.setDrawColor(
-            100,
-            116,
-            139,
+            148,
+            163,
+            184,
+          );
+          pdf.setLineWidth(
+            0.35,
           );
           pdf.setFillColor(
-            248,
-            250,
-            252,
+            255,
+            255,
+            255,
           );
           pdf.rect(
             x,
@@ -3755,60 +3538,52 @@ export default function HomePage() {
             height,
             "FD",
           );
-          pdf.setFillColor(
-            255,
-            255,
-            255,
-          );
-          pdf.rect(
-            x +
-              1,
-            y +
-              1,
-            width -
-              2,
-            6,
-            "F",
-          );
+
           pdf.setFont(
             "helvetica",
             "bold",
           );
           pdf.setFontSize(
-            7,
+            11.5,
           );
           pdf.setTextColor(
-            15,
-            23,
-            42,
+            0,
+            0,
+            0,
           );
           pdf.text(
             "KEY PLAN",
-            x +
-              3,
+            x + 3,
+            y + 5.4,
+          );
+          pdf.text(
+            "PETA SABAH",
+            x + width - 3,
+            y + 5.4,
+            {
+              align:
+                "right",
+            },
+          );
+
+          const mapLeft =
+            x + 1.2;
+          const mapTop =
+            y + 7.0;
+          const mapWidth =
+            width - 2.4;
+          const mapHeight =
+            height - 13.4;
+
+          const footerTop =
             y +
-              5,
-          );
-
-          pdf.setDrawColor(
-            203,
-            213,
-            225,
-          );
-          pdf.setLineWidth(
-              0.2,
-          );
-          pdf.rect(
-            mapLeft,
-            mapTop,
-            mapWidth,
-            mapHeight,
-          );
+            height -
+            5.0;
 
           pdf.setFillColor(
-            219,
-            234,
-            254,
+            223,
+            236,
+            248,
           );
           pdf.rect(
             mapLeft,
@@ -3817,121 +3592,225 @@ export default function HomePage() {
             mapHeight,
             "F",
           );
-          pdf.setFillColor(
-            226,
-            232,
-            240,
-          );
-          pdf.rect(
-            mapLeft,
-            mapTop +
-              mapHeight *
-                0.66,
-            mapWidth,
-            mapHeight *
-              0.34,
-            "F",
-          );
-          pdf.setFillColor(
-            187,
-            247,
-            208,
-          );
-          pdf.setDrawColor(
-            22,
-            101,
-            52,
-          );
-          pdf.setLineWidth(
-            0.45,
-          );
 
-          sabahOutline.forEach(
-            (
-              point,
-              index,
-            ) => {
-              const current =
-                project(
-                  point.lng,
-                  point.lat,
-                );
+          let imageLeft =
+            mapLeft;
+          let imageTop =
+            mapTop;
+          let imageWidth =
+            mapWidth;
+          let imageHeight =
+            mapHeight;
 
-              if (
-                index === 0
-              ) {
-                pdf.moveTo(
-                  current.x,
-                  current.y,
-                );
-              } else {
-                pdf.lineTo(
-                  current.x,
-                  current.y,
-                );
-              }
-            },
-          );
-          pdf.close();
-          pdf.fillStroke();
-
-          pdf.setDrawColor(
-            134,
-            239,
-            172,
-          );
-          pdf.setLineWidth(
-            0.18,
-          );
-          [
-            [115.3, 6.7, 118.9, 6.05],
-            [115.7, 5.25, 118.6, 4.75],
-            [116.05, 4.28, 117.25, 7.05],
-          ].forEach(
-            (line) => {
-              const start =
-                project(
-                  line[0],
-                  line[1],
-                );
-              const end =
-                project(
-                  line[2],
-                  line[3],
-                );
-
-              pdf.line(
-                start.x,
-                start.y,
-                end.x,
-                end.y,
+          try {
+            const response =
+              await fetch(
+                "/keyplan/sabah-map.png?v=" +
+                  Date.now(),
+                {
+                  cache:
+                    "no-store",
+                },
               );
-            },
-          );
 
-          const siteMarker =
-            project(
-              centreLng,
-              centreLat,
+            if (!response.ok) {
+              throw new Error(
+                "Sabah map not found",
+              );
+            }
+
+            const blob =
+              await response.blob();
+
+            const imageDataUrl =
+              await new Promise<string>(
+                (
+                  resolve,
+                  reject,
+                ) => {
+                  const reader =
+                    new FileReader();
+
+                  reader.onloadend =
+                    () =>
+                      resolve(
+                        String(
+                          reader.result ??
+                            "",
+                        ),
+                      );
+
+                  reader.onerror =
+                    () =>
+                      reject(
+                        new Error(
+                          "Failed to read image",
+                        ),
+                      );
+
+                  reader.readAsDataURL(
+                    blob,
+                  );
+                },
+              );
+
+            const imageSize =
+              await new Promise<{
+                width: number;
+                height: number;
+              }>(
+                (
+                  resolve,
+                  reject,
+                ) => {
+                  const image =
+                    new Image();
+
+                  image.onload =
+                    () =>
+                      resolve({
+                        width:
+                          image.naturalWidth ||
+                          image.width,
+                        height:
+                          image.naturalHeight ||
+                          image.height,
+                      });
+
+                  image.onerror =
+                    () =>
+                      reject(
+                        new Error(
+                          "Failed to load image",
+                        ),
+                      );
+
+                  image.src =
+                    imageDataUrl;
+                },
+              );
+
+            const panelAspect =
+              mapWidth /
+              Math.max(
+                1,
+                mapHeight,
+              );
+
+            const imageAspect =
+              imageSize.width /
+              Math.max(
+                1,
+                imageSize.height,
+              );
+
+            if (
+              imageAspect >
+              panelAspect
+            ) {
+              imageWidth =
+                mapWidth;
+              imageHeight =
+                mapWidth /
+                imageAspect;
+            } else {
+              imageHeight =
+                mapHeight;
+              imageWidth =
+                mapHeight *
+                imageAspect;
+            }
+
+            imageLeft =
+              mapLeft +
+              (
+                mapWidth -
+                imageWidth
+              ) /
+                2;
+
+            imageTop =
+              mapTop +
+              (
+                mapHeight -
+                imageHeight
+              ) /
+                2;
+
+            pdf.addImage(
+              imageDataUrl,
+              "PNG",
+              imageLeft,
+              imageTop,
+              imageWidth,
+              imageHeight,
+              undefined,
+              "FAST",
             );
+          } catch {
+            pdf.setFont(
+              "helvetica",
+              "italic",
+            );
+            pdf.setFontSize(
+              6,
+            );
+            pdf.setTextColor(
+              185,
+              28,
+              28,
+            );
+            pdf.text(
+              "Sabah map image not found",
+              mapLeft +
+                mapWidth / 2,
+              mapTop +
+                mapHeight / 2,
+              {
+                align:
+                  "center",
+              },
+            );
+          }
+
+          const viewMinLat =
+            4.0;
+          const viewMaxLat =
+            7.6;
+          const viewMinLng =
+            115.0;
+          const viewMaxLng =
+            119.8;
+
           const markerX =
             Math.max(
-              mapLeft + 2.5,
+              imageLeft + 2.2,
               Math.min(
-                mapLeft +
-                  mapWidth -
-                  2.5,
-                siteMarker.x,
+                imageLeft +
+                  imageWidth -
+                  2.2,
+                imageLeft +
+                  ((centreLng -
+                    viewMinLng) /
+                    (viewMaxLng -
+                      viewMinLng)) *
+                    imageWidth,
               ),
             );
+
           const markerY =
             Math.max(
-              mapTop + 2.5,
+              imageTop + 2.2,
               Math.min(
-                mapTop +
-                  mapHeight -
-                  2.5,
-                siteMarker.y,
+                imageTop +
+                  imageHeight -
+                  2.2,
+                imageTop +
+                  ((viewMaxLat -
+                    centreLat) /
+                    (viewMaxLat -
+                      viewMinLat)) *
+                    imageHeight,
               ),
             );
 
@@ -3948,21 +3827,10 @@ export default function HomePage() {
           pdf.circle(
             markerX,
             markerY,
-            2.8,
+            2.25,
             "FD",
           );
           pdf.setFillColor(
-            220,
-            38,
-            38,
-          );
-          pdf.circle(
-            markerX,
-            markerY,
-            1.35,
-            "F",
-          );
-          pdf.setFillColor(
             255,
             255,
             255,
@@ -3970,39 +3838,36 @@ export default function HomePage() {
           pdf.circle(
             markerX,
             markerY,
-            0.45,
+            0.42,
             "F",
           );
+
           pdf.setFont(
             "helvetica",
             "bold",
           );
           pdf.setFontSize(
-            5.8,
+            6,
           );
           pdf.setTextColor(
-            185,
-            28,
-            28,
+            220,
+            38,
+            38,
           );
           pdf.text(
             "SITE",
             Math.min(
-              markerX + 4,
-              mapLeft +
-                mapWidth -
+              markerX + 3,
+              imageLeft +
+                imageWidth -
                 2,
             ),
             Math.max(
-              markerY - 2,
-              mapTop + 4,
+              markerY - 1,
+              imageTop + 3.8,
             ),
-            {
-              maxWidth:
-                mapWidth *
-                0.34,
-            },
           );
+
           const districtLabel =
             formData.district.trim();
 
@@ -4022,80 +3887,54 @@ export default function HomePage() {
             pdf.text(
               districtLabel,
               Math.min(
-                markerX + 4,
-                mapLeft +
-                  mapWidth -
+                markerX + 3,
+                imageLeft +
+                  imageWidth -
                   2,
               ),
               Math.max(
-                markerY + 2.2,
-                mapTop + 7,
+                markerY + 1.8,
+                imageTop + 6.2,
               ),
               {
                 maxWidth:
-                  mapWidth *
-                  0.44,
+                  imageWidth * 0.3,
               },
             );
           }
-          pdf.setFont(
-            "helvetica",
-            "normal",
-          );
-          pdf.setFontSize(
-            5.5,
-          );
-          pdf.setTextColor(
-            51,
-            65,
-            85,
-          );
+
           pdf.setFillColor(
             255,
             255,
             255,
           );
           pdf.rect(
-            x +
-              1,
+            x + 1,
             footerTop,
-            width -
-              2,
-            5,
+            width - 2,
+            4,
             "F",
+          );
+
+          pdf.setFont(
+            "helvetica",
+            "normal",
+          );
+          pdf.setFontSize(
+            7.8,
+          );
+          pdf.setTextColor(
+            51,
+            65,
+            85,
           );
           pdf.text(
             `Site centre: ${centreLat.toFixed(5)}, ${centreLng.toFixed(5)}`,
-            x +
-              3,
+            x + 3,
             y +
               height -
-              2,
+              1.8,
           );
-          pdf.setFont(
-            "helvetica",
-            "bold",
-          );
-          pdf.setTextColor(
-            15,
-            23,
-            42,
-          );
-          pdf.text(
-            "PETA SABAH",
-            x +
-              width -
-              3,
-            y +
-              5,
-            {
-              align:
-                "right",
-              maxWidth:
-                width *
-                0.58,
-            },
-              );
         };
 
         const addFinalTitleBlock = (
@@ -5619,13 +5458,15 @@ export default function HomePage() {
         const keyPlanPosition =
           keyPlanCandidates[0];
 
-        addKeyPlan(
-          keyPlanPosition.x,
-          keyPlanPosition.y,
-          keyPlanWidth,
-          keyPlanHeight,
-          keyPlanImageData,
-        );
+        await addKeyPlan(
+            mapX +
+              0.8,
+            centredMapY +
+              0.8,
+            52,
+            52,
+            planMapImageData,
+          );
 
         addFinalTitleBlock(
           margin +
