@@ -13,7 +13,10 @@ import type {
 
 import {
   averageReadings,
+  bearingToDms,
   bestFixReading,
+  calculateFieldGpsBearingDegrees,
+  calculateFieldGpsDistanceMeters,
   createFieldGpsId,
   createFieldGpsPoint,
   createPreliminaryPolygonResult,
@@ -54,6 +57,19 @@ type CaptureMode =
   | "best-fix"
   | "averaged";
 
+type TargetSource =
+  | "current-position"
+  | "manual"
+  | "saved-point";
+
+interface FieldGpsTarget {
+  id: string;
+  label: string;
+  latitude: number;
+  longitude: number;
+  source: TargetSource;
+}
+
 const OCCUPATION_OPTIONS = [
   10,
   20,
@@ -67,12 +83,51 @@ function nextLabel(
   return `P${points.length + 1}`;
 }
 
+function nextFoundLabel(
+  points: FieldGpsPoint[],
+): string {
+  return `F${points.length + 1}`;
+}
+
 function formatAccuracy(
   accuracy?: number,
 ): string {
   return accuracy === undefined
     ? "not measured"
     : `${accuracy.toFixed(1)} m`;
+}
+
+function formatCoordinate(
+  value: number,
+): string {
+  return value.toFixed(7);
+}
+
+function formatDistance(
+  meters: number,
+): string {
+  return meters >= 1000
+    ? `${(meters / 1000).toFixed(3)} km`
+    : `${meters.toFixed(1)} m`;
+}
+
+function parseCoordinateInput(
+  value: string,
+  minimum: number,
+  maximum: number,
+): number | null {
+  const coordinate =
+    Number(value.trim());
+
+  if (
+    !Number.isFinite(coordinate) ||
+    coordinate < minimum ||
+    coordinate > maximum
+  ) {
+    return null;
+  }
+
+  return coordinate;
 }
 
 export default function FieldGpsLite({
@@ -107,6 +162,28 @@ export default function FieldGpsLite({
   ] = useState<FieldGpsTrackPoint[]>(
     [],
   );
+  const [
+    foundPoints,
+    setFoundPoints,
+  ] = useState<FieldGpsPoint[]>([]);
+  const [
+    targetPoint,
+    setTargetPoint,
+  ] = useState<FieldGpsTarget | null>(
+    null,
+  );
+  const [
+    targetLabelInput,
+    setTargetLabelInput,
+  ] = useState("Target");
+  const [
+    targetLatitudeInput,
+    setTargetLatitudeInput,
+  ] = useState("");
+  const [
+    targetLongitudeInput,
+    setTargetLongitudeInput,
+  ] = useState("");
   const [
     tracking,
     setTracking,
@@ -164,6 +241,60 @@ export default function FieldGpsLite({
           gateMeters &&
         !allowApproximate,
     );
+
+  const allRecordedPoints =
+    useMemo(
+      () => [
+        ...points,
+        ...foundPoints,
+      ],
+      [
+        points,
+        foundPoints,
+      ],
+    );
+
+  const targetNavigation =
+    useMemo(() => {
+      if (
+        !reading ||
+        !targetPoint
+      ) {
+        return null;
+      }
+
+      const start: [number, number] =
+        [
+          reading.latitude,
+          reading.longitude,
+        ];
+      const end: [number, number] =
+        [
+          targetPoint.latitude,
+          targetPoint.longitude,
+        ];
+      const bearingDegrees =
+        calculateFieldGpsBearingDegrees(
+          start,
+          end,
+        );
+
+      return {
+        distanceMeters:
+          calculateFieldGpsDistanceMeters(
+            start,
+            end,
+          ),
+        bearingDegrees,
+        bearingDms:
+          bearingToDms(
+            bearingDegrees,
+          ),
+      };
+    }, [
+      reading,
+      targetPoint,
+    ]);
 
   useEffect(() => {
     if (!enabled) {
@@ -294,6 +425,177 @@ export default function FieldGpsLite({
     );
     setCaptureMessage(
       `${point.label} saved as preliminary approximate phone GPS field reference only.`,
+    );
+  };
+
+  const setTarget = (
+    target: FieldGpsTarget,
+  ) => {
+    setTargetPoint(target);
+    setTargetLabelInput(target.label);
+    setTargetLatitudeInput(
+      formatCoordinate(
+        target.latitude,
+      ),
+    );
+    setTargetLongitudeInput(
+      formatCoordinate(
+        target.longitude,
+      ),
+    );
+    setCaptureMessage(
+      `${target.label} set as target marker.`,
+    );
+  };
+
+  const setTargetFromReading = () => {
+    if (!reading) {
+      setCaptureMessage(
+        "Waiting for location before setting target.",
+      );
+      return;
+    }
+
+    setTarget({
+      id:
+        createFieldGpsId(),
+      label:
+        targetLabelInput.trim() ||
+        "Target",
+      latitude:
+        reading.latitude,
+      longitude:
+        reading.longitude,
+      source:
+        "current-position",
+    });
+  };
+
+  const setTargetFromManualInput = () => {
+    const latitude =
+      parseCoordinateInput(
+        targetLatitudeInput,
+        -90,
+        90,
+      );
+    const longitude =
+      parseCoordinateInput(
+        targetLongitudeInput,
+        -180,
+        180,
+      );
+
+    if (
+      latitude === null ||
+      longitude === null
+    ) {
+      setCaptureMessage(
+        "Enter a valid WGS84 target latitude and longitude.",
+      );
+      return;
+    }
+
+    setTarget({
+      id:
+        createFieldGpsId(),
+      label:
+        targetLabelInput.trim() ||
+        "Target",
+      latitude,
+      longitude,
+      source:
+        "manual",
+    });
+  };
+
+  const setTargetFromPoint = (
+    point: FieldGpsPoint,
+  ) => {
+    setTarget({
+      id:
+        point.id,
+      label:
+        point.label,
+      latitude:
+        point.latitude,
+      longitude:
+        point.longitude,
+      source:
+        "saved-point",
+    });
+  };
+
+  const toggleTracking = () => {
+    setTracking((current) => {
+      const next =
+        !current;
+      setCaptureMessage(
+        next
+          ? "Tracking started. Movement fixes will be stored in this session."
+          : "Tracking stopped.",
+      );
+      return next;
+    });
+  };
+
+  const recordFoundPoint = () => {
+    if (!reading) {
+      setCaptureMessage(
+        "Waiting for location before recording found point.",
+      );
+      return;
+    }
+
+    if (accuracyBlocked) {
+      setCaptureMessage(
+        "GPS accuracy is weak. Move to an open area and wait for better accuracy. You may still save this point as approximate.",
+      );
+      return;
+    }
+
+    const targetNote =
+      targetPoint
+        ? `Found reference for ${targetPoint.label}; target ${formatCoordinate(
+            targetPoint.latitude,
+          )}, ${formatCoordinate(
+            targetPoint.longitude,
+          )}${
+            targetNavigation
+              ? `; final offset ${formatDistance(
+                  targetNavigation.distanceMeters,
+                )} at ${targetNavigation.bearingDegrees.toFixed(
+                  1,
+                )} deg`
+              : ""
+          }.`
+        : "Found point recorded without a target marker.";
+
+    const foundPoint =
+      createFieldGpsPoint(
+        reading,
+        nextFoundLabel(
+          foundPoints,
+        ),
+        "single",
+        1,
+        0,
+        targetNote,
+      );
+
+    setFoundPoints(
+      (current) => [
+        ...current,
+        foundPoint,
+      ],
+    );
+    setCaptureMessage(
+      `${foundPoint.label} found point recorded at ${foundPoint.timestamp}; ${formatCoordinate(
+        foundPoint.latitude,
+      )}, ${formatCoordinate(
+        foundPoint.longitude,
+      )}; accuracy ${formatAccuracy(
+        foundPoint.accuracyMeters,
+      )}.`,
     );
   };
 
@@ -485,7 +787,8 @@ export default function FieldGpsLite({
 
   const exportInput = {
     recordName,
-    points,
+    points:
+      allRecordedPoints,
     estimatedAreaM2:
       generatedPolygon?.areaM2,
     polygonCoordinates:
@@ -524,11 +827,15 @@ export default function FieldGpsLite({
       {open && (
         <div className="sl-field-gps-card">
           <div className="sl-field-gps-heading">
-            <span>Field GPS Advanced</span>
+            <span>Founder Field GPS</span>
             <strong>
-              {points.length} points
+              {points.length} points | {foundPoints.length} found
             </strong>
           </div>
+
+          <p className="sl-field-gps-note">
+            Internal founder field test only.
+          </p>
 
           <FieldGpsAccuracyPanel
             reading={reading}
@@ -543,6 +850,210 @@ export default function FieldGpsLite({
               setAllowApproximate
             }
           />
+
+          <section className="sl-field-gps-section">
+            <div className="sl-field-gps-actions sl-field-gps-actions-two">
+              <button
+                type="button"
+                onClick={toggleTracking}
+                className={
+                  tracking
+                    ? "is-active"
+                    : ""
+                }
+              >
+                {tracking
+                  ? "Stop Tracking"
+                  : "Track My Position"}
+              </button>
+              <button
+                type="button"
+                onClick={recordFoundPoint}
+                disabled={!reading}
+              >
+                Record Found Point
+              </button>
+            </div>
+
+            <div className="sl-field-gps-grid">
+              <span>Tracking state</span>
+              <strong>
+                {tracking
+                  ? "Started"
+                  : "Stopped"}
+              </strong>
+              <span>Track fixes</span>
+              <strong>
+                {trackLog.length}
+              </strong>
+            </div>
+          </section>
+
+          <section className="sl-field-gps-section">
+            <div className="sl-field-gps-heading">
+              <span>Target marker</span>
+              <strong>
+                {targetPoint
+                  ? targetPoint.label
+                  : "Not set"}
+              </strong>
+            </div>
+
+            <label className="sl-field-gps-label">
+              <span>Target label</span>
+              <input
+                type="text"
+                value={targetLabelInput}
+                onChange={(event) =>
+                  setTargetLabelInput(
+                    event.target.value,
+                  )
+                }
+                placeholder="Target"
+              />
+            </label>
+
+            <div className="sl-field-gps-target-grid">
+              <label className="sl-field-gps-label">
+                <span>Target latitude</span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.0000001"
+                  value={targetLatitudeInput}
+                  onChange={(event) =>
+                    setTargetLatitudeInput(
+                      event.target.value,
+                    )
+                  }
+                  placeholder="5.0000000"
+                />
+              </label>
+
+              <label className="sl-field-gps-label">
+                <span>Target longitude</span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.0000001"
+                  value={targetLongitudeInput}
+                  onChange={(event) =>
+                    setTargetLongitudeInput(
+                      event.target.value,
+                    )
+                  }
+                  placeholder="117.0000000"
+                />
+              </label>
+            </div>
+
+            <label className="sl-field-gps-label">
+              <span>Select saved point as target</span>
+              <select
+                value={
+                  targetPoint?.source ===
+                  "saved-point"
+                    ? targetPoint.id
+                    : ""
+                }
+                onChange={(event) => {
+                  const selectedPoint =
+                    allRecordedPoints.find(
+                      (point) =>
+                        point.id ===
+                        event.target.value,
+                    );
+
+                  if (selectedPoint) {
+                    setTargetFromPoint(
+                      selectedPoint,
+                    );
+                  }
+                }}
+                disabled={
+                  allRecordedPoints.length ===
+                  0
+                }
+              >
+                <option value="">
+                  Choose point
+                </option>
+                {allRecordedPoints.map(
+                  (point) => (
+                    <option
+                      key={point.id}
+                      value={point.id}
+                    >
+                      {point.label}
+                    </option>
+                  ),
+                )}
+              </select>
+            </label>
+
+            <div className="sl-field-gps-actions">
+              <button
+                type="button"
+                onClick={setTargetFromManualInput}
+              >
+                Set Target
+              </button>
+              <button
+                type="button"
+                onClick={setTargetFromReading}
+                disabled={!reading}
+              >
+                Use Current
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setTargetPoint(null);
+                  setCaptureMessage(
+                    "Target marker cleared.",
+                  );
+                }}
+                disabled={!targetPoint}
+              >
+                Clear Target
+              </button>
+            </div>
+
+            <div className="sl-field-gps-grid">
+              <span>Target coordinate</span>
+              <strong>
+                {targetPoint
+                  ? `${formatCoordinate(
+                      targetPoint.latitude,
+                    )}, ${formatCoordinate(
+                      targetPoint.longitude,
+                    )}`
+                  : "-"}
+              </strong>
+              <span>Distance to target</span>
+              <strong>
+                {targetNavigation
+                  ? formatDistance(
+                      targetNavigation.distanceMeters,
+                    )
+                  : "-"}
+              </strong>
+              <span>Bearing to target</span>
+              <strong>
+                {targetNavigation
+                  ? `${targetNavigation.bearingDegrees.toFixed(
+                      1,
+                    )} deg`
+                  : "-"}
+              </strong>
+              <span>Bearing DMS</span>
+              <strong>
+                {targetNavigation
+                  ? targetNavigation.bearingDms
+                  : "-"}
+              </strong>
+            </div>
+          </section>
 
           <section className="sl-field-gps-section">
             <label className="sl-field-gps-label">
@@ -616,15 +1127,11 @@ export default function FieldGpsLite({
               </button>
               <button
                 type="button"
-                onClick={() =>
-                  setTracking(
-                    (current) => !current,
-                  )
-                }
+                onClick={toggleTracking}
               >
                 {tracking
-                  ? "Stop Track"
-                  : "Start Track"}
+                  ? "Stop Tracking"
+                  : "Start Tracking"}
               </button>
             </div>
 
@@ -636,7 +1143,10 @@ export default function FieldGpsLite({
                     exportInput,
                   )
                 }
-                disabled={points.length === 0}
+                disabled={
+                  allRecordedPoints.length ===
+                  0
+                }
               >
                 Export PDF
               </button>
@@ -651,7 +1161,10 @@ export default function FieldGpsLite({
                     "application/vnd.google-earth.kml+xml",
                   )
                 }
-                disabled={points.length === 0}
+                disabled={
+                  allRecordedPoints.length ===
+                  0
+                }
               >
                 Export KML
               </button>
@@ -660,13 +1173,16 @@ export default function FieldGpsLite({
                 onClick={() =>
                   downloadTextFile(
                     buildFieldGpsCsv(
-                      points,
+                      allRecordedPoints,
                     ),
                     `${safeFileName}.csv`,
                     "text/csv",
                   )
                 }
-                disabled={points.length === 0}
+                disabled={
+                  allRecordedPoints.length ===
+                  0
+                }
               >
                 Export CSV
               </button>
@@ -737,7 +1253,91 @@ export default function FieldGpsLite({
                         <button
                           type="button"
                           onClick={() =>
+                            setTargetFromPoint(
+                              point,
+                            )
+                          }
+                        >
+                          Target
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
                             setPoints(
+                              (current) =>
+                                current.filter(
+                                  (item) =>
+                                    item.id !==
+                                    point.id,
+                                ),
+                            )
+                          }
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </article>
+                  ),
+                )}
+              </div>
+            )}
+          </section>
+
+          <section className="sl-field-gps-section">
+            <div className="sl-field-gps-heading">
+              <span>Found points</span>
+              <strong>
+                {foundPoints.length}
+              </strong>
+            </div>
+
+            {foundPoints.length === 0 ? (
+              <p className="sl-field-gps-note">
+                No found point recorded yet.
+              </p>
+            ) : (
+              <div className="sl-field-gps-point-list">
+                {foundPoints.map(
+                  (point) => (
+                    <article
+                      key={point.id}
+                      className="sl-field-gps-point"
+                    >
+                      <div>
+                        <strong>
+                          {point.label}
+                        </strong>
+                        <span>
+                          {formatCoordinate(
+                            point.latitude,
+                          )}, {formatCoordinate(
+                            point.longitude,
+                          )} | {formatAccuracy(
+                            point.accuracyMeters,
+                          )} | Grade {point.qualityGrade}
+                        </span>
+                        <small>
+                          {point.timestamp}
+                          {point.note
+                            ? ` | ${point.note}`
+                            : ""}
+                        </small>
+                      </div>
+                      <div className="sl-field-gps-point-actions">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setTargetFromPoint(
+                              point,
+                            )
+                          }
+                        >
+                          Target
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setFoundPoints(
                               (current) =>
                                 current.filter(
                                   (item) =>

@@ -351,16 +351,32 @@ select:focus-visible {
   gap: 6px;
 }
 
+.sl-field-gps-actions-two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .sl-field-gps-actions button,
 .sl-field-gps-point-actions button {
   padding: 0 8px;
   overflow-wrap: anywhere;
 }
 
+.sl-field-gps-card button.is-active {
+  color: #ffffff;
+  background: #0f172a;
+  border-color: #0f172a;
+}
+
 .sl-field-gps-card button:disabled {
   color: #94a3b8;
   background: #f1f5f9;
   cursor: not-allowed;
+}
+
+.sl-field-gps-target-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .sl-field-gps-point-list {
@@ -399,6 +415,55 @@ select:focus-visible {
 .sl-field-gps-point-actions {
   display: grid;
   gap: 4px;
+}
+
+@media (max-width: 768px) {
+  .sl-field-gps-stack {
+    position: fixed;
+    top: calc(env(safe-area-inset-top) + 58px);
+    right: 8px;
+    bottom: calc(env(safe-area-inset-bottom) + 86px);
+    left: 8px;
+    align-content: start;
+    width: auto;
+    max-height: none;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .sl-field-gps-panel {
+    justify-items: stretch;
+  }
+
+  .sl-field-gps-toggle {
+    justify-self: end;
+    min-height: 40px;
+  }
+
+  .sl-field-gps-card {
+    max-height: min(62dvh, calc(100dvh - 176px));
+    padding: 10px;
+  }
+
+  .sl-field-gps-actions,
+  .sl-field-gps-actions-two,
+  .sl-field-gps-target-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sl-field-gps-card button,
+  .sl-field-gps-label input,
+  .sl-field-gps-label select {
+    min-height: 42px;
+  }
+
+  .sl-field-gps-point {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sl-field-gps-point-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 /* =====================================================
@@ -2292,19 +2357,23 @@ select:focus-visible {
 
 @media (max-width: 760px) {
   .sl-field-gps-stack {
+    position: fixed;
+    top: calc(env(safe-area-inset-top) + 58px);
     right: 8px;
-    bottom: 74px;
+    bottom: calc(env(safe-area-inset-bottom) + 86px);
     left: 8px;
     width: auto;
-    max-height: calc(100dvh - 102px);
+    max-height: none;
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   .sl-field-gps-card {
-    max-height: min(620px, calc(100dvh - 148px));
+    max-height: min(62dvh, calc(100dvh - 176px));
   }
 
   .sl-field-gps-actions {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .sl-field-gps-grid {

@@ -24,7 +24,7 @@ const METERS_PER_LINK = 0.201168;
 const METERS_PER_CHAIN = 20.1168;
 
 export const FIELD_GPS_DISCLAIMER =
-  "This Field GPS Capture is preliminary only. Phone GPS coordinates are approximate and may contain positional errors. Accuracy depends on device, satellite reception, terrain, canopy, buildings, weather, and field conditions. Offline map tiles are for field reference only and may be incomplete. This output is not a legal survey plan, not proof of land boundary, and not an official approval by JTU, Land Office, or any authority. Final boundary and land matters must be verified through the proper Sabah land and survey procedures.";
+  "GPS phone position is approximate and for preliminary field reference only. It is not a cadastral boundary confirmation or official survey result.";
 
 export const KEYED_COORDINATE_DISCLAIMER =
   "Keyed coordinates are user-entered and have not been independently verified by SabahLot. They are for preliminary field reference only and must not be treated as legal boundary evidence.";
@@ -276,7 +276,7 @@ export function bestFixReading(
   );
 }
 
-function calculateDistance(
+export function calculateFieldGpsDistanceMeters(
   start: [number, number],
   end: [number, number],
 ): number {
@@ -358,7 +358,7 @@ function calculateArea(
   );
 }
 
-function calculateBearing(
+export function calculateFieldGpsBearingDegrees(
   start: [number, number],
   end: [number, number],
 ): number {
@@ -387,7 +387,7 @@ function calculateBearing(
   ) % 360;
 }
 
-function bearingToDms(
+export function bearingToDms(
   bearing: number,
 ): string {
   const degrees =
@@ -437,7 +437,7 @@ export function createPreliminaryPolygonResult(
         index,
       ) =>
         total +
-        calculateDistance(
+        calculateFieldGpsDistanceMeters(
           point,
           pairs[
             (index + 1) %
@@ -469,7 +469,7 @@ export function createPreliminaryPolygonResult(
                 pairs.length
             ];
           const distanceM =
-            calculateDistance(
+            calculateFieldGpsDistanceMeters(
               point,
               next,
             );
@@ -496,13 +496,13 @@ export function createPreliminaryPolygonResult(
                 next[1],
             },
             bearingDecimal:
-              calculateBearing(
+              calculateFieldGpsBearingDegrees(
                 point,
                 next,
               ),
             bearingDms:
               bearingToDms(
-                calculateBearing(
+                calculateFieldGpsBearingDegrees(
                   point,
                   next,
                 ),

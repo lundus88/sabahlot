@@ -43,10 +43,11 @@ export default function FieldGpsAccuracyPanel({
 }: FieldGpsAccuracyPanelProps) {
   const accuracyWeak =
     Boolean(
-      gateMeters !== null &&
-        reading?.accuracyMeters !== undefined &&
-        reading.accuracyMeters >
-          gateMeters,
+      reading?.accuracyMeters !== undefined &&
+        (reading.accuracyMeters > 25 ||
+          (gateMeters !== null &&
+            reading.accuracyMeters >
+              gateMeters)),
     );
 
   return (
