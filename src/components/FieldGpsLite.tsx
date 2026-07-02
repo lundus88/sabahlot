@@ -803,7 +803,43 @@ export default function FieldGpsLite({
     );
   };
 
+  const dispatchTrackMyPosition = (
+    gpsReading: FieldGpsReading,
+  ) => {
+    window.dispatchEvent(
+      new CustomEvent(
+        "sabahlot:track-my-position",
+        {
+          detail: {
+            latitude:
+              gpsReading.latitude,
+            longitude:
+              gpsReading.longitude,
+            accuracy:
+              gpsReading.accuracyMeters,
+            label:
+              "Current GPS",
+          },
+        },
+      ),
+    );
+  };
+
   const toggleTracking = () => {
+    const lastReading =
+      readingRef.current ?? reading;
+
+    if (!lastReading) {
+      setCaptureMessage(
+        "Start GPS first to track your position.",
+      );
+      return;
+    }
+
+    dispatchTrackMyPosition(
+      lastReading,
+    );
+
     if (!gpsActive) {
       startGps();
     }

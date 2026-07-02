@@ -6331,6 +6331,10 @@ export default function Map({
         | ((event: Event) => void)
         | null =
         null;
+      let handleTrackMyPosition:
+        | ((event: Event) => void)
+        | null =
+        null;
       let handleClearCoordinateMarker:
         | (() => void)
         | null =
@@ -6609,6 +6613,119 @@ export default function Map({
           marker.openPopup();
         };
 
+        handleTrackMyPosition = (
+          event: Event,
+        ) => {
+          const detail =
+            (
+              event as CustomEvent<{
+                latitude?: number;
+                longitude?: number;
+                accuracy?: number;
+                label?: string;
+              }>
+            ).detail;
+
+          if (
+            typeof detail?.latitude !==
+              "number" ||
+            typeof detail.longitude !==
+              "number"
+          ) {
+            return;
+          }
+
+          const location:
+            CoordinatePair = [
+              detail.latitude,
+              detail.longitude,
+            ];
+          const markerLabel =
+            detail.label?.trim() ||
+            "Current GPS";
+
+          locationLayer.clearLayers();
+
+          if (
+            typeof detail.accuracy ===
+              "number" &&
+            Number.isFinite(
+              detail.accuracy,
+            ) &&
+            detail.accuracy > 0
+          ) {
+            L.circle(
+              location,
+              {
+                radius:
+                  detail.accuracy,
+                color:
+                  "#2563eb",
+                weight:
+                  2,
+                opacity:
+                  0.72,
+                fillColor:
+                  "#60a5fa",
+                fillOpacity:
+                  0.16,
+                interactive:
+                  false,
+              },
+            ).addTo(
+              locationLayer,
+            );
+          }
+
+          L.marker(
+            location,
+            {
+              icon:
+                L.divIcon({
+                  className:
+                    "sl-current-location-icon",
+                  html:
+                    '<div class="sl-current-location-marker"><span></span></div>',
+                  iconSize:
+                    [26, 26],
+                  iconAnchor:
+                    [13, 13],
+                }),
+            },
+          )
+            .bindPopup(
+              `<strong>${escapeHtml(markerLabel)}</strong><br/>${detail.latitude.toFixed(7)}, ${detail.longitude.toFixed(7)}${typeof detail.accuracy === "number" ? `<br/>Accuracy: +/- ${detail.accuracy.toFixed(1)} m` : ""}`,
+            )
+            .addTo(
+              locationLayer,
+            );
+
+          if (
+            typeof detail.accuracy ===
+              "number"
+          ) {
+            setLocationAccuracy(
+              detail.accuracy,
+            );
+          }
+
+          setLocationStatus(
+            `Tracking ${markerLabel}`,
+          );
+
+          map.flyTo(
+            location,
+            Math.max(
+              map.getZoom(),
+              18,
+            ),
+            {
+              duration:
+                0.8,
+            },
+          );
+        };
+
         handleClearCoordinateMarker =
           () => {
             coordinateMarkerLayer.clearLayers();
@@ -6617,6 +6734,10 @@ export default function Map({
         window.addEventListener(
           "sabahlot:find-coordinate",
           handleFindCoordinate,
+        );
+        window.addEventListener(
+          "sabahlot:track-my-position",
+          handleTrackMyPosition,
         );
         window.addEventListener(
           "sabahlot:clear-coordinate-marker",
@@ -6906,6 +7027,13 @@ export default function Map({
           window.removeEventListener(
             "sabahlot:find-coordinate",
             handleFindCoordinate,
+          );
+        }
+
+        if (handleTrackMyPosition) {
+          window.removeEventListener(
+            "sabahlot:track-my-position",
+            handleTrackMyPosition,
           );
         }
 
