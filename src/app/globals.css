@@ -417,6 +417,121 @@ select:focus-visible {
   gap: 4px;
 }
 
+.sl-field-gps-navigation {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background: #eef6ff;
+  border: 1px solid rgba(37, 99, 235, 0.22);
+  border-radius: 8px;
+}
+
+.sl-field-gps-navigation strong,
+.sl-field-gps-navigation span {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.sl-field-gps-navigation strong {
+  font-size: 12px;
+}
+
+.sl-field-gps-navigation span {
+  color: #475569;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.sl-field-gps-arrow,
+.sl-ar-guide-arrow {
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  background: #0f172a;
+  border: 2px solid #ffffff;
+  box-shadow: var(--sl-shadow-soft);
+  transition: transform 180ms ease;
+}
+
+.sl-field-gps-arrow {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  font-size: 26px;
+  font-weight: 900;
+}
+
+.sl-ar-guide {
+  position: relative;
+  min-height: 360px;
+  overflow: hidden;
+  background: #020617;
+  border: 1px solid rgba(15, 23, 42, 0.6);
+  border-radius: 8px;
+}
+
+.sl-ar-guide-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #020617;
+}
+
+.sl-ar-guide-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-content: space-between;
+  gap: 10px;
+  padding: 10px;
+  color: #ffffff;
+  background: linear-gradient(
+    180deg,
+    rgba(2, 6, 23, 0.72),
+    rgba(2, 6, 23, 0.18) 45%,
+    rgba(2, 6, 23, 0.78)
+  );
+}
+
+.sl-ar-guide-heading,
+.sl-ar-guide-target {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sl-ar-guide-heading strong,
+.sl-ar-guide-target strong {
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.sl-ar-guide-target span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.sl-ar-guide-arrow {
+  justify-self: center;
+  width: 84px;
+  height: 84px;
+  border-radius: 999px;
+  font-size: 56px;
+  font-weight: 900;
+}
+
+.sl-ar-guide .sl-field-gps-grid {
+  background: rgba(248, 250, 252, 0.92);
+}
+
 @media (max-width: 768px) {
   .sl-field-gps-stack {
     position: fixed;
@@ -463,6 +578,20 @@ select:focus-visible {
 
   .sl-field-gps-point-actions {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .sl-field-gps-navigation {
+    grid-template-columns: 42px minmax(0, 1fr);
+  }
+
+  .sl-ar-guide {
+    min-height: min(58dvh, 420px);
+  }
+
+  .sl-ar-guide-arrow {
+    width: 72px;
+    height: 72px;
+    font-size: 48px;
   }
 }
 

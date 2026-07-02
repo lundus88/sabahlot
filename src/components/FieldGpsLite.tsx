@@ -62,6 +62,10 @@ type TargetSource =
   | "manual"
   | "saved-point";
 
+type FoundPointMode =
+  | "Phone GPS"
+  | "AR Find Point Lite";
+
 interface FieldGpsTarget {
   id: string;
   label: string;
@@ -71,12 +75,33 @@ interface FieldGpsTarget {
   description?: string;
 }
 
+interface FoundPointRecord {
+  id: string;
+  targetName: string;
+  targetLatitude: number;
+  targetLongitude: number;
+  foundLatitude: number;
+  foundLongitude: number;
+  distanceDifferenceMeters: number;
+  bearingDegrees: number;
+  accuracyMeters?: number;
+  timestamp: string;
+  note: string;
+  mode: FoundPointMode;
+}
+
 const OCCUPATION_OPTIONS = [
   10,
   20,
   30,
   60,
 ];
+
+const FIELD_NAVIGATION_SAFETY_LABEL =
+  "Preliminary Field Navigation Only · Not for cadastral boundary determination.";
+
+const FIELD_NAVIGATION_SAFETY_LABEL_MS =
+  "Navigasi awal sahaja. Bukan penentuan sempadan kadaster rasmi.";
 
 function nextLabel(
   points: FieldGpsPoint[],
@@ -110,6 +135,37 @@ function formatDistance(
   return meters >= 1000
     ? `${(meters / 1000).toFixed(3)} km`
     : `${meters.toFixed(1)} m`;
+}
+
+function formatTimestamp(
+  value?: string,
+): string {
+  return value ?? "-";
+}
+
+function getArrowRotationDegrees(
+  bearingDegrees?: number,
+  headingDegrees?: number | null,
+): number {
+  if (
+    bearingDegrees === undefined ||
+    !Number.isFinite(bearingDegrees)
+  ) {
+    return 0;
+  }
+
+  if (
+    typeof headingDegrees === "number" &&
+    Number.isFinite(headingDegrees)
+  ) {
+    return (
+      bearingDegrees -
+      headingDegrees +
+      360
+    ) % 360;
+  }
+
+  return bearingDegrees;
 }
 
 function getTargetZoneStatus(
@@ -163,8 +219,12 @@ export default function FieldGpsLite({
     status,
     setStatus,
   ] = useState(
-    "Waiting for location",
+    "GPS not started",
   );
+  const [
+    gpsActive,
+    setGpsActive,
+  ] = useState(false);
   const [
     reading,
     setReading,
@@ -185,6 +245,10 @@ export default function FieldGpsLite({
     foundPoints,
     setFoundPoints,
   ] = useState<FieldGpsPoint[]>([]);
+  const [
+    foundPointRecords,
+    setFoundPointRecords,
+  ] = useState<FoundPointRecord[]>([]);
   const [
     targetPoint,
     setTargetPoint,
@@ -215,6 +279,22 @@ export default function FieldGpsLite({
     tracking,
     setTracking,
   ] = useState(false);
+  const [
+    navigationActive,
+    setNavigationActive,
+  ] = useState(false);
+  const [
+    arActive,
+    setArActive,
+  ] = useState(false);
+  const [
+    arMessage,
+    setArMessage,
+  ] = useState("");
+  const [
+    foundPointNoteInput,
+    setFoundPointNoteInput,
+  ] = useState("");
   const [
     gateMeters,
     setGateMeters,
@@ -248,6 +328,14 @@ export default function FieldGpsLite({
     useRef(false);
   const readingRef =
     useRef<FieldGpsReading | null>(
+      null,
+    );
+  const videoRef =
+    useRef<HTMLVideoElement | null>(
+      null,
+    );
+  const arStreamRef =
+    useRef<MediaStream | null>(
       null,
     );
 
@@ -323,6 +411,12 @@ export default function FieldGpsLite({
       targetPoint,
     ]);
 
+  const directionArrowDegrees =
+    getArrowRotationDegrees(
+      targetNavigation?.bearingDegrees,
+      reading?.heading,
+    );
+
   useEffect(() => {
     if (!enabled) {
       return;
@@ -336,51 +430,7 @@ export default function FieldGpsLite({
           ),
         0,
       );
-      return;
     }
-
-    watchRef.current =
-      navigator.geolocation.watchPosition(
-        (position) => {
-          const nextReading =
-            readingFromPosition(
-              position,
-            );
-          readingRef.current =
-            nextReading;
-          setReading(nextReading);
-          setStatus(
-            nextReading.accuracyMeters !==
-              undefined &&
-              nextReading.accuracyMeters >
-                25
-              ? "Accuracy weak"
-              : "GPS ready",
-          );
-
-          if (trackRef.current) {
-            setTrackLog(
-              (current) => [
-                ...current,
-                {
-                  ...nextReading,
-                  id:
-                    createFieldGpsId(),
-                },
-              ],
-            );
-          }
-        },
-        (error) => {
-          setStatus(
-            error.code ===
-              error.PERMISSION_DENIED
-              ? "Permission denied"
-              : "Waiting for location",
-          );
-        },
-        GEOLOCATION_OPTIONS,
-      );
 
     return () => {
       if (
@@ -390,6 +440,17 @@ export default function FieldGpsLite({
           watchRef.current,
         );
         watchRef.current = null;
+      }
+      setGpsActive(false);
+      setTracking(false);
+      setNavigationActive(false);
+      if (arStreamRef.current) {
+        arStreamRef.current
+          .getTracks()
+          .forEach((track) =>
+            track.stop(),
+          );
+        arStreamRef.current = null;
       }
     };
   }, [enabled]);
@@ -453,6 +514,108 @@ export default function FieldGpsLite({
     setCaptureMessage(
       `${point.label} saved as preliminary approximate phone GPS field reference only.`,
     );
+  };
+
+  const startGps = () => {
+    if (!navigator.geolocation) {
+      setStatus(
+        "Location services are not supported.",
+      );
+      return;
+    }
+
+    if (watchRef.current !== null) {
+      setStatus("GPS already active");
+      return;
+    }
+
+    setStatus("Requesting GPS permission");
+
+    watchRef.current =
+      navigator.geolocation.watchPosition(
+        (position) => {
+          const nextReading =
+            readingFromPosition(
+              position,
+            );
+          readingRef.current =
+            nextReading;
+          setReading(nextReading);
+          setGpsActive(true);
+          setStatus(
+            nextReading.accuracyMeters !==
+              undefined &&
+              nextReading.accuracyMeters >
+                25
+              ? "Accuracy weak"
+              : "GPS ready",
+          );
+
+          if (trackRef.current) {
+            setTrackLog(
+              (current) => [
+                ...current,
+                {
+                  ...nextReading,
+                  id:
+                    createFieldGpsId(),
+                },
+              ],
+            );
+          }
+        },
+        (error) => {
+          if (
+            watchRef.current !== null
+          ) {
+            navigator.geolocation.clearWatch(
+              watchRef.current,
+            );
+            watchRef.current = null;
+          }
+          setGpsActive(false);
+          setTracking(false);
+          setNavigationActive(false);
+          setStatus(
+            error.code ===
+              error.PERMISSION_DENIED
+              ? "GPS permission denied"
+              : "GPS unavailable",
+          );
+        },
+        GEOLOCATION_OPTIONS,
+      );
+
+    setGpsActive(true);
+    setStatus("Waiting for GPS fix");
+  };
+
+  const stopGps = () => {
+    if (
+      watchRef.current !== null &&
+      navigator.geolocation
+    ) {
+      navigator.geolocation.clearWatch(
+        watchRef.current,
+      );
+      watchRef.current = null;
+    }
+
+    setGpsActive(false);
+    setTracking(false);
+    setNavigationActive(false);
+    setStatus("GPS stopped");
+    setCaptureMessage(
+      "GPS stopped. Last reading remains visible for reference.",
+    );
+  };
+
+  const toggleGps = () => {
+    if (gpsActive) {
+      stopGps();
+    } else {
+      startGps();
+    }
   };
 
   const setTarget = (
@@ -615,7 +778,36 @@ export default function FieldGpsLite({
     });
   };
 
+  const startNavigation = () => {
+    if (!targetPoint) {
+      setCaptureMessage(
+        "Set a Target Point before starting navigation.",
+      );
+      return;
+    }
+
+    if (!gpsActive) {
+      startGps();
+    }
+
+    setNavigationActive(true);
+    setCaptureMessage(
+      "Field Navigation started.",
+    );
+  };
+
+  const stopNavigation = () => {
+    setNavigationActive(false);
+    setCaptureMessage(
+      "Field Navigation stopped.",
+    );
+  };
+
   const toggleTracking = () => {
+    if (!gpsActive) {
+      startGps();
+    }
+
     setTracking((current) => {
       const next =
         !current;
@@ -628,10 +820,95 @@ export default function FieldGpsLite({
     });
   };
 
-  const recordFoundPoint = () => {
+  const stopArGuide = () => {
+    if (arStreamRef.current) {
+      arStreamRef.current
+        .getTracks()
+        .forEach((track) =>
+          track.stop(),
+        );
+      arStreamRef.current = null;
+    }
+
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+
+    setArActive(false);
+    setArMessage("AR Guide stopped.");
+  };
+
+  const startArGuide = async () => {
+    if (!targetPoint) {
+      setArMessage(
+        "Set a Target Point before starting AR Guide.",
+      );
+      return;
+    }
+
+    if (
+      !navigator.mediaDevices ||
+      !navigator.mediaDevices.getUserMedia
+    ) {
+      setArMessage(
+        "Camera is not supported in this browser.",
+      );
+      return;
+    }
+
+    try {
+      setArMessage(
+        "Requesting camera permission.",
+      );
+      const stream =
+        await navigator.mediaDevices.getUserMedia(
+          {
+            video: {
+              facingMode:
+                "environment",
+            },
+            audio: false,
+          },
+        );
+      arStreamRef.current =
+        stream;
+      setArActive(true);
+      setNavigationActive(true);
+      setArMessage(
+        "AR Guide active.",
+      );
+
+      window.setTimeout(
+        () => {
+          if (videoRef.current) {
+            videoRef.current.srcObject =
+              stream;
+            void videoRef.current.play();
+          }
+        },
+        0,
+      );
+    } catch {
+      setArActive(false);
+      setArMessage(
+        "Camera permission denied or unavailable.",
+      );
+    }
+  };
+
+  const saveFoundPointRecord = (
+    mode: FoundPointMode,
+  ) => {
     if (!reading) {
       setCaptureMessage(
-        "Waiting for location before recording found point.",
+        "Start GPS and wait for a fix before saving a found point.",
+      );
+      return;
+    }
+
+    if (!targetPoint) {
+      setCaptureMessage(
+        "Set a Target Point before saving a found point.",
       );
       return;
     }
@@ -643,23 +920,30 @@ export default function FieldGpsLite({
       return;
     }
 
-    const targetNote =
-      targetPoint
-        ? `Found reference for ${targetPoint.label}; target ${formatCoordinate(
-            targetPoint.latitude,
-          )}, ${formatCoordinate(
-            targetPoint.longitude,
-          )}${
-            targetNavigation
-              ? `; final offset ${formatDistance(
-                  targetNavigation.distanceMeters,
-                )} at ${targetNavigation.bearingDegrees.toFixed(
-                  1,
-                )} deg`
-              : ""
-          }.`
-        : "Found point recorded without a Target Point.";
-
+    const start: [number, number] =
+      [
+        reading.latitude,
+        reading.longitude,
+      ];
+    const end: [number, number] =
+      [
+        targetPoint.latitude,
+        targetPoint.longitude,
+      ];
+    const distanceDifferenceMeters =
+      calculateFieldGpsDistanceMeters(
+        start,
+        end,
+      );
+    const bearingDegrees =
+      calculateFieldGpsBearingDegrees(
+        start,
+        end,
+      );
+    const note =
+      foundPointNoteInput.trim() ||
+      targetPoint.description ||
+      "Saved from Handheld GPS.";
     const foundPoint =
       createFieldGpsPoint(
         reading,
@@ -669,8 +953,36 @@ export default function FieldGpsLite({
         "single",
         1,
         0,
-        targetNote,
+        `${mode}; target ${targetPoint.label}; offset ${formatDistance(
+          distanceDifferenceMeters,
+        )} at ${bearingDegrees.toFixed(
+          1,
+        )} deg. ${note}`,
       );
+
+    const record:
+      FoundPointRecord = {
+        id:
+          foundPoint.id,
+        targetName:
+          targetPoint.label,
+        targetLatitude:
+          targetPoint.latitude,
+        targetLongitude:
+          targetPoint.longitude,
+        foundLatitude:
+          reading.latitude,
+        foundLongitude:
+          reading.longitude,
+        distanceDifferenceMeters,
+        bearingDegrees,
+        accuracyMeters:
+          reading.accuracyMeters,
+        timestamp:
+          foundPoint.timestamp,
+        note,
+        mode,
+      };
 
     setFoundPoints(
       (current) => [
@@ -678,14 +990,22 @@ export default function FieldGpsLite({
         foundPoint,
       ],
     );
+    setFoundPointRecords(
+      (current) => [
+        ...current,
+        record,
+      ],
+    );
     setCaptureMessage(
-      `${foundPoint.label} found point recorded at ${foundPoint.timestamp}; ${formatCoordinate(
-        foundPoint.latitude,
-      )}, ${formatCoordinate(
-        foundPoint.longitude,
-      )}; accuracy ${formatAccuracy(
-        foundPoint.accuracyMeters,
+      `${foundPoint.label} saved locally in ${mode}; offset ${formatDistance(
+        distanceDifferenceMeters,
       )}.`,
+    );
+  };
+
+  const recordFoundPoint = () => {
+    saveFoundPointRecord(
+      "Phone GPS",
     );
   };
 
@@ -942,7 +1262,20 @@ export default function FieldGpsLite({
           />
 
           <section className="sl-field-gps-section">
-            <div className="sl-field-gps-actions sl-field-gps-actions-two">
+            <div className="sl-field-gps-actions">
+              <button
+                type="button"
+                onClick={toggleGps}
+                className={
+                  gpsActive
+                    ? "is-active"
+                    : ""
+                }
+              >
+                {gpsActive
+                  ? "Stop GPS"
+                  : "Start GPS"}
+              </button>
               <button
                 type="button"
                 onClick={toggleTracking}
@@ -959,16 +1292,31 @@ export default function FieldGpsLite({
               <button
                 type="button"
                 onClick={recordFoundPoint}
-                disabled={!reading}
+                disabled={
+                  !reading ||
+                  !targetPoint
+                }
               >
-                Record Found Point
+                Save Found Point
               </button>
             </div>
 
             <div className="sl-field-gps-grid">
+              <span>GPS state</span>
+              <strong>
+                {gpsActive
+                  ? "Started"
+                  : "Stopped"}
+              </strong>
               <span>Tracking state</span>
               <strong>
                 {tracking
+                  ? "Started"
+                  : "Stopped"}
+              </strong>
+              <span>Navigation</span>
+              <strong>
+                {navigationActive
                   ? "Started"
                   : "Stopped"}
               </strong>
@@ -1191,7 +1539,125 @@ export default function FieldGpsLite({
                     )
                   : "-"}
               </strong>
+              <span>Device heading</span>
+              <strong>
+                {reading?.heading !== null &&
+                reading?.heading !== undefined
+                  ? `${reading.heading.toFixed(
+                      0,
+                    )} deg`
+                  : "Not available"}
+              </strong>
             </div>
+
+            <div className="sl-field-gps-navigation">
+              <div
+                className="sl-field-gps-arrow"
+                style={{
+                  transform: `rotate(${directionArrowDegrees}deg)`,
+                }}
+                aria-hidden="true"
+              >
+                &uarr;
+              </div>
+              <div>
+                <strong>
+                  {navigationActive
+                    ? "Field Navigation active"
+                    : "Field Navigation ready"}
+                </strong>
+                <span>
+                  {targetNavigation
+                    ? `Arrow uses ${
+                        reading?.heading !==
+                          null &&
+                        reading?.heading !==
+                          undefined
+                          ? "device heading"
+                          : "map north"
+                      }; bearing ${targetNavigation.bearingDegrees.toFixed(
+                        1,
+                      )} deg.`
+                    : "Set a Target Point and start GPS."}
+                </span>
+              </div>
+            </div>
+
+            <label className="sl-field-gps-label">
+              <span>Found point note</span>
+              <textarea
+                value={foundPointNoteInput}
+                onChange={(event) =>
+                  setFoundPointNoteInput(
+                    event.target.value,
+                  )
+                }
+                rows={2}
+                placeholder="Optional note for Save Found Point"
+              />
+            </label>
+
+            <div className="sl-field-gps-actions">
+              <button
+                type="button"
+                onClick={
+                  navigationActive
+                    ? stopNavigation
+                    : startNavigation
+                }
+                disabled={!targetPoint}
+                className={
+                  navigationActive
+                    ? "is-active"
+                    : ""
+                }
+              >
+                {navigationActive
+                  ? "Stop Navigation"
+                  : "Start Navigation"}
+              </button>
+              <button
+                type="button"
+                onClick={
+                  arActive
+                    ? stopArGuide
+                    : () =>
+                        void startArGuide()
+                }
+                disabled={!targetPoint}
+                className={
+                  arActive
+                    ? "is-active"
+                    : ""
+                }
+              >
+                {arActive
+                  ? "Stop AR Guide"
+                  : "Start AR Guide"}
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  saveFoundPointRecord(
+                    arActive
+                      ? "AR Find Point Lite"
+                      : "Phone GPS",
+                  )
+                }
+                disabled={
+                  !reading ||
+                  !targetPoint
+                }
+              >
+                Save Found Point
+              </button>
+            </div>
+
+            {arMessage && (
+              <p className="sl-field-gps-note">
+                {arMessage}
+              </p>
+            )}
 
             {targetNavigation &&
               reading?.accuracyMeters !==
@@ -1204,9 +1670,103 @@ export default function FieldGpsLite({
               )}
 
             <p className="sl-field-gps-disclaimer">
-              Preliminary Field Navigation Only · Not for cadastral boundary determination.
+              {FIELD_NAVIGATION_SAFETY_LABEL}
+              <br />
+              {FIELD_NAVIGATION_SAFETY_LABEL_MS}
             </p>
           </section>
+
+          {arActive && (
+            <section
+              className="sl-ar-guide"
+              aria-label="AR Guide"
+            >
+              <video
+                ref={videoRef}
+                className="sl-ar-guide-video"
+                playsInline
+                muted
+                autoPlay
+              />
+              <div className="sl-ar-guide-overlay">
+                <div className="sl-ar-guide-heading">
+                  <strong>
+                    AR Guide
+                  </strong>
+                  <button
+                    type="button"
+                    onClick={stopArGuide}
+                  >
+                    Stop AR Guide
+                  </button>
+                </div>
+                <div className="sl-ar-guide-target">
+                  <span>
+                    {targetPoint?.label ??
+                      "Target Point"}
+                  </span>
+                  <strong>
+                    {targetNavigation
+                      ? formatDistance(
+                          targetNavigation.distanceMeters,
+                        )
+                      : "-"}
+                  </strong>
+                </div>
+                <div
+                  className="sl-ar-guide-arrow"
+                  style={{
+                    transform: `rotate(${directionArrowDegrees}deg)`,
+                  }}
+                  aria-hidden="true"
+                >
+                  &uarr;
+                </div>
+                <div className="sl-field-gps-grid">
+                  <span>Bearing</span>
+                  <strong>
+                    {targetNavigation
+                      ? `${targetNavigation.bearingDegrees.toFixed(
+                          1,
+                        )} deg`
+                      : "-"}
+                  </strong>
+                  <span>Accuracy</span>
+                  <strong>
+                    {reading?.accuracyMeters !==
+                    undefined
+                      ? formatAccuracy(
+                          reading.accuracyMeters,
+                        )
+                      : "-"}
+                  </strong>
+                  <span>Mode</span>
+                  <strong>
+                    AR Find Point Lite
+                  </strong>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    saveFoundPointRecord(
+                      "AR Find Point Lite",
+                    )
+                  }
+                  disabled={
+                    !reading ||
+                    !targetPoint
+                  }
+                >
+                  Save Found Point
+                </button>
+                <p className="sl-field-gps-disclaimer">
+                  {FIELD_NAVIGATION_SAFETY_LABEL}
+                  <br />
+                  {FIELD_NAVIGATION_SAFETY_LABEL_MS}
+                </p>
+              </div>
+            </section>
+          )}
 
           <section className="sl-field-gps-section">
             <label className="sl-field-gps-label">
@@ -1489,7 +2049,7 @@ export default function FieldGpsLite({
                         </button>
                         <button
                           type="button"
-                          onClick={() =>
+                          onClick={() => {
                             setFoundPoints(
                               (current) =>
                                 current.filter(
@@ -1497,8 +2057,105 @@ export default function FieldGpsLite({
                                     item.id !==
                                     point.id,
                                 ),
-                            )
-                          }
+                            );
+                            setFoundPointRecords(
+                              (current) =>
+                                current.filter(
+                                  (item) =>
+                                    item.id !==
+                                    point.id,
+                                ),
+                            );
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </article>
+                  ),
+                )}
+              </div>
+            )}
+          </section>
+
+          <section className="sl-field-gps-section">
+            <div className="sl-field-gps-heading">
+              <span>Saved found point records</span>
+              <strong>
+                {foundPointRecords.length}
+              </strong>
+            </div>
+
+            {foundPointRecords.length ===
+            0 ? (
+              <p className="sl-field-gps-note">
+                No local found point record saved yet.
+              </p>
+            ) : (
+              <div className="sl-field-gps-point-list">
+                {foundPointRecords.map(
+                  (record) => (
+                    <article
+                      key={record.id}
+                      className="sl-field-gps-point"
+                    >
+                      <div>
+                        <strong>
+                          {record.targetName} | {record.mode}
+                        </strong>
+                        <span>
+                          Target {formatCoordinate(
+                            record.targetLatitude,
+                          )}, {formatCoordinate(
+                            record.targetLongitude,
+                          )}
+                        </span>
+                        <span>
+                          Found {formatCoordinate(
+                            record.foundLatitude,
+                          )}, {formatCoordinate(
+                            record.foundLongitude,
+                          )}
+                        </span>
+                        <small>
+                          Offset {formatDistance(
+                            record.distanceDifferenceMeters,
+                          )} | Bearing {record.bearingDegrees.toFixed(
+                            1,
+                          )} deg | Accuracy {formatAccuracy(
+                            record.accuracyMeters,
+                          )}
+                        </small>
+                        <small>
+                          {formatTimestamp(
+                            record.timestamp,
+                          )}
+                          {record.note
+                            ? ` | ${record.note}`
+                            : ""}
+                        </small>
+                      </div>
+                      <div className="sl-field-gps-point-actions">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFoundPointRecords(
+                              (current) =>
+                                current.filter(
+                                  (item) =>
+                                    item.id !==
+                                    record.id,
+                                ),
+                            );
+                            setFoundPoints(
+                              (current) =>
+                                current.filter(
+                                  (item) =>
+                                    item.id !==
+                                    record.id,
+                                ),
+                            );
+                          }}
                         >
                           Delete
                         </button>
