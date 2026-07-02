@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -65,6 +66,29 @@ type TargetSource =
 type FoundPointMode =
   | "Phone GPS"
   | "AR Find Point Lite";
+
+type CameraStatus =
+  | "Starting"
+  | "Active"
+  | "Permission denied"
+  | "Not supported"
+  | "Failed to start"
+  | "Stopped";
+
+type CameraMode =
+  | "environment preferred"
+  | "fallback camera";
+
+type GpsSignalLevel =
+  | "strong"
+  | "weak"
+  | "lost";
+
+interface GpsSignalStatus {
+  level: GpsSignalLevel;
+  label: string;
+  className: string;
+}
 
 interface FieldGpsTarget {
   id: string;
@@ -143,6 +167,103 @@ function formatTimestamp(
   return value ?? "-";
 }
 
+function getGpsSignalStatus(
+  position: FieldGpsReading | null,
+  gpsStatus: string,
+  error: string,
+  lastUpdateMs: number,
+): GpsSignalStatus {
+  const lostLabel =
+    "GPS Lost · Tiada sambungan lokasi";
+  const weakLabel =
+    "GPS Weak · Signal lemah";
+  const strongLabel =
+    "GPS Active · Signal kuat";
+
+  const statusText =
+    `${gpsStatus} ${error}`.toLowerCase();
+  const hasLostStatus =
+    statusText.includes("denied") ||
+    statusText.includes("unavailable") ||
+    statusText.includes("not supported") ||
+    statusText.includes("timeout") ||
+    statusText.includes("stopped");
+
+  const buildStatus = (
+    level: GpsSignalLevel,
+    baseLabel: string,
+  ) => {
+    const accuracyLabel =
+      position?.accuracyMeters !==
+      undefined
+        ? ` · ±${position.accuracyMeters.toFixed(
+            1,
+          )} m`
+        : "";
+
+    return {
+      level,
+      label: `${baseLabel}${accuracyLabel}`,
+      className: `sl-gps-signal sl-gps-signal-${level}`,
+    };
+  };
+
+  if (
+    !position ||
+    hasLostStatus
+  ) {
+    return buildStatus(
+      "lost",
+      lostLabel,
+    );
+  }
+
+  const positionTime =
+    Date.parse(position.timestamp);
+
+  if (!Number.isFinite(positionTime)) {
+    return buildStatus(
+      "lost",
+      lostLabel,
+    );
+  }
+
+  const ageSeconds =
+    Math.max(
+      0,
+      (lastUpdateMs - positionTime) /
+        1000,
+    );
+  const accuracy =
+    position.accuracyMeters;
+
+  if (
+    accuracy === undefined ||
+    accuracy > 30 ||
+    ageSeconds > 30
+  ) {
+    return buildStatus(
+      "lost",
+      lostLabel,
+    );
+  }
+
+  if (
+    accuracy > 10 ||
+    ageSeconds >= 15
+  ) {
+    return buildStatus(
+      "weak",
+      weakLabel,
+    );
+  }
+
+  return buildStatus(
+    "strong",
+    strongLabel,
+  );
+}
+
 function getArrowRotationDegrees(
   bearingDegrees?: number,
   headingDegrees?: number | null,
@@ -186,6 +307,24 @@ function getTargetZoneStatus(
   return "Far from target";
 }
 
+function describeCameraError(
+  error: unknown,
+): string {
+  if (error instanceof DOMException) {
+    return error.message
+      ? `${error.name}: ${error.message}`
+      : error.name;
+  }
+
+  if (error instanceof Error) {
+    return error.message
+      ? `${error.name}: ${error.message}`
+      : error.name;
+  }
+
+  return "UnknownError";
+}
+
 function parseCoordinateInput(
   value: string,
   minimum: number,
@@ -221,6 +360,14 @@ export default function FieldGpsLite({
   ] = useState(
     "GPS not started",
   );
+  const [
+    lastGpsError,
+    setLastGpsError,
+  ] = useState("");
+  const [
+    gpsNowMs,
+    setGpsNowMs,
+  ] = useState(() => Date.now());
   const [
     gpsActive,
     setGpsActive,
@@ -292,6 +439,26 @@ export default function FieldGpsLite({
     setArMessage,
   ] = useState("");
   const [
+    cameraStatus,
+    setCameraStatus,
+  ] = useState<CameraStatus>(
+    "Stopped",
+  );
+  const [
+    cameraMode,
+    setCameraMode,
+  ] = useState<CameraMode>(
+    "environment preferred",
+  );
+  const [
+    cameraSupported,
+    setCameraSupported,
+  ] = useState(false);
+  const [
+    cameraError,
+    setCameraError,
+  ] = useState("");
+  const [
     foundPointNoteInput,
     setFoundPointNoteInput,
   ] = useState("");
@@ -334,9 +501,108 @@ export default function FieldGpsLite({
     useRef<HTMLVideoElement | null>(
       null,
     );
-  const arStreamRef =
+  const cameraStreamRef =
     useRef<MediaStream | null>(
       null,
+    );
+
+  const stopCameraStream =
+    useCallback(() => {
+      if (cameraStreamRef.current) {
+        cameraStreamRef.current
+          .getTracks()
+          .forEach((track) =>
+            track.stop(),
+          );
+        cameraStreamRef.current = null;
+      }
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+    }, []);
+
+  const playCameraStream =
+    useCallback(
+      async (
+        stream: MediaStream,
+      ): Promise<boolean> => {
+        const video = videoRef.current;
+
+        if (!video) {
+          return false;
+        }
+
+        video.muted = true;
+        video.playsInline = true;
+        video.setAttribute(
+          "playsinline",
+          "true",
+        );
+        video.setAttribute(
+          "webkit-playsinline",
+          "true",
+        );
+
+        if (
+          "disablePictureInPicture" in
+          video
+        ) {
+          video.disablePictureInPicture =
+            true;
+        }
+
+        video.srcObject = stream;
+
+        try {
+          await video.play();
+          return true;
+        } catch {
+          return new Promise((resolve) => {
+            let settled = false;
+
+            const finish = (
+              value: boolean,
+            ) => {
+              if (settled) {
+                return;
+              }
+              settled = true;
+              video.removeEventListener(
+                "loadedmetadata",
+                handleLoadedMetadata,
+              );
+              resolve(value);
+            };
+
+            const handleLoadedMetadata =
+              () => {
+                void video
+                  .play()
+                  .then(() =>
+                    finish(true),
+                  )
+                  .catch(() =>
+                    finish(false),
+                  );
+              };
+
+            video.addEventListener(
+              "loadedmetadata",
+              handleLoadedMetadata,
+              {
+                once: true,
+              },
+            );
+
+            window.setTimeout(
+              () => finish(false),
+              1500,
+            );
+          });
+        }
+      },
+      [],
     );
 
   const qualityGrade =
@@ -346,6 +612,23 @@ export default function FieldGpsLite({
           reading?.accuracyMeters,
         ),
       [reading],
+    );
+
+  const gpsSignalStatus =
+    useMemo(
+      () =>
+        getGpsSignalStatus(
+          reading,
+          status,
+          lastGpsError,
+          gpsNowMs,
+        ),
+      [
+        gpsNowMs,
+        lastGpsError,
+        reading,
+        status,
+      ],
     );
 
   const accuracyBlocked =
@@ -424,10 +707,14 @@ export default function FieldGpsLite({
 
     if (!navigator.geolocation) {
       window.setTimeout(
-        () =>
+        () => {
+          setLastGpsError(
+            "not supported",
+          );
           setStatus(
             "Location services are not supported.",
-          ),
+          );
+        },
         0,
       );
     }
@@ -444,16 +731,97 @@ export default function FieldGpsLite({
       setGpsActive(false);
       setTracking(false);
       setNavigationActive(false);
-      if (arStreamRef.current) {
-        arStreamRef.current
-          .getTracks()
-          .forEach((track) =>
-            track.stop(),
-          );
-        arStreamRef.current = null;
-      }
+      stopCameraStream();
+    };
+  }, [
+    enabled,
+    stopCameraStream,
+  ]);
+
+  useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
+    const intervalId =
+      window.setInterval(
+        () => setGpsNowMs(Date.now()),
+        5000,
+      );
+
+    return () => {
+      window.clearInterval(intervalId);
     };
   }, [enabled]);
+
+  useEffect(() => {
+    if (
+      !arActive ||
+      !cameraStreamRef.current ||
+      !videoRef.current
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+    const stream =
+      cameraStreamRef.current;
+
+    void playCameraStream(stream).then(
+      (started) => {
+        if (cancelled) {
+          return;
+        }
+
+        if (started) {
+          setCameraStatus("Active");
+          return;
+        }
+
+        setCameraStatus(
+          "Failed to start",
+        );
+        setArMessage(
+          "Camera started but video playback was blocked. Tap Start AR Guide again.",
+        );
+      },
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    arActive,
+    playCameraStream,
+  ]);
+
+  const handleVideoLoadedMetadata =
+    useCallback(() => {
+      if (
+        !arActive ||
+        !cameraStreamRef.current
+      ) {
+        return;
+      }
+
+      void playCameraStream(
+        cameraStreamRef.current,
+      ).then((started) => {
+        if (started) {
+          setCameraStatus("Active");
+        } else {
+          setCameraStatus(
+            "Failed to start",
+          );
+          setArMessage(
+            "Camera started but video playback was blocked. Tap Start AR Guide again.",
+          );
+        }
+      });
+    }, [
+      arActive,
+      playCameraStream,
+    ]);
 
   useEffect(() => {
     trackRef.current = tracking;
@@ -518,6 +886,9 @@ export default function FieldGpsLite({
 
   const startGps = () => {
     if (!navigator.geolocation) {
+      setLastGpsError(
+        "not supported",
+      );
       setStatus(
         "Location services are not supported.",
       );
@@ -530,6 +901,7 @@ export default function FieldGpsLite({
     }
 
     setStatus("Requesting GPS permission");
+    setLastGpsError("");
 
     watchRef.current =
       navigator.geolocation.watchPosition(
@@ -541,6 +913,8 @@ export default function FieldGpsLite({
           readingRef.current =
             nextReading;
           setReading(nextReading);
+          setGpsNowMs(Date.now());
+          setLastGpsError("");
           setGpsActive(true);
           setStatus(
             nextReading.accuracyMeters !==
@@ -576,10 +950,22 @@ export default function FieldGpsLite({
           setGpsActive(false);
           setTracking(false);
           setNavigationActive(false);
+          const gpsError =
+            error.code ===
+            error.PERMISSION_DENIED
+              ? "permission denied"
+              : error.code ===
+                  error.TIMEOUT
+                ? "timeout"
+                : "unavailable";
+          setLastGpsError(gpsError);
           setStatus(
             error.code ===
               error.PERMISSION_DENIED
               ? "GPS permission denied"
+              : error.code ===
+                  error.TIMEOUT
+                ? "GPS timeout"
               : "GPS unavailable",
           );
         },
@@ -604,6 +990,7 @@ export default function FieldGpsLite({
     setGpsActive(false);
     setTracking(false);
     setNavigationActive(false);
+    setLastGpsError("stopped");
     setStatus("GPS stopped");
     setCaptureMessage(
       "GPS stopped. Last reading remains visible for reference.",
@@ -857,20 +1244,9 @@ export default function FieldGpsLite({
   };
 
   const stopArGuide = () => {
-    if (arStreamRef.current) {
-      arStreamRef.current
-        .getTracks()
-        .forEach((track) =>
-          track.stop(),
-        );
-      arStreamRef.current = null;
-    }
-
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-
+    stopCameraStream();
     setArActive(false);
+    setCameraStatus("Stopped");
     setArMessage("AR Guide stopped.");
   };
 
@@ -886,6 +1262,9 @@ export default function FieldGpsLite({
       !navigator.mediaDevices ||
       !navigator.mediaDevices.getUserMedia
     ) {
+      setCameraSupported(false);
+      setCameraStatus("Not supported");
+      setCameraError("");
       setArMessage(
         "Camera is not supported in this browser.",
       );
@@ -893,41 +1272,116 @@ export default function FieldGpsLite({
     }
 
     try {
+      stopCameraStream();
+      setCameraStatus("Starting");
+      setCameraMode(
+        "environment preferred",
+      );
+      setCameraSupported(true);
+      setCameraError("");
       setArMessage(
         "Requesting camera permission.",
       );
-      const stream =
-        await navigator.mediaDevices.getUserMedia(
-          {
-            video: {
-              facingMode:
-                "environment",
+      let stream: MediaStream;
+
+      try {
+        stream =
+          await navigator.mediaDevices.getUserMedia(
+            {
+              video: {
+                facingMode:
+                  {
+                    ideal:
+                      "environment",
+                  },
+                width: {
+                  ideal: 1280,
+                },
+                height: {
+                  ideal: 720,
+                },
+              },
+              audio: false,
             },
-            audio: false,
-          },
+          );
+      } catch (environmentError) {
+        setCameraMode(
+          "fallback camera",
         );
-      arStreamRef.current =
+        setCameraError(
+          describeCameraError(
+            environmentError,
+          ),
+        );
+        stream =
+          await navigator.mediaDevices.getUserMedia(
+            {
+              video: true,
+              audio: false,
+            },
+          );
+      }
+
+      if (!videoRef.current) {
+        setArActive(true);
+      }
+
+      cameraStreamRef.current =
         stream;
       setArActive(true);
       setNavigationActive(true);
+
+      if (videoRef.current) {
+        const started =
+          await playCameraStream(
+            stream,
+          );
+
+        if (!started) {
+          setCameraStatus(
+            "Failed to start",
+          );
+          setArMessage(
+            "Camera started but video playback was blocked. Tap Start AR Guide again.",
+          );
+          return;
+        }
+
+        setCameraStatus("Active");
+      }
+
       setArMessage(
         "AR Guide active.",
       );
-
-      window.setTimeout(
-        () => {
-          if (videoRef.current) {
-            videoRef.current.srcObject =
-              stream;
-            void videoRef.current.play();
-          }
-        },
-        0,
-      );
-    } catch {
+    } catch (error) {
+      stopCameraStream();
       setArActive(false);
+      setCameraError(
+        describeCameraError(error),
+      );
+      if (
+        error instanceof DOMException &&
+        (
+          error.name ===
+            "NotAllowedError" ||
+          error.name ===
+            "PermissionDeniedError"
+        )
+      ) {
+        setCameraStatus(
+          "Permission denied",
+        );
+        setArMessage(
+          "Camera permission denied. Please allow camera access to use AR Guide.",
+        );
+        return;
+      }
+
+      setCameraStatus(
+        "Failed to start",
+      );
       setArMessage(
-        "Camera permission denied or unavailable.",
+        "Camera failed to start. Please check camera access and try again.",
       );
     }
   };
@@ -1261,11 +1715,18 @@ export default function FieldGpsLite({
       <button
         type="button"
         className="sl-field-gps-toggle"
-        onClick={() =>
+        onClick={() => {
+          if (
+            open &&
+            arActive
+          ) {
+            stopArGuide();
+          }
+
           setOpen(
             (current) => !current,
-          )
-        }
+          );
+        }}
       >
         Handheld GPS
       </button>
@@ -1287,6 +1748,12 @@ export default function FieldGpsLite({
             reading={reading}
             status={status}
             qualityGrade={qualityGrade}
+            gpsSignalLabel={
+              gpsSignalStatus.label
+            }
+            gpsSignalClassName={
+              gpsSignalStatus.className
+            }
             gateMeters={gateMeters}
             onGateChange={setGateMeters}
             allowApproximate={
@@ -1338,6 +1805,16 @@ export default function FieldGpsLite({
             </div>
 
             <div className="sl-field-gps-grid">
+              <span>GPS signal</span>
+              <strong>
+                <span
+                  className={
+                    gpsSignalStatus.className
+                  }
+                >
+                  {gpsSignalStatus.label}
+                </span>
+              </strong>
               <span>GPS state</span>
               <strong>
                 {gpsActive
@@ -1355,6 +1832,10 @@ export default function FieldGpsLite({
                 {navigationActive
                   ? "Started"
                   : "Stopped"}
+              </strong>
+              <span>Camera</span>
+              <strong>
+                Camera: {cameraStatus}
               </strong>
               <span>Track fixes</span>
               <strong>
@@ -1602,6 +2083,13 @@ export default function FieldGpsLite({
                     ? "Field Navigation active"
                     : "Field Navigation ready"}
                 </strong>
+                <span
+                  className={
+                    gpsSignalStatus.className
+                  }
+                >
+                  {gpsSignalStatus.label}
+                </span>
                 <span>
                   {targetNavigation
                     ? `Arrow uses ${
@@ -1719,12 +2207,16 @@ export default function FieldGpsLite({
             >
               <video
                 ref={videoRef}
-                className="sl-ar-guide-video"
+                className="sl-ar-video"
+                onLoadedMetadata={
+                  handleVideoLoadedMetadata
+                }
                 playsInline
                 muted
                 autoPlay
+                disablePictureInPicture
               />
-              <div className="sl-ar-guide-overlay">
+              <div className="sl-ar-overlay">
                 <div className="sl-ar-guide-heading">
                   <strong>
                     AR Guide
@@ -1749,6 +2241,18 @@ export default function FieldGpsLite({
                       : "-"}
                   </strong>
                 </div>
+                <p className="sl-ar-guide-status">
+                  Camera: {cameraStatus}
+                </p>
+                <p className="sl-ar-guide-status">
+                  <span
+                    className={
+                      gpsSignalStatus.className
+                    }
+                  >
+                    {gpsSignalStatus.label}
+                  </span>
+                </p>
                 <div
                   className="sl-ar-guide-arrow"
                   style={{
@@ -1759,6 +2263,16 @@ export default function FieldGpsLite({
                   &uarr;
                 </div>
                 <div className="sl-field-gps-grid">
+                  <span>GPS signal</span>
+                  <strong>
+                    <span
+                      className={
+                        gpsSignalStatus.className
+                      }
+                    >
+                      {gpsSignalStatus.label}
+                    </span>
+                  </strong>
                   <span>Bearing</span>
                   <strong>
                     {targetNavigation
@@ -1779,6 +2293,22 @@ export default function FieldGpsLite({
                   <span>Mode</span>
                   <strong>
                     AR Find Point Lite
+                  </strong>
+                  <span>Browser support</span>
+                  <strong>
+                    {cameraSupported
+                      ? "supported"
+                      : "not supported"}
+                  </strong>
+                  <span>Using camera</span>
+                  <strong>
+                    {cameraMode}
+                  </strong>
+                  <span>Last camera error</span>
+                  <strong>
+                    {cameraError
+                      ? `Camera error: ${cameraError}`
+                      : "-"}
                   </strong>
                 </div>
                 <button
