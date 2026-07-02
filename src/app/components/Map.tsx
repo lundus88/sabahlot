@@ -6475,6 +6475,9 @@ export default function Map({
                 longitude?: number;
                 label?: string;
                 note?: string;
+                currentLatitude?: number;
+                currentLongitude?: number;
+                currentAccuracy?: number;
               }>
             ).detail;
 
@@ -6508,16 +6511,101 @@ export default function Map({
           marker.addTo(
             coordinateMarkerLayer,
           );
-          map.setView(
-            [
-              detail.latitude,
-              detail.longitude,
-            ],
-            Math.max(
-              map.getZoom(),
-              17,
-            ),
-          );
+
+          if (
+            typeof detail.currentLatitude ===
+              "number" &&
+            typeof detail.currentLongitude ===
+              "number"
+          ) {
+            const currentLocation:
+              CoordinatePair = [
+                detail.currentLatitude,
+                detail.currentLongitude,
+              ];
+
+            if (
+              typeof detail.currentAccuracy ===
+                "number" &&
+              Number.isFinite(
+                detail.currentAccuracy,
+              ) &&
+              detail.currentAccuracy > 0
+            ) {
+              L.circle(
+                currentLocation,
+                {
+                  radius:
+                    detail.currentAccuracy,
+                  color:
+                    "#2563eb",
+                  weight:
+                    2,
+                  opacity:
+                    0.72,
+                  fillColor:
+                    "#60a5fa",
+                  fillOpacity:
+                    0.16,
+                  interactive:
+                    false,
+                },
+              ).addTo(
+                coordinateMarkerLayer,
+              );
+            }
+
+            L.marker(
+              currentLocation,
+              {
+                icon:
+                  L.divIcon({
+                    className:
+                      "sl-current-location-icon",
+                    html:
+                      '<div class="sl-current-location-marker"><span></span></div>',
+                    iconSize:
+                      [26, 26],
+                    iconAnchor:
+                      [13, 13],
+                  }),
+              },
+            )
+              .bindPopup(
+                `<strong>Current GPS position</strong><br/>${detail.currentLatitude.toFixed(7)}, ${detail.currentLongitude.toFixed(7)}${typeof detail.currentAccuracy === "number" ? `<br/>Accuracy: +/- ${detail.currentAccuracy.toFixed(1)} m` : ""}`,
+              )
+              .addTo(
+                coordinateMarkerLayer,
+              );
+
+            map.fitBounds(
+              L.latLngBounds(
+                currentLocation,
+                [
+                  detail.latitude,
+                  detail.longitude,
+                ],
+              ).pad(0.2),
+              {
+                maxZoom:
+                  Math.max(
+                    map.getZoom(),
+                    18,
+                  ),
+              },
+            );
+          } else {
+            map.setView(
+              [
+                detail.latitude,
+                detail.longitude,
+              ],
+              Math.max(
+                map.getZoom(),
+                17,
+              ),
+            );
+          }
           marker.openPopup();
         };
 

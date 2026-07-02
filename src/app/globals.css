@@ -170,7 +170,7 @@ select:focus-visible {
   position: absolute;
   right: 12px;
   bottom: 82px;
-  z-index: 1120;
+  z-index: 1130;
   display: grid;
   gap: 8px;
   width: min(420px, calc(100vw - 24px));

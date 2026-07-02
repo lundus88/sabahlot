@@ -5,7 +5,6 @@ import {
   type FormEvent,
   useEffect,
   useState,
-  useSyncExternalStore,
 } from "react";
 
 import Map, {
@@ -14,8 +13,6 @@ import Map, {
 } from "./components/Map";
 
 import FieldGpsLite from "@/components/FieldGpsLite";
-import OfflineMapLite from "@/components/OfflineMapLite";
-import CoordinateFinder from "@/components/CoordinateFinder";
 
 import {
   createClient,
@@ -166,9 +163,6 @@ type PreviousPdfIdentityFields =
 const STORAGE_KEY =
   "sabahlot-alpha-record";
 
-const FIELD_GPS_STORAGE_KEY =
-  "sabahlot_field_gps_enabled";
-
 const PRELIMINARY_DISCLAIMER =
   "SabahLot output is for preliminary reference only. It is not an official survey plan, not a certified boundary plan, and must not be used as legal proof of boundary, ownership, approval, subdivision or land title status. All coordinates, boundaries and areas must be verified by the relevant authority, licensed surveyor or professional adviser before official use.";
 
@@ -182,48 +176,6 @@ const IMPORT_STATUS_LABEL: Record<ImportFileStatus, string> = {
   failed: "Import failed",
   unsupported: "Unsupported file",
 };
-
-function subscribeFieldGpsFlag(
-  onStoreChange: () => void,
-): () => void {
-  window.addEventListener(
-    "storage",
-    onStoreChange,
-  );
-  window.addEventListener(
-    "popstate",
-    onStoreChange,
-  );
-
-  return () => {
-    window.removeEventListener(
-      "storage",
-      onStoreChange,
-    );
-    window.removeEventListener(
-      "popstate",
-      onStoreChange,
-    );
-  };
-}
-
-function getFieldGpsFlagSnapshot(): boolean {
-  const params =
-    new URLSearchParams(
-      window.location.search,
-    );
-
-  return (
-    params.get("fieldGps") === "1" ||
-    window.localStorage.getItem(
-      FIELD_GPS_STORAGE_KEY,
-    ) === "true"
-  );
-}
-
-function getFieldGpsServerSnapshot(): boolean {
-  return false;
-}
 
 function createPolygonFingerprint(
   coordinates: Coordinate[],
@@ -869,24 +821,12 @@ export default function HomePage() {
     setSelectedAreaUnit,
   ] = useState<AreaUnit>("m2");
 
-  const fieldGpsEnabled =
-    useSyncExternalStore(
-      subscribeFieldGpsFlag,
-      getFieldGpsFlagSnapshot,
-      getFieldGpsServerSnapshot,
-    );
-
   const [
-    mapView,
+    ,
     setMapView,
   ] = useState<OfflineMapView | null>(
     null,
   );
-
-  const [
-    offlineMapNote,
-    setOfflineMapNote,
-  ] = useState("");
 
   const [
     importFile,
@@ -6531,34 +6471,20 @@ export default function HomePage() {
         }
       />
 
-      {fieldGpsEnabled && (
-        <div className="sl-field-gps-stack">
-          <FieldGpsLite
-            enabled={fieldGpsEnabled}
-            recordName={
-              formData.lotNumber
-            }
-            offlineMapNote={
-              offlineMapNote
-            }
-            onPolygonGenerated={
-              handleFieldGpsPolygonGenerated
-            }
-          />
-
-          <CoordinateFinder
-            enabled={fieldGpsEnabled}
-          />
-
-          <OfflineMapLite
-            enabled={fieldGpsEnabled}
-            mapView={mapView}
-            onOfflineNoteChange={
-              setOfflineMapNote
-            }
-          />
-        </div>
-      )}
+      <div className="sl-field-gps-stack">
+        <FieldGpsLite
+          enabled
+          recordName={
+            formData.lotNumber
+          }
+          offlineMapNote={
+            ""
+          }
+          onPolygonGenerated={
+            handleFieldGpsPolygonGenerated
+          }
+        />
+      </div>
 
       <div
         className={

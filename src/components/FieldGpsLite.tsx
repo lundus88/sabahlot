@@ -68,6 +68,7 @@ interface FieldGpsTarget {
   latitude: number;
   longitude: number;
   source: TargetSource;
+  description?: string;
 }
 
 const OCCUPATION_OPTIONS = [
@@ -109,6 +110,24 @@ function formatDistance(
   return meters >= 1000
     ? `${(meters / 1000).toFixed(3)} km`
     : `${meters.toFixed(1)} m`;
+}
+
+function getTargetZoneStatus(
+  distanceMeters: number,
+): string {
+  if (distanceMeters < 2) {
+    return "At target zone";
+  }
+
+  if (distanceMeters <= 5) {
+    return "Near target";
+  }
+
+  if (distanceMeters <= 20) {
+    return "Approaching target";
+  }
+
+  return "Far from target";
 }
 
 function parseCoordinateInput(
@@ -175,7 +194,7 @@ export default function FieldGpsLite({
   const [
     targetLabelInput,
     setTargetLabelInput,
-  ] = useState("Target");
+  ] = useState("Target Point");
   const [
     targetLatitudeInput,
     setTargetLatitudeInput,
@@ -183,6 +202,14 @@ export default function FieldGpsLite({
   const [
     targetLongitudeInput,
     setTargetLongitudeInput,
+  ] = useState("");
+  const [
+    targetDescriptionInput,
+    setTargetDescriptionInput,
+  ] = useState("");
+  const [
+    targetValidationError,
+    setTargetValidationError,
   ] = useState("");
   const [
     tracking,
@@ -443,8 +470,35 @@ export default function FieldGpsLite({
         target.longitude,
       ),
     );
+    setTargetDescriptionInput(
+      target.description ?? "",
+    );
+    setTargetValidationError("");
+    window.dispatchEvent(
+      new CustomEvent(
+        "sabahlot:find-coordinate",
+        {
+          detail: {
+            latitude:
+              target.latitude,
+            longitude:
+              target.longitude,
+            label:
+              target.label,
+            note:
+              target.description,
+            currentLatitude:
+              readingRef.current?.latitude,
+            currentLongitude:
+              readingRef.current?.longitude,
+            currentAccuracy:
+              readingRef.current?.accuracyMeters,
+          },
+        },
+      ),
+    );
     setCaptureMessage(
-      `${target.label} set as target marker.`,
+      `${target.label} target point placed on the map.`,
     );
   };
 
@@ -461,36 +515,69 @@ export default function FieldGpsLite({
         createFieldGpsId(),
       label:
         targetLabelInput.trim() ||
-        "Target",
+        "Target Point",
       latitude:
         reading.latitude,
       longitude:
         reading.longitude,
       source:
         "current-position",
+      description:
+        targetDescriptionInput.trim(),
     });
   };
 
-  const setTargetFromManualInput = () => {
+  const findPointFromKeyedCoordinate = () => {
+    const label =
+      targetLabelInput.trim() ||
+      "Target Point";
+    const trimmedLatitude =
+      targetLatitudeInput.trim();
+    const trimmedLongitude =
+      targetLongitudeInput.trim();
+
+    if (
+      !trimmedLatitude ||
+      !trimmedLongitude
+    ) {
+      setTargetValidationError(
+        "Enter latitude and longitude in WGS84 decimal degrees.",
+      );
+      setCaptureMessage(
+        "Enter latitude and longitude before finding the point.",
+      );
+      return;
+    }
+
     const latitude =
       parseCoordinateInput(
-        targetLatitudeInput,
+        trimmedLatitude,
         -90,
         90,
       );
     const longitude =
       parseCoordinateInput(
-        targetLongitudeInput,
+        trimmedLongitude,
         -180,
         180,
       );
 
-    if (
-      latitude === null ||
-      longitude === null
-    ) {
+    if (latitude === null) {
+      setTargetValidationError(
+        "Latitude must be a decimal number between -90 and 90.",
+      );
       setCaptureMessage(
-        "Enter a valid WGS84 target latitude and longitude.",
+        "Latitude is outside the valid WGS84 range.",
+      );
+      return;
+    }
+
+    if (longitude === null) {
+      setTargetValidationError(
+        "Longitude must be a decimal number between -180 and 180.",
+      );
+      setCaptureMessage(
+        "Longitude is outside the valid WGS84 range.",
       );
       return;
     }
@@ -499,12 +586,13 @@ export default function FieldGpsLite({
       id:
         createFieldGpsId(),
       label:
-        targetLabelInput.trim() ||
-        "Target",
+        label,
       latitude,
       longitude,
       source:
         "manual",
+      description:
+        targetDescriptionInput.trim(),
     });
   };
 
@@ -522,6 +610,8 @@ export default function FieldGpsLite({
         point.longitude,
       source:
         "saved-point",
+      description:
+        point.note,
     });
   };
 
@@ -568,7 +658,7 @@ export default function FieldGpsLite({
                 )} deg`
               : ""
           }.`
-        : "Found point recorded without a target marker.";
+        : "Found point recorded without a Target Point.";
 
     const foundPoint =
       createFieldGpsPoint(
@@ -821,13 +911,13 @@ export default function FieldGpsLite({
           )
         }
       >
-        Field GPS
+        Handheld GPS
       </button>
 
       {open && (
         <div className="sl-field-gps-card">
           <div className="sl-field-gps-heading">
-            <span>Founder Field GPS</span>
+            <span>Handheld GPS</span>
             <strong>
               {points.length} points | {foundPoints.length} found
             </strong>
@@ -891,7 +981,7 @@ export default function FieldGpsLite({
 
           <section className="sl-field-gps-section">
             <div className="sl-field-gps-heading">
-              <span>Target marker</span>
+              <span>Key-in Coordinate</span>
               <strong>
                 {targetPoint
                   ? targetPoint.label
@@ -900,7 +990,7 @@ export default function FieldGpsLite({
             </div>
 
             <label className="sl-field-gps-label">
-              <span>Target label</span>
+              <span>Point Name</span>
               <input
                 type="text"
                 value={targetLabelInput}
@@ -909,13 +999,13 @@ export default function FieldGpsLite({
                     event.target.value,
                   )
                 }
-                placeholder="Target"
+                placeholder="Target Point"
               />
             </label>
 
             <div className="sl-field-gps-target-grid">
               <label className="sl-field-gps-label">
-                <span>Target latitude</span>
+                <span>Latitude</span>
                 <input
                   type="number"
                   inputMode="decimal"
@@ -926,12 +1016,12 @@ export default function FieldGpsLite({
                       event.target.value,
                     )
                   }
-                  placeholder="5.0000000"
+                  placeholder="5.980412"
                 />
               </label>
 
               <label className="sl-field-gps-label">
-                <span>Target longitude</span>
+                <span>Longitude</span>
                 <input
                   type="number"
                   inputMode="decimal"
@@ -942,10 +1032,30 @@ export default function FieldGpsLite({
                       event.target.value,
                     )
                   }
-                  placeholder="117.0000000"
+                  placeholder="116.073456"
                 />
               </label>
             </div>
+
+            <label className="sl-field-gps-label">
+              <span>Description optional</span>
+              <textarea
+                value={targetDescriptionInput}
+                onChange={(event) =>
+                  setTargetDescriptionInput(
+                    event.target.value,
+                  )
+                }
+                rows={3}
+                placeholder="Optional field note"
+              />
+            </label>
+
+            {targetValidationError && (
+              <p className="sl-field-gps-warning">
+                {targetValidationError}
+              </p>
+            )}
 
             <label className="sl-field-gps-label">
               <span>Select saved point as target</span>
@@ -994,9 +1104,9 @@ export default function FieldGpsLite({
             <div className="sl-field-gps-actions">
               <button
                 type="button"
-                onClick={setTargetFromManualInput}
+                onClick={findPointFromKeyedCoordinate}
               >
-                Set Target
+                Find Point
               </button>
               <button
                 type="button"
@@ -1009,8 +1119,14 @@ export default function FieldGpsLite({
                 type="button"
                 onClick={() => {
                   setTargetPoint(null);
+                  setTargetValidationError("");
+                  window.dispatchEvent(
+                    new CustomEvent(
+                      "sabahlot:clear-coordinate-marker",
+                    ),
+                  );
                   setCaptureMessage(
-                    "Target marker cleared.",
+                    "Target Point cleared.",
                   );
                 }}
                 disabled={!targetPoint}
@@ -1020,6 +1136,12 @@ export default function FieldGpsLite({
             </div>
 
             <div className="sl-field-gps-grid">
+              <span>Target point name</span>
+              <strong>
+                {targetPoint
+                  ? targetPoint.label
+                  : "-"}
+              </strong>
               <span>Target coordinate</span>
               <strong>
                 {targetPoint
@@ -1028,6 +1150,15 @@ export default function FieldGpsLite({
                     )}, ${formatCoordinate(
                       targetPoint.longitude,
                     )}`
+                  : "-"}
+              </strong>
+              <span>Current GPS accuracy</span>
+              <strong>
+                {reading?.accuracyMeters !==
+                undefined
+                  ? formatAccuracy(
+                      reading.accuracyMeters,
+                    )
                   : "-"}
               </strong>
               <span>Distance to target</span>
@@ -1052,7 +1183,29 @@ export default function FieldGpsLite({
                   ? targetNavigation.bearingDms
                   : "-"}
               </strong>
+              <span>Target status</span>
+              <strong>
+                {targetNavigation
+                  ? getTargetZoneStatus(
+                      targetNavigation.distanceMeters,
+                    )
+                  : "-"}
+              </strong>
             </div>
+
+            {targetNavigation &&
+              reading?.accuracyMeters !==
+                undefined &&
+              reading.accuracyMeters >
+                targetNavigation.distanceMeters && (
+                <p className="sl-field-gps-warning">
+                  Accuracy warning: current GPS accuracy is greater than the distance to target.
+                </p>
+              )}
+
+            <p className="sl-field-gps-disclaimer">
+              Preliminary Field Navigation Only · Not for cadastral boundary determination.
+            </p>
           </section>
 
           <section className="sl-field-gps-section">
