@@ -105,7 +105,7 @@ function getGpsSignal(gps: GpsFix | null, gpsError: string) {
   if (gpsError || !gps) {
     return {
       level: "lost",
-      label: "GPS Lost · Tiada sambungan lokasi",
+      label: "GPS Lost - Tiada sambungan lokasi",
       detail: gpsError || "No GPS fix",
     };
   }
@@ -116,7 +116,7 @@ function getGpsSignal(gps: GpsFix | null, gpsError: string) {
   if (accuracy <= 10 && ageSec <= 15) {
     return {
       level: "strong",
-      label: "GPS Active · Signal kuat",
+      label: "GPS Active - Signal kuat",
       detail: `±${accuracy.toFixed(1)} m`,
     };
   }
@@ -124,14 +124,14 @@ function getGpsSignal(gps: GpsFix | null, gpsError: string) {
   if (accuracy <= 30 && ageSec <= 30) {
     return {
       level: "weak",
-      label: "GPS Weak · Signal lemah",
+      label: "GPS Weak - Signal lemah",
       detail: `±${accuracy.toFixed(1)} m`,
     };
   }
 
   return {
     level: "lost",
-    label: "GPS Lost · Tiada sambungan lokasi",
+    label: "GPS Lost - Tiada sambungan lokasi",
     detail: accuracy > 30 ? `Accuracy weak ±${accuracy.toFixed(1)} m` : "GPS update too old",
   };
 }

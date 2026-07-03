@@ -1,10 +1,7 @@
 ﻿"use client";
 
 
-function openArStakeoutPage() {
-  if (typeof window === "undefined") return;
-  window.location.href = "/ar-stakeout";
-}
+
 import {
   useCallback,
   useEffect,
@@ -52,6 +49,13 @@ import {
 } from "@/lib/gps-quality";
 
 import FieldGpsAccuracyPanel from "./FieldGpsAccuracyPanel";
+
+
+
+function openArStakeoutPage() {
+  if (typeof window === "undefined") return;
+  window.location.href = "/ar-stakeout";
+}
 
 interface FieldGpsLiteProps {
   enabled: boolean;
@@ -193,11 +197,11 @@ function getGpsSignalStatus(
   lastUpdateMs: number,
 ): GpsSignalStatus {
   const lostLabel =
-    "GPS Lost Â· Tiada sambungan lokasi";
+    "GPS Lost - Tiada sambungan lokasi";
   const weakLabel =
-    "GPS Weak Â· Signal lemah";
+    "GPS Weak - Signal lemah";
   const strongLabel =
-    "GPS Active Â· Signal kuat";
+    "GPS Active - Signal kuat";
 
   const statusText =
     `${gpsStatus} ${error}`.toLowerCase();
