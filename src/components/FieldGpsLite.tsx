@@ -1965,6 +1965,13 @@ export default function FieldGpsLite({
 
           <section className="sl-field-gps-section">
             <div className="sl-field-gps-actions">
+            <button
+              type="button"
+              onClick={openArStakeoutPage}
+              className="sl-field-gps-action-primary"
+            >
+              AR Guide
+            </button>
               <button
                 type="button"
                 onClick={toggleGps}
