@@ -127,6 +127,10 @@ const FIELD_NAVIGATION_SAFETY_LABEL =
 const FIELD_NAVIGATION_SAFETY_LABEL_MS =
   "Navigasi awal sahaja. Bukan penentuan sempadan kadaster rasmi.";
 
+const MOBILE_AR_VIDEO_ATTRIBUTES = {
+  "webkit-playsinline": "true",
+} as const;
+
 function nextLabel(
   points: FieldGpsPoint[],
 ): string {
@@ -2208,6 +2212,7 @@ export default function FieldGpsLite({
               <video
                 ref={videoRef}
                 className="sl-ar-video"
+                {...MOBILE_AR_VIDEO_ATTRIBUTES}
                 onLoadedMetadata={
                   handleVideoLoadedMetadata
                 }
