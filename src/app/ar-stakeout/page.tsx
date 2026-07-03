@@ -16,11 +16,13 @@ type GpsFix = {
 
 type CameraStatus =
   | "Stopped"
+  | "Requesting permission"
   | "Starting"
   | "Active"
   | "Permission denied"
   | "Not supported"
-  | "Failed to start";
+  | "Failed to start"
+  | "Timed out";
 
 type HeadingStatus = "Inactive" | "Requesting" | "Active" | "Denied" | "Unavailable";
 
@@ -32,6 +34,7 @@ type FoundPoint = {
   foundLat: number;
   foundLng: number;
   distance: number;
+  bearing: number;
   accuracy: number | null;
   timestamp: string;
   note: string;
@@ -44,8 +47,12 @@ type WebkitOrientationEvent = DeviceOrientationEvent & {
 const toRad = (value: number) => (value * Math.PI) / 180;
 const toDeg = (value: number) => (value * 180) / Math.PI;
 
-function normalizeDeg(value: number) {
+function normalize360(value: number) {
   return ((value % 360) + 360) % 360;
+}
+
+function normalizeSigned(value: number) {
+  return ((value + 540) % 360) - 180;
 }
 
 function distanceMeters(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -65,7 +72,7 @@ function bearingDeg(lat1: number, lon1: number, lat2: number, lon2: number) {
     Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
     Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(toRad(lon2 - lon1));
 
-  return normalizeDeg(toDeg(Math.atan2(y, x)));
+  return normalize360(toDeg(Math.atan2(y, x)));
 }
 
 function offsetNE(currentLat: number, currentLng: number, targetLat: number, targetLng: number) {
@@ -80,8 +87,8 @@ function offsetNE(currentLat: number, currentLng: number, targetLat: number, tar
 
 function formatMeters(value: number | null | undefined) {
   if (value === null || value === undefined || Number.isNaN(value)) return "-";
-  if (value < 10) return `${value.toFixed(3)} m`;
-  if (value < 100) return `${value.toFixed(2)} m`;
+  if (Math.abs(value) < 10) return `${value.toFixed(3)} m`;
+  if (Math.abs(value) < 100) return `${value.toFixed(2)} m`;
   return `${value.toFixed(1)} m`;
 }
 
@@ -120,6 +127,26 @@ function getGpsSignal(gps: GpsFix | null, gpsError: string) {
   };
 }
 
+function cameraMessage(errorName: string, fallback: string) {
+  if (errorName === "NotAllowedError") {
+    return "Camera permission denied. Allow Camera permission in browser site settings.";
+  }
+
+  if (errorName === "NotReadableError") {
+    return "Camera is busy or used by another app. Close camera apps and try again.";
+  }
+
+  if (errorName === "NotFoundError") {
+    return "No camera found on this device.";
+  }
+
+  if (errorName === "OverconstrainedError") {
+    return "Rear camera constraint failed. SabahLot will try fallback camera.";
+  }
+
+  return fallback;
+}
+
 export default function ArStakeoutPage() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
@@ -138,12 +165,24 @@ export default function ArStakeoutPage() {
   const [cameraErrorName, setCameraErrorName] = useState("");
   const [cameraErrorMessage, setCameraErrorMessage] = useState("");
   const [cameraMode, setCameraMode] = useState("not started");
+  const [videoReady, setVideoReady] = useState(false);
 
   const [heading, setHeading] = useState<number | null>(null);
   const [headingStatus, setHeadingStatus] = useState<HeadingStatus>("Inactive");
 
   const [arActive, setArActive] = useState(false);
+  const [fieldMessage, setFieldMessage] = useState("");
   const [savedPoints, setSavedPoints] = useState<FoundPoint[]>([]);
+
+  const secureContext =
+    typeof window !== "undefined" && window.isSecureContext ? "yes" : "no";
+  const mediaDevicesSupport =
+    typeof navigator !== "undefined" && navigator.mediaDevices ? "yes" : "no";
+  const getUserMediaSupport =
+    typeof navigator !== "undefined" &&
+    typeof navigator.mediaDevices?.getUserMedia === "function"
+      ? "yes"
+      : "no";
 
   const target = useMemo(() => {
     const lat = Number(targetLatText);
@@ -176,14 +215,28 @@ export default function ArStakeoutPage() {
 
   const signal = getGpsSignal(gps, gpsError);
 
-  const relativeArrow = useMemo(() => {
-    if (!metrics) return 0;
-    if (heading === null) return 0;
-    return normalizeDeg(metrics.bearing - heading);
+  const relativeAngle = useMemo(() => {
+    if (!metrics || heading === null) return null;
+    return normalizeSigned(metrics.bearing - heading);
   }, [metrics, heading]);
+
+  const directionText = useMemo(() => {
+    if (!target) return "Enter valid target coordinate.";
+    if (!gps) return "Start GPS first.";
+    if (!metrics) return "Waiting for navigation data.";
+
+    if (heading === null || relativeAngle === null) {
+      return `Compass heading unavailable. Bearing to target: ${metrics.bearing.toFixed(1)}°`;
+    }
+
+    if (Math.abs(relativeAngle) <= 15) return "Face target";
+    if (relativeAngle > 15) return `Turn right ${Math.abs(relativeAngle).toFixed(0)}°`;
+    return `Turn left ${Math.abs(relativeAngle).toFixed(0)}°`;
+  }, [target, gps, metrics, heading, relativeAngle]);
 
   function startGps() {
     setGpsError("");
+    setFieldMessage("");
 
     if (!("geolocation" in navigator)) {
       setGpsStatus("GPS not supported");
@@ -247,13 +300,13 @@ export default function ArStakeoutPage() {
     const mobileEvent = event as WebkitOrientationEvent;
 
     if (typeof mobileEvent.webkitCompassHeading === "number") {
-      setHeading(normalizeDeg(mobileEvent.webkitCompassHeading));
+      setHeading(normalize360(mobileEvent.webkitCompassHeading));
       setHeadingStatus("Active");
       return;
     }
 
     if (typeof event.alpha === "number") {
-      setHeading(normalizeDeg(360 - event.alpha));
+      setHeading(normalize360(360 - event.alpha));
       setHeadingStatus("Active");
       return;
     }
@@ -296,14 +349,34 @@ export default function ArStakeoutPage() {
       videoRef.current.load();
     }
 
+    setVideoReady(false);
     setCameraStatus("Stopped");
   }
 
-  async function requestCameraStream() {
+  async function getUserMediaWithTimeout(
+    constraints: MediaStreamConstraints,
+    timeoutMs: number
+  ): Promise<MediaStream> {
     if (!navigator.mediaDevices?.getUserMedia) {
       throw new Error("Camera is not supported in this browser.");
     }
 
+    const cameraPromise = navigator.mediaDevices.getUserMedia(constraints);
+
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      window.setTimeout(() => {
+        const error = new Error(
+          "Camera permission request timed out. Please allow camera permission or reopen in Chrome/Safari."
+        );
+        error.name = "TimeoutError";
+        reject(error);
+      }, timeoutMs);
+    });
+
+    return Promise.race([cameraPromise, timeoutPromise]);
+  }
+
+  async function requestCameraStream() {
     const attempts: Array<{
       mode: string;
       constraints: MediaStreamConstraints;
@@ -320,7 +393,7 @@ export default function ArStakeoutPage() {
         },
       },
       {
-        mode: "environment fallback",
+        mode: "environment",
         constraints: {
           video: {
             facingMode: "environment",
@@ -342,7 +415,7 @@ export default function ArStakeoutPage() {
     for (const attempt of attempts) {
       try {
         setCameraMode(attempt.mode);
-        return await navigator.mediaDevices.getUserMedia(attempt.constraints);
+        return await getUserMediaWithTimeout(attempt.constraints, 12000);
       } catch (error) {
         lastError = error;
       }
@@ -352,13 +425,27 @@ export default function ArStakeoutPage() {
   }
 
   async function startCamera() {
-    setCameraStatus("Starting");
+    setCameraStatus("Requesting permission");
     setCameraErrorName("");
     setCameraErrorMessage("");
+    setVideoReady(false);
+    setFieldMessage("");
 
     try {
       stopCamera();
       setCameraStatus("Starting");
+
+      if (secureContext !== "yes") {
+        throw new Error("Camera requires HTTPS. Please open https://beta.sabahlot.com");
+      }
+
+      if (getUserMediaSupport !== "yes") {
+        const error = new Error(
+          "Camera is not supported in this browser. Open beta.sabahlot.com in Chrome Android or Safari iPhone."
+        );
+        error.name = "NotSupportedError";
+        throw error;
+      }
 
       const stream = await requestCameraStream();
       cameraStreamRef.current = stream;
@@ -384,7 +471,7 @@ export default function ArStakeoutPage() {
           return;
         }
 
-        const timeout = window.setTimeout(() => resolve(), 800);
+        const timeout = window.setTimeout(() => resolve(), 1000);
         video.onloadedmetadata = () => {
           window.clearTimeout(timeout);
           resolve();
@@ -393,20 +480,49 @@ export default function ArStakeoutPage() {
 
       await video.play();
 
+      setVideoReady(true);
       setCameraStatus("Active");
     } catch (error) {
       const err = error as Error & { name?: string };
 
-      setCameraStatus(err?.name === "NotAllowedError" ? "Permission denied" : "Failed to start");
-      setCameraErrorName(err?.name || "CameraError");
-      setCameraErrorMessage(err?.message || "Camera failed to start.");
+      const name = err?.name || "CameraError";
+      const message = cameraMessage(name, err?.message || "Camera failed to start.");
+
+      setCameraStatus(
+        name === "NotAllowedError"
+          ? "Permission denied"
+          : name === "NotSupportedError"
+            ? "Not supported"
+            : name === "TimeoutError"
+              ? "Timed out"
+              : "Failed to start"
+      );
+      setCameraErrorName(name);
+      setCameraErrorMessage(message);
+      setFieldMessage(message);
       stopCamera();
     }
   }
 
+  async function testCamera() {
+    setArActive(false);
+    await startCamera();
+  }
+
   async function startArStakeout() {
+    if (!target) {
+      setFieldMessage("Enter valid target coordinate first.");
+      return;
+    }
+
+    if (!gps) {
+      setFieldMessage("Start GPS first before AR Stake Out.");
+      return;
+    }
+
+    setFieldMessage("");
     setArActive(true);
-    if (!gps) startGps();
+
     await enableHeading();
     await startCamera();
   }
@@ -417,7 +533,10 @@ export default function ArStakeoutPage() {
   }
 
   function saveFoundPoint() {
-    if (!gps || !target || !metrics) return;
+    if (!gps || !target || !metrics) {
+      setFieldMessage("Start GPS and enter target coordinate first.");
+      return;
+    }
 
     const record: FoundPoint = {
       id: `${Date.now()}`,
@@ -427,6 +546,7 @@ export default function ArStakeoutPage() {
       foundLat: gps.latitude,
       foundLng: gps.longitude,
       distance: metrics.distance,
+      bearing: metrics.bearing,
       accuracy: gps.accuracy,
       timestamp: new Date().toISOString(),
       note,
@@ -434,17 +554,22 @@ export default function ArStakeoutPage() {
 
     setSavedPoints((items) => [record, ...items].slice(0, 10));
     setNote("");
+    setFieldMessage("Found point saved locally as preliminary record.");
   }
 
   useEffect(() => {
     return () => {
-      stopGps();
-      stopCamera();
+      if (gpsWatchRef.current !== null) {
+        navigator.geolocation.clearWatch(gpsWatchRef.current);
+      }
+
+      cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
       window.removeEventListener("deviceorientation", handleOrientation, true);
     };
   }, []);
 
   const canSave = Boolean(gps && target && metrics);
+  const arrowRotation = heading !== null && relativeAngle !== null ? relativeAngle : 0;
 
   return (
     <main className={styles.page}>
@@ -453,7 +578,7 @@ export default function ArStakeoutPage() {
           <p className={styles.kicker}>SabahLot Beta</p>
           <h1>AR Stake Out Lite</h1>
           <p>
-            Navigasi awal menggunakan GPS telefon, kamera dan anak panah arah. Bukan penentuan
+            Navigasi awal menggunakan GPS telefon, kamera dan anak panah. Bukan penentuan
             sempadan kadaster rasmi.
           </p>
         </div>
@@ -491,7 +616,9 @@ export default function ArStakeoutPage() {
             />
           </label>
 
-          {!target && <p className={styles.warning}>Masukkan koordinat WGS84 decimal degree yang sah.</p>}
+          {!target && (
+            <p className={styles.warning}>Masukkan koordinat WGS84 decimal degree yang sah.</p>
+          )}
 
           <div className={styles.buttonRow}>
             <button type="button" onClick={startGps}>
@@ -502,6 +629,10 @@ export default function ArStakeoutPage() {
             </button>
           </div>
 
+          <button type="button" className={styles.secondaryButton} onClick={testCamera}>
+            Test Camera
+          </button>
+
           <div className={styles.buttonRow}>
             <button type="button" className={styles.primaryButton} onClick={startArStakeout}>
               Start AR Stake Out
@@ -510,10 +641,6 @@ export default function ArStakeoutPage() {
               Stop AR
             </button>
           </div>
-
-          <button type="button" className={styles.secondaryButton} onClick={startCamera}>
-            Test Camera
-          </button>
 
           <label>
             Found point note
@@ -527,12 +654,14 @@ export default function ArStakeoutPage() {
           <button type="button" disabled={!canSave} onClick={saveFoundPoint}>
             Save Found Point
           </button>
+
+          {fieldMessage && <p className={styles.fieldMessage}>{fieldMessage}</p>}
         </div>
 
         <div className={styles.panel}>
-          <h2>Status</h2>
+          <h2>Status & Diagnostic</h2>
 
-          <div className={`${styles.signalBadge} ${styles[signal.level]}`}>
+          <div className={`${styles.signalBadge} ${styles[signal.level] ?? ""}`}>
             <span>{signal.label}</span>
             <strong>{signal.detail}</strong>
           </div>
@@ -555,8 +684,16 @@ export default function ArStakeoutPage() {
               <dd>{gps?.accuracy ? `±${gps.accuracy.toFixed(1)} m` : "-"}</dd>
             </div>
             <div>
+              <dt>Bearing</dt>
+              <dd>{metrics ? `${metrics.bearing.toFixed(1)}°` : "-"}</dd>
+            </div>
+            <div>
               <dt>Heading</dt>
               <dd>{heading !== null ? `${heading.toFixed(1)}°` : headingStatus}</dd>
+            </div>
+            <div>
+              <dt>Direction</dt>
+              <dd>{directionText}</dd>
             </div>
             <div>
               <dt>Camera</dt>
@@ -566,20 +703,18 @@ export default function ArStakeoutPage() {
 
           <div className={styles.diagnostics}>
             <strong>Mobile diagnostic</strong>
-            <span>Secure context: {typeof window !== "undefined" && window.isSecureContext ? "yes" : "no"}</span>
-            <span>MediaDevices: {typeof navigator !== "undefined" && navigator.mediaDevices ? "yes" : "no"}</span>
-            <span>
-              getUserMedia:{" "}
-              {typeof navigator !== "undefined" && typeof navigator.mediaDevices?.getUserMedia === "function" ? "yes" : "no"}
-            </span>
+            <span>Secure context: {secureContext}</span>
+            <span>MediaDevices: {mediaDevicesSupport}</span>
+            <span>getUserMedia: {getUserMediaSupport}</span>
             <span>Camera mode: {cameraMode}</span>
+            <span>Video ready: {videoReady ? "yes" : "no"}</span>
             {cameraErrorName && <span>Error name: {cameraErrorName}</span>}
             {cameraErrorMessage && <span>Error message: {cameraErrorMessage}</span>}
           </div>
         </div>
       </section>
 
-      <section className={styles.arGuide}>
+      <section className={`${styles.stage} ${arActive ? styles.stageFullscreen : ""}`}>
         <video ref={videoRef} className={styles.arVideo} autoPlay muted playsInline />
 
         <div className={styles.arOverlay}>
@@ -587,12 +722,14 @@ export default function ArStakeoutPage() {
             <div>
               <p className={styles.kicker}>AR Guide</p>
               <h2>{target?.name || "Target Point"}</h2>
+              <p>{directionText}</p>
             </div>
             <button type="button" onClick={stopArStakeout}>
-              Stop AR Guide
+              Stop AR
             </button>
           </div>
 
+          <div className={styles.targetDot} />
           <div className={styles.distanceBubble}>{metrics ? formatMeters(metrics.distance) : "-"}</div>
 
           <div className={styles.guideLine}>
@@ -606,7 +743,7 @@ export default function ArStakeoutPage() {
             <div
               className={styles.arrow}
               style={{
-                transform: `rotate(${relativeArrow}deg)`,
+                transform: `rotate(${arrowRotation}deg)`,
               }}
             >
               ↑
@@ -623,23 +760,37 @@ export default function ArStakeoutPage() {
               <strong>{metrics ? formatMeters(metrics.distance) : "-"}</strong>
             </div>
             <div>
-              <span>N</span>
-              <strong>{metrics ? formatMeters(metrics.north) : "-"}</strong>
+              <span>Bearing</span>
+              <strong>{metrics ? `${metrics.bearing.toFixed(1)}°` : "-"}</strong>
             </div>
             <div>
-              <span>E</span>
-              <strong>{metrics ? formatMeters(metrics.east) : "-"}</strong>
+              <span>N / E</span>
+              <strong>
+                {metrics ? `${formatMeters(metrics.north)} / ${formatMeters(metrics.east)}` : "-"}
+              </strong>
             </div>
           </div>
 
           <div className={styles.arStatusRow}>
-            <span className={`${styles.signalDot} ${styles[signal.level]}`} />
+            <span className={`${styles.signalDot} ${styles[signal.level] ?? ""}`} />
             <span>{signal.label}</span>
             <span>Camera: {cameraStatus}</span>
             <span>Heading: {heading !== null ? `${heading.toFixed(1)}°` : headingStatus}</span>
+            <span>Video: {videoReady ? "ready" : "not ready"}</span>
           </div>
 
-          {!arActive && <div className={styles.notActive}>Tekan Start AR Stake Out untuk aktifkan kamera.</div>}
+          {!videoReady && cameraStatus === "Active" && (
+            <div className={styles.videoWarning}>
+              Camera stream active but video frame is not visible. Try Test Camera again or reopen
+              this page in Chrome/Safari.
+            </div>
+          )}
+
+          {!arActive && (
+            <div className={styles.notActive}>
+              Tekan Test Camera untuk uji kamera atau Start AR Stake Out untuk mod penuh.
+            </div>
+          )}
         </div>
       </section>
 
@@ -658,8 +809,11 @@ export default function ArStakeoutPage() {
             {savedPoints.map((point) => (
               <article key={point.id}>
                 <strong>{point.targetName}</strong>
-                <span>Found: {point.foundLat.toFixed(7)}, {point.foundLng.toFixed(7)}</span>
+                <span>
+                  Found: {point.foundLat.toFixed(7)}, {point.foundLng.toFixed(7)}
+                </span>
                 <span>Distance: {formatMeters(point.distance)}</span>
+                <span>Bearing: {point.bearing.toFixed(1)}°</span>
                 <span>Accuracy: {point.accuracy ? `±${point.accuracy.toFixed(1)} m` : "-"}</span>
                 <span>{point.timestamp}</span>
                 {point.note && <span>Note: {point.note}</span>}
