@@ -92,6 +92,15 @@ function formatMeters(value: number | null | undefined) {
   return `${value.toFixed(1)} m`;
 }
 
+function bearingToCardinal(value: number | null | undefined) {
+  if (value === null || value === undefined || Number.isNaN(value)) return "-";
+
+  const directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+  const index = Math.round(normalize360(value) / 45) % 8;
+
+  return directions[index];
+}
+
 function getGpsSignal(gps: GpsFix | null, gpsError: string) {
   if (gpsError || !gps) {
     return {
@@ -570,6 +579,8 @@ export default function ArStakeoutPage() {
 
   const canSave = Boolean(gps && target && metrics);
   const arrowRotation = heading !== null && relativeAngle !== null ? relativeAngle : 0;
+  const targetDirection = metrics ? bearingToCardinal(metrics.bearing) : "-";
+  const headingDirection = heading !== null ? bearingToCardinal(heading) : "-";
 
   return (
     <main className={styles.page}>
@@ -685,11 +696,11 @@ export default function ArStakeoutPage() {
             </div>
             <div>
               <dt>Bearing</dt>
-              <dd>{metrics ? `${metrics.bearing.toFixed(1)}°` : "-"}</dd>
+              <dd>{metrics ? `${metrics.bearing.toFixed(1)}° ${targetDirection}` : "-"}</dd>
             </div>
             <div>
               <dt>Heading</dt>
-              <dd>{heading !== null ? `${heading.toFixed(1)}°` : headingStatus}</dd>
+              <dd>{heading !== null ? `${heading.toFixed(1)}° ${headingDirection}` : headingStatus}</dd>
             </div>
             <div>
               <dt>Direction</dt>
@@ -740,13 +751,24 @@ export default function ArStakeoutPage() {
           </div>
 
           <div className={styles.arrowWrap}>
-            <div
-              className={styles.arrow}
-              style={{
-                transform: `rotate(${arrowRotation}deg)`,
-              }}
-            >
-              ↑
+            <div className={styles.compassRose} aria-label="Compass direction reference">
+              <span className={styles.compassN}>N</span>
+              <span className={styles.compassNE}>NE</span>
+              <span className={styles.compassE}>E</span>
+              <span className={styles.compassSE}>SE</span>
+              <span className={styles.compassS}>S</span>
+              <span className={styles.compassSW}>SW</span>
+              <span className={styles.compassW}>W</span>
+              <span className={styles.compassNW}>NW</span>
+
+              <div
+                className={styles.arrow}
+                style={{
+                  transform: `rotate(${arrowRotation}deg)`,
+                }}
+              >
+                ↑
+              </div>
             </div>
           </div>
 
@@ -761,7 +783,7 @@ export default function ArStakeoutPage() {
             </div>
             <div>
               <span>Bearing</span>
-              <strong>{metrics ? `${metrics.bearing.toFixed(1)}°` : "-"}</strong>
+              <strong>{metrics ? `${metrics.bearing.toFixed(1)}° ${targetDirection}` : "-"}</strong>
             </div>
             <div>
               <span>N / E</span>
@@ -775,7 +797,7 @@ export default function ArStakeoutPage() {
             <span className={`${styles.signalDot} ${styles[signal.level] ?? ""}`} />
             <span>{signal.label}</span>
             <span>Camera: {cameraStatus}</span>
-            <span>Heading: {heading !== null ? `${heading.toFixed(1)}°` : headingStatus}</span>
+            <span>Heading: {heading !== null ? `${heading.toFixed(1)}° ${headingDirection}` : headingStatus}</span>
             <span>Video: {videoReady ? "ready" : "not ready"}</span>
           </div>
 
@@ -825,3 +847,7 @@ export default function ArStakeoutPage() {
     </main>
   );
 }
+
+
+
+

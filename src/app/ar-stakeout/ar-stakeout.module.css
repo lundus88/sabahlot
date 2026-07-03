@@ -483,3 +483,106 @@
     grid-template-columns: 1fr;
   }
 }
+
+.compassRose {
+  position: relative;
+  width: 210px;
+  height: 210px;
+  display: grid;
+  place-items: center;
+}
+
+.compassRose span {
+  position: absolute;
+  z-index: 6;
+  min-width: 34px;
+  min-height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+}
+
+.compassN {
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, -18%);
+}
+
+.compassNE {
+  top: 22px;
+  right: 22px;
+}
+
+.compassE {
+  top: 50%;
+  right: 0;
+  transform: translate(24%, -50%);
+}
+
+.compassSE {
+  right: 22px;
+  bottom: 22px;
+}
+
+.compassS {
+  bottom: 0;
+  left: 50%;
+  transform: translate(-50%, 18%);
+}
+
+.compassSW {
+  left: 22px;
+  bottom: 22px;
+}
+
+.compassW {
+  top: 50%;
+  left: 0;
+  transform: translate(-24%, -50%);
+}
+
+.compassNW {
+  top: 22px;
+  left: 22px;
+}
+
+@media (max-width: 760px) {
+  .compassRose {
+    width: 174px;
+    height: 174px;
+  }
+
+  .compassRose span {
+    min-width: 30px;
+    min-height: 24px;
+    font-size: 11px;
+  }
+
+  .compassNE {
+    top: 17px;
+    right: 17px;
+  }
+
+  .compassSE {
+    right: 17px;
+    bottom: 17px;
+  }
+
+  .compassSW {
+    left: 17px;
+    bottom: 17px;
+  }
+
+  .compassNW {
+    top: 17px;
+    left: 17px;
+  }
+}
