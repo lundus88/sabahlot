@@ -7,6 +7,9 @@ import {
   useRef,
   useState,
 } from "react";
+import {
+  flushSync,
+} from "react-dom";
 
 import type {
   PolygonResult,
@@ -76,8 +79,15 @@ type CameraStatus =
   | "Stopped";
 
 type CameraMode =
-  | "environment preferred"
-  | "fallback camera";
+  | "environment"
+  | "fallback"
+  | "front"
+  | "unknown";
+
+interface CameraErrorDetails {
+  name: string;
+  message: string;
+}
 
 type GpsSignalLevel =
   | "strong"
@@ -311,22 +321,52 @@ function getTargetZoneStatus(
   return "Far from target";
 }
 
-function describeCameraError(
+function getCameraErrorDetails(
   error: unknown,
-): string {
+): CameraErrorDetails {
   if (error instanceof DOMException) {
-    return error.message
-      ? `${error.name}: ${error.message}`
-      : error.name;
+    return {
+      name:
+        error.name || "DOMException",
+      message:
+        error.message || "-",
+    };
   }
 
   if (error instanceof Error) {
-    return error.message
-      ? `${error.name}: ${error.message}`
-      : error.name;
+    return {
+      name:
+        error.name || "Error",
+      message:
+        error.message || "-",
+    };
   }
 
-  return "UnknownError";
+  return {
+    name: "UnknownError",
+    message: "-",
+  };
+}
+
+function getCameraSupportSnapshot() {
+  const secureContext =
+    typeof window !== "undefined" &&
+    window.isSecureContext;
+  const mediaDevicesSupported =
+    typeof navigator !== "undefined" &&
+    Boolean(navigator.mediaDevices);
+  const getUserMediaSupported =
+    typeof navigator !== "undefined" &&
+    Boolean(
+      navigator.mediaDevices
+        ?.getUserMedia,
+    );
+
+  return {
+    secureContext,
+    mediaDevicesSupported,
+    getUserMediaSupported,
+  };
 }
 
 function parseCoordinateInput(
@@ -452,16 +492,32 @@ export default function FieldGpsLite({
     cameraMode,
     setCameraMode,
   ] = useState<CameraMode>(
-    "environment preferred",
+    "unknown",
   );
   const [
-    cameraSupported,
-    setCameraSupported,
+    cameraSecureContext,
+    setCameraSecureContext,
   ] = useState(false);
   const [
-    cameraError,
-    setCameraError,
+    mediaDevicesSupported,
+    setMediaDevicesSupported,
+  ] = useState(false);
+  const [
+    getUserMediaSupported,
+    setGetUserMediaSupported,
+  ] = useState(false);
+  const [
+    cameraErrorName,
+    setCameraErrorName,
   ] = useState("");
+  const [
+    cameraErrorMessage,
+    setCameraErrorMessage,
+  ] = useState("");
+  const [
+    cameraTestActive,
+    setCameraTestActive,
+  ] = useState(false);
   const [
     foundPointNoteInput,
     setFoundPointNoteInput,
@@ -524,6 +580,7 @@ export default function FieldGpsLite({
       if (videoRef.current) {
         videoRef.current.srcObject = null;
       }
+      setCameraStatus("Stopped");
     }, []);
 
   const playCameraStream =
@@ -547,6 +604,14 @@ export default function FieldGpsLite({
           "webkit-playsinline",
           "true",
         );
+        video.setAttribute(
+          "autoplay",
+          "true",
+        );
+        video.setAttribute(
+          "muted",
+          "true",
+        );
 
         if (
           "disablePictureInPicture" in
@@ -559,6 +624,28 @@ export default function FieldGpsLite({
         video.srcObject = stream;
 
         try {
+          await new Promise<boolean>(
+            (resolve) => {
+              if (video.readyState >= 1) {
+                resolve(true);
+                return;
+              }
+
+              const timeoutId =
+                window.setTimeout(
+                  () => resolve(true),
+                  1500,
+                );
+
+              video.onloadedmetadata =
+                () => {
+                  window.clearTimeout(
+                    timeoutId,
+                  );
+                  resolve(true);
+                };
+            },
+          );
           await video.play();
           return true;
         } catch {
@@ -572,6 +659,8 @@ export default function FieldGpsLite({
                 return;
               }
               settled = true;
+              video.onloadedmetadata =
+                null;
               video.removeEventListener(
                 "loadedmetadata",
                 handleLoadedMetadata,
@@ -786,7 +875,7 @@ export default function FieldGpsLite({
           "Failed to start",
         );
         setArMessage(
-          "Camera started but video playback was blocked. Tap Start AR Guide again.",
+          "Camera stream started but video playback was blocked. Tap Test Camera or Start AR Guide again.",
         );
       },
     );
@@ -818,7 +907,7 @@ export default function FieldGpsLite({
             "Failed to start",
           );
           setArMessage(
-            "Camera started but video playback was blocked. Tap Start AR Guide again.",
+            "Camera stream started but video playback was blocked. Tap Test Camera or Start AR Guide again.",
           );
         }
       });
@@ -1247,49 +1336,45 @@ export default function FieldGpsLite({
     });
   };
 
-  const stopArGuide = () => {
-    stopCameraStream();
-    setArActive(false);
-    setCameraStatus("Stopped");
-    setArMessage("AR Guide stopped.");
+  const updateCameraSupportDiagnostics =
+    () => {
+      const snapshot =
+        getCameraSupportSnapshot();
+      setCameraSecureContext(
+        snapshot.secureContext,
+      );
+      setMediaDevicesSupported(
+        snapshot.mediaDevicesSupported,
+      );
+      setGetUserMediaSupported(
+        snapshot.getUserMediaSupported,
+      );
+      return snapshot;
+    };
+
+  const setCameraErrorDetails = (
+    error: unknown,
+  ) => {
+    const details =
+      getCameraErrorDetails(error);
+    setCameraErrorName(details.name);
+    setCameraErrorMessage(
+      details.message,
+    );
+    return details;
   };
 
-  const startArGuide = async () => {
-    if (!targetPoint) {
-      setArMessage(
-        "Set a Target Point before starting AR Guide.",
-      );
-      return;
-    }
+  const clearCameraErrorDetails = () => {
+    setCameraErrorName("");
+    setCameraErrorMessage("");
+  };
 
-    if (
-      !navigator.mediaDevices ||
-      !navigator.mediaDevices.getUserMedia
-    ) {
-      setCameraSupported(false);
-      setCameraStatus("Not supported");
-      setCameraError("");
-      setArMessage(
-        "Camera is not supported in this browser.",
-      );
-      return;
-    }
-
-    try {
-      stopCameraStream();
-      setCameraStatus("Starting");
-      setCameraMode(
-        "environment preferred",
-      );
-      setCameraSupported(true);
-      setCameraError("");
-      setArMessage(
-        "Requesting camera permission.",
-      );
-      let stream: MediaStream;
+  const requestMobileCameraStream =
+    async () => {
+      setCameraMode("environment");
 
       try {
-        stream =
+        const stream =
           await navigator.mediaDevices.getUserMedia(
             {
               video: {
@@ -1308,86 +1393,191 @@ export default function FieldGpsLite({
               audio: false,
             },
           );
-      } catch (environmentError) {
-        setCameraMode(
-          "fallback camera",
+        clearCameraErrorDetails();
+        return stream;
+      } catch (firstError) {
+        setCameraErrorDetails(
+          firstError,
         );
-        setCameraError(
-          describeCameraError(
-            environmentError,
-          ),
-        );
-        stream =
+      }
+
+      setCameraMode("environment");
+
+      try {
+        const stream =
           await navigator.mediaDevices.getUserMedia(
             {
-              video: true,
+              video: {
+                facingMode:
+                  "environment",
+              },
               audio: false,
             },
           );
+        return stream;
+      } catch (secondError) {
+        setCameraErrorDetails(
+          secondError,
+        );
       }
 
-      if (!videoRef.current) {
-        setArActive(true);
-      }
+      setCameraMode("fallback");
 
-      cameraStreamRef.current =
-        stream;
-      setArActive(true);
-      setNavigationActive(true);
+      return navigator.mediaDevices.getUserMedia(
+        {
+          video: true,
+          audio: false,
+        },
+      );
+    };
 
-      if (videoRef.current) {
-        const started =
-          await playCameraStream(
-            stream,
-          );
-
-        if (!started) {
-          setCameraStatus(
-            "Failed to start",
-          );
+  const startCameraSession =
+    async ({
+      activateNavigation,
+      requireTarget,
+      testOnly,
+    }: {
+      activateNavigation: boolean;
+      requireTarget: boolean;
+      testOnly: boolean;
+    }) => {
+        if (
+          requireTarget &&
+          !targetPoint
+        ) {
           setArMessage(
-            "Camera started but video playback was blocked. Tap Start AR Guide again.",
+            "Set a Target Point before starting AR Guide.",
           );
           return;
         }
 
-        setCameraStatus("Active");
-      }
+        flushSync(() => {
+          setArActive(true);
+          setCameraTestActive(testOnly);
+        });
 
-      setArMessage(
-        "AR Guide active.",
-      );
-    } catch (error) {
-      stopCameraStream();
-      setArActive(false);
-      setCameraError(
-        describeCameraError(error),
-      );
-      if (
-        error instanceof DOMException &&
-        (
-          error.name ===
-            "NotAllowedError" ||
-          error.name ===
-            "PermissionDeniedError"
-        )
-      ) {
-        setCameraStatus(
-          "Permission denied",
-        );
-        setArMessage(
-          "Camera permission denied. Please allow camera access to use AR Guide.",
-        );
-        return;
-      }
+        const support =
+          updateCameraSupportDiagnostics();
 
-      setCameraStatus(
-        "Failed to start",
-      );
-      setArMessage(
-        "Camera failed to start. Please check camera access and try again.",
-      );
-    }
+        if (!support.secureContext) {
+          stopCameraStream();
+          setCameraMode("unknown");
+          setCameraStatus(
+            "Failed to start",
+          );
+          clearCameraErrorDetails();
+          setArMessage(
+            "Camera requires HTTPS. Please open https://beta.sabahlot.com",
+          );
+          return;
+        }
+
+        if (
+          !support.mediaDevicesSupported ||
+          !support.getUserMediaSupported
+        ) {
+          stopCameraStream();
+          setCameraMode("unknown");
+          setCameraStatus(
+            "Not supported",
+          );
+          clearCameraErrorDetails();
+          setArMessage(
+            "Camera is not supported in this browser. Open beta.sabahlot.com in Chrome Android or Safari iPhone.",
+          );
+          return;
+        }
+
+        try {
+          stopCameraStream();
+          setCameraStatus("Starting");
+          setCameraMode("unknown");
+          clearCameraErrorDetails();
+          setArMessage(
+            "Requesting camera permission.",
+          );
+
+          const stream =
+            await requestMobileCameraStream();
+          cameraStreamRef.current =
+            stream;
+
+          if (activateNavigation) {
+            setNavigationActive(true);
+          }
+
+          const started =
+            await playCameraStream(stream);
+
+          if (!started) {
+            setCameraStatus(
+              "Failed to start",
+            );
+            setArMessage(
+              "Camera stream started but video playback was blocked. Tap Test Camera or Start AR Guide again.",
+            );
+            return;
+          }
+
+          setCameraStatus("Active");
+          setArMessage(
+            testOnly
+              ? "Camera test active."
+              : "AR Guide active.",
+          );
+        } catch (error) {
+          stopCameraStream();
+          const details =
+            setCameraErrorDetails(error);
+
+          if (
+            error instanceof DOMException &&
+            (
+              error.name ===
+                "NotAllowedError" ||
+              error.name ===
+                "PermissionDeniedError"
+            )
+          ) {
+            setCameraStatus(
+              "Permission denied",
+            );
+            setArMessage(
+              "Camera permission denied. Please allow camera access to use AR Guide.",
+            );
+            return;
+          }
+
+          setCameraStatus(
+            "Failed to start",
+          );
+          setArMessage(
+            `Camera failed to start: ${details.name}`,
+          );
+        }
+      };
+
+  const stopArGuide = () => {
+    stopCameraStream();
+    setArActive(false);
+    setCameraTestActive(false);
+    setArMessage("AR Guide stopped.");
+  };
+
+  const startArGuide = async () => {
+    await startCameraSession({
+      activateNavigation: true,
+      requireTarget: true,
+      testOnly: false,
+    });
+  };
+
+  const testCamera = async () => {
+    await startCameraSession({
+      activateNavigation: false,
+      requireTarget: false,
+      testOnly: true,
+    });
   };
 
   const saveFoundPointRecord = (
@@ -2166,6 +2356,14 @@ export default function FieldGpsLite({
               <button
                 type="button"
                 onClick={() =>
+                  void testCamera()
+                }
+              >
+                Test Camera
+              </button>
+              <button
+                type="button"
+                onClick={() =>
                   saveFoundPointRecord(
                     arActive
                       ? "AR Find Point Lite"
@@ -2224,7 +2422,9 @@ export default function FieldGpsLite({
               <div className="sl-ar-overlay">
                 <div className="sl-ar-guide-heading">
                   <strong>
-                    AR Guide
+                    {cameraTestActive
+                      ? "Camera Test"
+                      : "AR Guide"}
                   </strong>
                   <button
                     type="button"
@@ -2297,23 +2497,43 @@ export default function FieldGpsLite({
                   </strong>
                   <span>Mode</span>
                   <strong>
-                    AR Find Point Lite
+                    {cameraTestActive
+                      ? "Camera Test"
+                      : "AR Find Point Lite"}
                   </strong>
-                  <span>Browser support</span>
+                  <span>Secure context</span>
                   <strong>
-                    {cameraSupported
-                      ? "supported"
-                      : "not supported"}
+                    {cameraSecureContext
+                      ? "yes"
+                      : "no"}
                   </strong>
-                  <span>Using camera</span>
+                  <span>MediaDevices support</span>
+                  <strong>
+                    {mediaDevicesSupported
+                      ? "yes"
+                      : "no"}
+                  </strong>
+                  <span>getUserMedia support</span>
+                  <strong>
+                    {getUserMediaSupported
+                      ? "yes"
+                      : "no"}
+                  </strong>
+                  <span>Camera status</span>
+                  <strong>
+                    {cameraStatus}
+                  </strong>
+                  <span>Camera mode attempted</span>
                   <strong>
                     {cameraMode}
                   </strong>
-                  <span>Last camera error</span>
+                  <span>Last camera error name</span>
                   <strong>
-                    {cameraError
-                      ? `Camera error: ${cameraError}`
-                      : "-"}
+                    {cameraErrorName || "-"}
+                  </strong>
+                  <span>Last camera error message</span>
+                  <strong>
+                    {cameraErrorMessage || "-"}
                   </strong>
                 </div>
                 <button
