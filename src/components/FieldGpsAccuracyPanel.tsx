@@ -12,6 +12,8 @@ interface FieldGpsAccuracyPanelProps {
   reading: FieldGpsReading | null;
   status: string;
   qualityGrade: "A" | "B" | "C" | "D";
+  gpsSignalLabel: string;
+  gpsSignalClassName: string;
   gateMeters: number | null;
   onGateChange: (value: number | null) => void;
   allowApproximate: boolean;
@@ -36,6 +38,8 @@ export default function FieldGpsAccuracyPanel({
   reading,
   status,
   qualityGrade,
+  gpsSignalLabel,
+  gpsSignalClassName,
   gateMeters,
   onGateChange,
   allowApproximate,
@@ -54,8 +58,13 @@ export default function FieldGpsAccuracyPanel({
     <section className="sl-field-gps-section">
       <div className="sl-field-gps-status-row">
         <strong>{status}</strong>
-        <span className={`sl-gps-grade is-${qualityGrade.toLowerCase()}`}>
-          {qualityGrade}
+        <span className="sl-field-gps-status-badges">
+          <span className={gpsSignalClassName}>
+            {gpsSignalLabel}
+          </span>
+          <span className={`sl-gps-grade is-${qualityGrade.toLowerCase()}`}>
+            {qualityGrade}
+          </span>
         </span>
       </div>
 
@@ -79,6 +88,12 @@ export default function FieldGpsAccuracyPanel({
           {reading?.accuracyMeters !== undefined
             ? `+/- ${reading.accuracyMeters.toFixed(1)} m`
             : "-"}
+        </strong>
+        <span>GPS signal</span>
+        <strong>
+          <span className={gpsSignalClassName}>
+            {gpsSignalLabel}
+          </span>
         </strong>
         <span>Altitude</span>
         <strong>
