@@ -5896,3 +5896,38 @@ select:focus-visible {
     display: none;
   }
 }
+
+
+.sl-gps-quick-guide {
+  margin: 10px 0 12px;
+  padding: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 14px;
+  background: rgba(248, 250, 252, 0.95);
+  color: #0f172a;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.sl-gps-quick-guide strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.sl-gps-quick-guide ol {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.sl-gps-quick-guide li {
+  margin: 4px 0;
+}
+
+.sl-gps-quick-guide p {
+  margin: 8px 0 0;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+}

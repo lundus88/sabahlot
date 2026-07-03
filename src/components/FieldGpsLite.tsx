@@ -1968,7 +1968,21 @@ export default function FieldGpsLite({
           />
 
           <section className="sl-field-gps-section">
-            <div className="sl-field-gps-actions">
+            
+          <div className="sl-gps-quick-guide">
+            <strong>Panduan Ringkas GPS</strong>
+            <ol>
+              <li><b>Saya di mana?</b> Start GPS - Track My Position</li>
+              <li><b>Titik di mana?</b> Find Coordinate / Find Point</li>
+              <li><b>Arah ke titik?</b> AR Guide - Start AR Stake Out</li>
+            </ol>
+            <p>
+              Satelit: tidak tersedia dalam browser GPS. Gunakan accuracy (+/- meter)
+              sebagai rujukan kualiti signal.
+            </p>
+          </div>
+
+          <div className="sl-field-gps-actions">
             <button
               type="button"
               onClick={openArStakeoutPage}
