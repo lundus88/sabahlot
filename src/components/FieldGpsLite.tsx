@@ -141,7 +141,7 @@ const OCCUPATION_OPTIONS = [
 ];
 
 const FIELD_NAVIGATION_SAFETY_LABEL =
-  "Preliminary Field Navigation Only Â· Not for cadastral boundary determination.";
+  "Preliminary Field Navigation Only - Not for cadastral boundary determination.";
 
 const FIELD_NAVIGATION_SAFETY_LABEL_MS =
   "Navigasi awal sahaja. Bukan penentuan sempadan kadaster rasmi.";
@@ -219,7 +219,7 @@ function getGpsSignalStatus(
     const accuracyLabel =
       position?.accuracyMeters !==
       undefined
-        ? ` Â· Â±${position.accuracyMeters.toFixed(
+        ? ` - +/-${position.accuracyMeters.toFixed(
             1,
           )} m`
         : "";
