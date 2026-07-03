@@ -1,5 +1,10 @@
-"use client";
+﻿"use client";
 
+
+function openArStakeoutPage() {
+  if (typeof window === "undefined") return;
+  window.location.href = "/ar-stakeout";
+}
 import {
   useCallback,
   useEffect,
@@ -132,7 +137,7 @@ const OCCUPATION_OPTIONS = [
 ];
 
 const FIELD_NAVIGATION_SAFETY_LABEL =
-  "Preliminary Field Navigation Only · Not for cadastral boundary determination.";
+  "Preliminary Field Navigation Only Â· Not for cadastral boundary determination.";
 
 const FIELD_NAVIGATION_SAFETY_LABEL_MS =
   "Navigasi awal sahaja. Bukan penentuan sempadan kadaster rasmi.";
@@ -188,11 +193,11 @@ function getGpsSignalStatus(
   lastUpdateMs: number,
 ): GpsSignalStatus {
   const lostLabel =
-    "GPS Lost · Tiada sambungan lokasi";
+    "GPS Lost Â· Tiada sambungan lokasi";
   const weakLabel =
-    "GPS Weak · Signal lemah";
+    "GPS Weak Â· Signal lemah";
   const strongLabel =
-    "GPS Active · Signal kuat";
+    "GPS Active Â· Signal kuat";
 
   const statusText =
     `${gpsStatus} ${error}`.toLowerCase();
@@ -210,7 +215,7 @@ function getGpsSignalStatus(
     const accuracyLabel =
       position?.accuracyMeters !==
       undefined
-        ? ` · ±${position.accuracyMeters.toFixed(
+        ? ` Â· Â±${position.accuracyMeters.toFixed(
             1,
           )} m`
         : "";
@@ -2966,3 +2971,4 @@ export default function FieldGpsLite({
     </section>
   );
 }
+
