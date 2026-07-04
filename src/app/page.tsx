@@ -783,7 +783,7 @@ export default function HomePage() {
   const [
     pdfPaperSize,
     setPdfPaperSize,
-  ] = useState<PdfPaperSize>("a4");
+  ] = useState<PdfPaperSize>("a3");
 
   const [
     pdfOrientation,
@@ -2525,6 +2525,29 @@ export default function HomePage() {
             generated:
               "Generated",
           };
+
+        const polygonPointCount =
+          polygon.coordinates.length;
+        const useFullCoordinateTable =
+          polygonPointCount > 15;
+        const pdfSegmentLabelStep =
+          polygonPointCount <= 6
+            ? 1
+            : polygonPointCount <= 10
+              ? 2
+              : polygonPointCount <= 15
+                ? 3
+                : Number.POSITIVE_INFINITY;
+        const shouldDrawPdfSegmentLabel = (
+          segmentIndex: number,
+        ) =>
+          polygonPointCount <= 6 ||
+          (
+            polygonPointCount <= 15 &&
+            segmentIndex %
+              pdfSegmentLabelStep ===
+              0
+          );
 
         const addDrawingBorder =
           () => {
@@ -4909,6 +4932,71 @@ export default function HomePage() {
             mapOverlayGeometry.vertices.map(
               toCanvasPoint,
             );
+          const occupiedPdfLabelBoxes: Array<{
+            left: number;
+            top: number;
+            right: number;
+            bottom: number;
+          }> = [];
+          const labelBoxPadding =
+            Math.max(
+              5,
+              4 *
+                overlayScale,
+            );
+          const boxesOverlap = (
+            first: {
+              left: number;
+              top: number;
+              right: number;
+              bottom: number;
+            },
+            second: {
+              left: number;
+              top: number;
+              right: number;
+              bottom: number;
+            },
+          ) =>
+            first.left < second.right &&
+            first.right > second.left &&
+            first.top < second.bottom &&
+            first.bottom > second.top;
+          const addPdfLabelBox = (
+            box: {
+              left: number;
+              top: number;
+              right: number;
+              bottom: number;
+            },
+          ) => {
+            if (
+              box.right < 0 ||
+              box.left > cropWidth ||
+              box.bottom < 0 ||
+              box.top > cropHeight
+            ) {
+              return false;
+            }
+
+            const collides =
+              occupiedPdfLabelBoxes.some(
+                (occupiedBox) =>
+                  boxesOverlap(
+                    box,
+                    occupiedBox,
+                  ),
+              );
+
+            if (collides) {
+              return false;
+            }
+
+            occupiedPdfLabelBoxes.push(
+              box,
+            );
+            return true;
+          };
 
           croppedMapContext.beginPath();
           vertices.forEach(
@@ -5035,24 +5123,144 @@ export default function HomePage() {
                 point.x,
                 point.y,
               );
+
+              if (
+                polygonPointCount > 6
+              ) {
+                const pointBoxRadius =
+                  markerRadius *
+                  1.15;
+                occupiedPdfLabelBoxes.push(
+                  {
+                    left:
+                      point.x -
+                      pointBoxRadius,
+                    top:
+                      point.y -
+                      pointBoxRadius,
+                    right:
+                      point.x +
+                      pointBoxRadius,
+                    bottom:
+                      point.y +
+                      pointBoxRadius,
+                  },
+                );
+              }
             },
           );
 
           mapOverlayGeometry.segments.forEach(
-            (segment) => {
+            (
+              segment,
+              segmentIndex,
+            ) => {
+              if (
+                !shouldDrawPdfSegmentLabel(
+                  segmentIndex,
+                )
+              ) {
+                return;
+              }
+
               const midpoint =
                 toCanvasPoint(
                   segment.midpoint,
                 );
               const fontSize =
                 Math.max(
-                  10,
-                  10 *
+                  polygonPointCount <= 6
+                    ? 10
+                    : 8,
+                  (
+                    polygonPointCount <= 6
+                      ? 10
+                      : 8
+                  ) *
                     overlayScale,
                 );
               const lineGap =
                 fontSize *
                 1.4;
+              const distanceLabel =
+                `${segment.distanceText} ${segment.unitText}`;
+              croppedMapContext.font =
+                `800 ${fontSize}px Arial, sans-serif`;
+              const textWidth =
+                Math.max(
+                  croppedMapContext.measureText(
+                    segment.bearing,
+                  ).width,
+                  croppedMapContext.measureText(
+                    distanceLabel,
+                  ).width,
+                ) +
+                labelBoxPadding *
+                  2;
+              const textHeight =
+                lineGap +
+                fontSize *
+                  1.15 +
+                labelBoxPadding;
+              const angleRad =
+                (
+                  segment.angle *
+                  Math.PI
+                ) /
+                180;
+              const projectedWidth =
+                Math.abs(
+                  Math.cos(
+                    angleRad,
+                  ),
+                ) *
+                  textWidth +
+                Math.abs(
+                  Math.sin(
+                    angleRad,
+                  ),
+                ) *
+                  textHeight;
+              const projectedHeight =
+                Math.abs(
+                  Math.sin(
+                    angleRad,
+                  ),
+                ) *
+                  textWidth +
+                Math.abs(
+                  Math.cos(
+                    angleRad,
+                  ),
+                ) *
+                  textHeight;
+              const labelBox = {
+                left:
+                  midpoint.x -
+                  projectedWidth /
+                    2,
+                top:
+                  midpoint.y -
+                  projectedHeight /
+                    2,
+                right:
+                  midpoint.x +
+                  projectedWidth /
+                    2,
+                bottom:
+                  midpoint.y +
+                  projectedHeight /
+                    2,
+              };
+
+              if (
+                polygonPointCount > 6 &&
+                !addPdfLabelBox(
+                  labelBox,
+                )
+              ) {
+                return;
+              }
 
               croppedMapContext.save();
               croppedMapContext.translate(
@@ -5078,7 +5286,7 @@ export default function HomePage() {
                 fontSize,
               );
               drawLabelLine(
-                `${segment.distanceText} ${segment.unitText}`,
+                distanceLabel,
                 lineGap / 2,
                 fontSize,
               );
@@ -5438,9 +5646,14 @@ export default function HomePage() {
           sheetContentHeight,
         );
 
+        const coordinateTableStartIndex =
+          useFullCoordinateTable
+            ? 0
+            : 5;
+
         if (
           polygon.coordinates.length >
-          5
+          coordinateTableStartIndex
         ) {
           pdf.addPage();
           addDrawingBorder();
@@ -5601,7 +5814,7 @@ export default function HomePage() {
 
         polygon.coordinates
           .slice(
-            5,
+            coordinateTableStartIndex,
           )
           .forEach(
           (
@@ -5610,7 +5823,7 @@ export default function HomePage() {
           ) => {
             const pointIndex =
               index +
-              5;
+              coordinateTableStartIndex;
 
             if (
               rowY >
