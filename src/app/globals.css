@@ -6220,13 +6220,13 @@ select:focus-visible {
   }
 }
 
-/* Mobile area summary stabilization: keep the toolbar clear. */
+/* Mobile area summary stabilization: keep Draw/Edit/Save/Export clear. */
 @media (max-width: 768px) {
   .sl-floating-summary-card {
     right: 8px !important;
-    bottom: calc(env(safe-area-inset-bottom) + 72px) !important;
+    bottom: calc(env(safe-area-inset-bottom) + 74px) !important;
     left: 8px !important;
-    max-height: 54px !important;
+    max-height: 52px !important;
     min-height: 0;
     grid-template-columns: minmax(0, 1.35fr) minmax(48px, 0.55fr) minmax(0, 1fr);
     overflow: hidden;
@@ -6258,7 +6258,7 @@ select:focus-visible {
 @media (max-width: 768px) and (max-height: 640px) {
   .sl-floating-summary-card {
     display: grid !important;
-    bottom: calc(env(safe-area-inset-bottom) + 66px) !important;
+    bottom: calc(env(safe-area-inset-bottom) + 68px) !important;
     max-height: 46px !important;
   }
 
