@@ -6098,3 +6098,69 @@ select:focus-visible {
     max-height: min(52dvh, calc(100dvh - 132px)) !important;
   }
 }
+
+.sl-mobile-top-control-stack {
+  display: contents;
+}
+
+@media (max-width: 640px) {
+  .sl-mobile-top-control-stack {
+    position: absolute;
+    top: calc(env(safe-area-inset-top) + 62px);
+    right: 12px;
+    left: 12px;
+    z-index: 1118;
+    display: flex;
+    width: calc(100vw - 24px);
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: none;
+  }
+
+  .sl-mobile-top-control-stack > * {
+    pointer-events: auto;
+  }
+
+  .sl-mobile-top-control-stack .sl-object-list-tab {
+    position: static !important;
+    top: auto !important;
+    right: auto !important;
+    left: auto !important;
+    display: block;
+    width: 100% !important;
+    min-height: 40px;
+    padding: 0 12px;
+    text-align: center;
+  }
+
+  .sl-mobile-top-control-stack .sl-field-gps-stack {
+    position: static !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    z-index: auto;
+    display: flex;
+    width: 100% !important;
+    max-height: none;
+    justify-content: stretch;
+    pointer-events: none;
+  }
+
+  .sl-mobile-top-control-stack .sl-field-gps-panel {
+    width: 100%;
+    justify-items: stretch;
+    pointer-events: none;
+  }
+
+  .sl-mobile-top-control-stack .sl-field-gps-toggle {
+    width: 100%;
+    min-height: 40px;
+    padding: 0 10px;
+    font-size: 12px;
+  }
+
+  .sl-mobile-top-control-stack .sl-field-gps-card {
+    width: 100%;
+    max-height: min(54dvh, calc(100dvh - 176px - env(safe-area-inset-top) - env(safe-area-inset-bottom))) !important;
+  }
+}

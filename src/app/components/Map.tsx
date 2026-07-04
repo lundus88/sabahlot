@@ -1,6 +1,7 @@
  "use client";
 
 import {
+  type ReactNode,
   type ChangeEvent,
   type FormEvent,
   useEffect,
@@ -128,6 +129,7 @@ interface MapProps {
   onLanguageChange?: (language: AppLanguage) => void;
   onAreaUnitChange?: (areaUnit: AreaUnit) => void;
   onMapViewChange?: (view: OfflineMapView) => void;
+  fieldGpsControl?: ReactNode;
 }
 
 type CoordinatePair = [number, number];
@@ -2333,6 +2335,7 @@ export default function Map({
   onLanguageChange,
   onAreaUnitChange,
   onMapViewChange,
+  fieldGpsControl,
 }: MapProps) {
   const mapContainerRef =
     useRef<HTMLDivElement | null>(
@@ -9763,7 +9766,7 @@ export default function Map({
         </aside>
       )}
 
-      {activePanel === "objects" ? (
+      {activePanel === "objects" && (
       <aside
         className="sl-object-list"
         onClick={(event) =>
@@ -9966,7 +9969,10 @@ export default function Map({
           )
         )}
       </aside>
-      ) : (
+      )}
+
+      <div className="sl-mobile-top-control-stack">
+      {activePanel !== "objects" && (
         <button
           type="button"
           className="sl-object-list-tab"
@@ -9978,6 +9984,13 @@ export default function Map({
           Objects ({drawingObjects.length})
         </button>
       )}
+
+      {fieldGpsControl ? (
+        <div className="sl-field-gps-stack">
+          {fieldGpsControl}
+        </div>
+      ) : null}
+      </div>
 
       {isDashedLineMode && (
         <aside className="sl-dashed-line-options">

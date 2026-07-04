@@ -6704,22 +6704,21 @@ export default function HomePage() {
         onMapViewChange={
           setMapView
         }
+        fieldGpsControl={
+          <FieldGpsLite
+            enabled
+            recordName={
+              formData.lotNumber
+            }
+            offlineMapNote={
+              ""
+            }
+            onPolygonGenerated={
+              handleFieldGpsPolygonGenerated
+            }
+          />
+        }
       />
-
-      <div className="sl-field-gps-stack">
-        <FieldGpsLite
-          enabled
-          recordName={
-            formData.lotNumber
-          }
-          offlineMapNote={
-            ""
-          }
-          onPolygonGenerated={
-            handleFieldGpsPolygonGenerated
-          }
-        />
-      </div>
 
       <div
         className={
