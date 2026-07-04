@@ -6103,16 +6103,22 @@ select:focus-visible {
   display: contents;
 }
 
+.sl-field-gps-toggle-label-short {
+  display: none;
+}
+
 @media (max-width: 640px) {
   .sl-mobile-top-control-stack {
     position: absolute;
-    top: calc(env(safe-area-inset-top) + 62px);
+    top: calc(env(safe-area-inset-top) + 56px);
     right: 12px;
     left: 12px;
     z-index: 1118;
     display: flex;
     width: calc(100vw - 24px);
-    flex-direction: column;
+    min-height: 42px;
+    align-items: flex-start;
+    flex-direction: row;
     gap: 8px;
     pointer-events: none;
   }
@@ -6127,10 +6133,16 @@ select:focus-visible {
     right: auto !important;
     left: auto !important;
     display: block;
-    width: 100% !important;
+    flex: 1 1 auto;
+    width: auto !important;
+    min-width: 0;
     min-height: 40px;
+    max-height: 42px;
     padding: 0 12px;
+    overflow: hidden;
     text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .sl-mobile-top-control-stack .sl-field-gps-stack {
@@ -6140,27 +6152,50 @@ select:focus-visible {
     left: auto !important;
     z-index: auto;
     display: flex;
-    width: 100% !important;
+    flex: 0 0 auto;
+    width: auto !important;
     max-height: none;
-    justify-content: stretch;
+    margin-left: auto;
+    justify-content: flex-end;
     pointer-events: none;
   }
 
   .sl-mobile-top-control-stack .sl-field-gps-panel {
-    width: 100%;
-    justify-items: stretch;
+    position: relative;
+    width: auto;
+    justify-items: end;
     pointer-events: none;
   }
 
   .sl-mobile-top-control-stack .sl-field-gps-toggle {
-    width: 100%;
+    width: auto;
     min-height: 40px;
+    max-height: 42px;
     padding: 0 10px;
     font-size: 12px;
+    white-space: nowrap;
   }
 
   .sl-mobile-top-control-stack .sl-field-gps-card {
-    width: 100%;
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: calc(100vw - 24px);
     max-height: min(54dvh, calc(100dvh - 176px - env(safe-area-inset-top) - env(safe-area-inset-bottom))) !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .sl-mobile-top-control-stack .sl-field-gps-toggle {
+    min-width: 58px;
+    padding: 0 9px;
+  }
+
+  .sl-field-gps-toggle-label-full {
+    display: none;
+  }
+
+  .sl-field-gps-toggle-label-short {
+    display: inline;
   }
 }
