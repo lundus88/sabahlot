@@ -6219,3 +6219,54 @@ select:focus-visible {
     padding: 0 9px;
   }
 }
+
+/* Mobile area summary stabilization: keep the toolbar clear. */
+@media (max-width: 768px) {
+  .sl-floating-summary-card {
+    right: 8px !important;
+    bottom: calc(env(safe-area-inset-bottom) + 72px) !important;
+    left: 8px !important;
+    max-height: 54px !important;
+    min-height: 0;
+    grid-template-columns: minmax(0, 1.35fr) minmax(48px, 0.55fr) minmax(0, 1fr);
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .sl-floating-summary-card div {
+    gap: 0;
+    min-width: 0;
+    padding: 4px 6px !important;
+  }
+
+  .sl-floating-summary-card small {
+    font-size: 8px !important;
+    line-height: 1;
+  }
+
+  .sl-floating-summary-card strong {
+    font-size: 10.5px !important;
+    line-height: 1.05;
+  }
+
+  .sl-floating-summary-card div > span {
+    font-size: 9px !important;
+    line-height: 1.05;
+  }
+}
+
+@media (max-width: 768px) and (max-height: 640px) {
+  .sl-floating-summary-card {
+    display: grid !important;
+    bottom: calc(env(safe-area-inset-bottom) + 66px) !important;
+    max-height: 46px !important;
+  }
+
+  .sl-floating-summary-card div {
+    padding: 3px 5px !important;
+  }
+
+  .sl-floating-summary-card small {
+    display: none;
+  }
+}
