@@ -9972,18 +9972,24 @@ export default function Map({
       )}
 
       <div className="sl-mobile-top-control-stack">
-      {activePanel !== "objects" && (
         <button
           type="button"
-          className="sl-object-list-tab"
+          className={`sl-object-list-tab ${
+            activePanel === "objects"
+              ? "is-active"
+              : ""
+          }`}
           onClick={() =>
-            openMapPanel("objects")
+            toggleMapPanel("objects")
           }
-          aria-label="Open Objects"
+          aria-label={
+            activePanel === "objects"
+              ? "Close Objects"
+              : "Open Objects"
+          }
         >
           Objects ({drawingObjects.length})
         </button>
-      )}
 
       {fieldGpsControl ? (
         <div className="sl-field-gps-stack">
