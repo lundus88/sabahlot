@@ -2821,6 +2821,43 @@ export default function FieldGpsLite({
         )
       : "";
 
+  const closeFieldGpsPanel =
+    useCallback(() => {
+      if (arActive) {
+        stopArGuide();
+      }
+
+      setOpen(false);
+    }, [
+      arActive,
+    ]);
+
+  useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
+    const handleClosePanel =
+      () => {
+        closeFieldGpsPanel();
+      };
+
+    window.addEventListener(
+      "sabahlot:close-field-gps-panel",
+      handleClosePanel,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "sabahlot:close-field-gps-panel",
+        handleClosePanel,
+      );
+    };
+  }, [
+    closeFieldGpsPanel,
+    enabled,
+  ]);
+
   const safeFileName =
     (recordName?.trim() ||
       "preliminary-field-gps")
@@ -2835,7 +2872,12 @@ export default function FieldGpsLite({
       .toLowerCase();
 
   return (
-    <section className="sl-field-gps-panel">
+    <section
+      className="sl-field-gps-panel"
+      onClick={(event) =>
+        event.stopPropagation()
+      }
+    >
       <button
         type="button"
         className="sl-field-gps-toggle"
@@ -2848,7 +2890,20 @@ export default function FieldGpsLite({
           }
 
           setOpen(
-            (current) => !current,
+            (current) => {
+              const nextOpen =
+                !current;
+
+              if (nextOpen) {
+                window.dispatchEvent(
+                  new CustomEvent(
+                    "sabahlot:field-gps-panel-opened",
+                  ),
+                );
+              }
+
+              return nextOpen;
+            },
           );
         }}
       >
@@ -2858,10 +2913,20 @@ export default function FieldGpsLite({
       {open && (
         <div className="sl-field-gps-card">
           <div className="sl-field-gps-heading">
-            <span>Handheld GPS</span>
-            <strong>
-              {points.length} points | {foundPoints.length} found
-            </strong>
+            <div>
+              <span>Handheld GPS</span>
+              <strong>
+                {points.length} points | {foundPoints.length} found
+              </strong>
+            </div>
+            <button
+              type="button"
+              className="sl-field-gps-close"
+              onClick={closeFieldGpsPanel}
+              aria-label="Close Handheld GPS"
+            >
+              Close
+            </button>
           </div>
 
           <p className="sl-field-gps-note">

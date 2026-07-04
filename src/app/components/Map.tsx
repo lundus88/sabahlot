@@ -138,6 +138,13 @@ type ActiveFieldTool =
   | "dashed_line"
   | "add_point"
   | null;
+type MobilePanel =
+  | "objects"
+  | "settings"
+  | "draw"
+  | "edit"
+  | "export"
+  | null;
 type DashedLineCategory =
   | "proposed_boundary"
   | "proposed_access"
@@ -2711,6 +2718,76 @@ export default function Map({
     setObjectsPanelOpen,
   ] =
     useState(false);
+
+  const [
+    activePanel,
+    setActivePanel,
+  ] = useState<MobilePanel>(
+    null,
+  );
+
+  const closeMapPanels = () => {
+    setActivePanel(null);
+    setSettingsOpen(false);
+    setObjectsPanelOpen(false);
+    setDrawMenuOpen(false);
+    setEditMenuOpen(false);
+    setExportMenuOpen(false);
+  };
+
+  const closeAllMobilePanels = () => {
+    closeMapPanels();
+    window.dispatchEvent(
+      new CustomEvent(
+        "sabahlot:close-field-gps-panel",
+      ),
+    );
+  };
+
+  const openMapPanel = (
+    panel: Exclude<MobilePanel, null>,
+  ) => {
+    setActivePanel(panel);
+    setSettingsOpen(panel === "settings");
+    setObjectsPanelOpen(panel === "objects");
+    setDrawMenuOpen(panel === "draw");
+    setEditMenuOpen(panel === "edit");
+    setExportMenuOpen(panel === "export");
+    window.dispatchEvent(
+      new CustomEvent(
+        "sabahlot:close-field-gps-panel",
+      ),
+    );
+  };
+
+  const toggleMapPanel = (
+    panel: Exclude<MobilePanel, null>,
+  ) => {
+    if (activePanel === panel) {
+      closeMapPanels();
+      return;
+    }
+
+    openMapPanel(panel);
+  };
+
+  useEffect(() => {
+    const handleGpsPanelOpened = () => {
+      closeMapPanels();
+    };
+
+    window.addEventListener(
+      "sabahlot:field-gps-panel-opened",
+      handleGpsPanelOpened,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "sabahlot:field-gps-panel-opened",
+        handleGpsPanelOpened,
+      );
+    };
+  });
 
   const previousSavingRef =
     useRef(isSavingLot);
@@ -6070,6 +6147,7 @@ export default function Map({
         !hasUnsavedChanges
       ) {
         setObjectsPanelOpen(false);
+        setActivePanel(null);
       }
 
       previousSavingRef.current =
@@ -6906,6 +6984,13 @@ export default function Map({
             ).LeafletMouseEvent,
         ) => {
           if (
+            !activeFieldToolRef.current &&
+            !editingRef.current
+          ) {
+            closeAllMobilePanels();
+          }
+
+          if (
             activeFieldToolRef.current ===
             "add_point"
           ) {
@@ -7319,6 +7404,7 @@ export default function Map({
       setAddMoreMenuOpen(false);
       setEditMenuOpen(false);
       setExportMenuOpen(false);
+      setActivePanel(null);
       redrawPolygon();
     };
 
@@ -9447,17 +9533,15 @@ export default function Map({
             type="button"
             className={
               `sl-icon-button ${
-                settingsOpen
+                activePanel ===
+                  "settings"
                   ? "is-active"
                   : ""
               }`
             }
             onClick={() =>
-              setSettingsOpen(
-                (
-                  current,
-                ) =>
-                  !current,
+              toggleMapPanel(
+                "settings",
               )
             }
             title={text.settings}
@@ -9509,14 +9593,15 @@ export default function Map({
         <nav
           className="sl-tool-dock"
           aria-label="Drawing tools"
+          onClick={(event) =>
+            event.stopPropagation()
+          }
         >
           <button
             type="button"
-            className={`sl-dock-button sl-tool-button ${drawMenuOpen ? "is-active" : ""}`}
+            className={`sl-dock-button sl-tool-button ${activePanel === "draw" ? "is-active" : ""}`}
             onClick={() => {
-              setDrawMenuOpen((current) => !current);
-              setEditMenuOpen(false);
-              setExportMenuOpen(false);
+              toggleMapPanel("draw");
             }}
             disabled={!mapReady}
           >
@@ -9529,11 +9614,9 @@ export default function Map({
 
           <button
             type="button"
-            className={`sl-dock-button sl-tool-button ${editMenuOpen ? "is-active" : ""}`}
+            className={`sl-dock-button sl-tool-button ${activePanel === "edit" ? "is-active" : ""}`}
             onClick={() => {
-              setEditMenuOpen((current) => !current);
-              setDrawMenuOpen(false);
-              setExportMenuOpen(false);
+              toggleMapPanel("edit");
             }}
             disabled={!activeObjectId}
           >
@@ -9561,11 +9644,9 @@ export default function Map({
 
           <button
             type="button"
-            className={`sl-dock-button sl-tool-button ${exportMenuOpen ? "is-active" : ""}`}
+            className={`sl-dock-button sl-tool-button ${activePanel === "export" ? "is-active" : ""}`}
             onClick={() => {
-              setExportMenuOpen((current) => !current);
-              setDrawMenuOpen(false);
-              setEditMenuOpen(false);
+              toggleMapPanel("export");
             }}
             disabled={!mapReady}
           >
@@ -9579,8 +9660,13 @@ export default function Map({
         </nav>
       )}
 
-      {drawMenuOpen && !isDrawing && !isAddPointMode && (
-        <aside className="sl-progressive-menu sl-tool-flyout sl-draw-menu">
+      {activePanel === "draw" && !isDrawing && !isAddPointMode && (
+        <aside
+          className="sl-progressive-menu sl-tool-flyout sl-draw-menu"
+          onClick={(event) =>
+            event.stopPropagation()
+          }
+        >
           <strong>Draw</strong>
           <button type="button" onClick={startDrawing}>
             Draw Polygon
@@ -9600,8 +9686,13 @@ export default function Map({
         </aside>
       )}
 
-      {editMenuOpen && !isDrawing && !isAddPointMode && (
-        <aside className="sl-progressive-menu sl-tool-flyout sl-edit-menu">
+      {activePanel === "edit" && !isDrawing && !isAddPointMode && (
+        <aside
+          className="sl-progressive-menu sl-tool-flyout sl-edit-menu"
+          onClick={(event) =>
+            event.stopPropagation()
+          }
+        >
           <strong>Edit</strong>
           <button
             type="button"
@@ -9640,8 +9731,13 @@ export default function Map({
         </aside>
       )}
 
-      {exportMenuOpen && !isDrawing && !isAddPointMode && (
-        <aside className="sl-progressive-menu sl-tool-flyout sl-export-menu">
+      {activePanel === "export" && !isDrawing && !isAddPointMode && (
+        <aside
+          className="sl-progressive-menu sl-tool-flyout sl-export-menu"
+          onClick={(event) =>
+            event.stopPropagation()
+          }
+        >
           <strong>Export</strong>
           <button
             type="button"
@@ -9667,8 +9763,13 @@ export default function Map({
         </aside>
       )}
 
-      {objectsPanelOpen ? (
-      <aside className="sl-object-list">
+      {activePanel === "objects" ? (
+      <aside
+        className="sl-object-list"
+        onClick={(event) =>
+          event.stopPropagation()
+        }
+      >
         <div className="sl-object-list-heading">
           <strong>
             Objects
@@ -9679,7 +9780,7 @@ export default function Map({
           <button
             type="button"
             onClick={() =>
-              setObjectsPanelOpen(false)
+              closeMapPanels()
             }
             aria-label="Close Objects"
           >
@@ -9870,7 +9971,7 @@ export default function Map({
           type="button"
           className="sl-object-list-tab"
           onClick={() =>
-            setObjectsPanelOpen(true)
+            openMapPanel("objects")
           }
           aria-label="Open Objects"
         >
@@ -10124,8 +10225,13 @@ export default function Map({
         </section>
       )}
 
-      {settingsOpen && (
-        <aside className="sl-settings-card">
+      {activePanel === "settings" && (
+        <aside
+          className="sl-settings-card"
+          onClick={(event) =>
+            event.stopPropagation()
+          }
+        >
           <div className="sl-settings-heading">
             <div>
               <span className="sl-eyebrow">
@@ -10144,9 +10250,7 @@ export default function Map({
             <button
               type="button"
               onClick={() =>
-                setSettingsOpen(
-                  false,
-                )
+                closeMapPanels()
               }
               aria-label="Close settings"
             >

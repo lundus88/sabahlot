@@ -5952,3 +5952,149 @@ select:focus-visible {
     bottom: calc(env(safe-area-inset-bottom) + 86px) !important;
   }
 }
+
+/* SabahLot Alpha mobile panel stabilization. */
+@media (max-width: 768px) {
+  .sl-object-list {
+    top: auto !important;
+    right: 8px !important;
+    bottom: calc(env(safe-area-inset-bottom) + 76px) !important;
+    left: 8px !important;
+    z-index: 1138 !important;
+    width: auto !important;
+    max-height: min(56dvh, calc(100dvh - 148px - env(safe-area-inset-top))) !important;
+    padding: 10px !important;
+    overflow-y: auto !important;
+    border-radius: 16px 16px 10px 10px !important;
+    overscroll-behavior: contain;
+  }
+
+  .sl-object-list-heading {
+    position: sticky;
+    top: -10px;
+    z-index: 1;
+    min-height: 36px;
+    margin: -10px -10px 6px;
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.98);
+    border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+    border-radius: 16px 16px 0 0;
+  }
+
+  .sl-object-list-heading button,
+  .sl-settings-heading > button,
+  .sl-field-gps-close {
+    min-width: 40px;
+    min-height: 36px;
+    padding: 0 10px;
+    border-radius: 10px;
+  }
+
+  .sl-object-list-tab {
+    top: calc(env(safe-area-inset-top) + 58px) !important;
+    right: 8px !important;
+    z-index: 1116 !important;
+  }
+
+  .sl-settings-card {
+    top: calc(env(safe-area-inset-top) + 58px) !important;
+    right: 8px !important;
+    left: 8px !important;
+    z-index: 1138 !important;
+    max-height: min(58dvh, calc(100dvh - 136px - env(safe-area-inset-bottom))) !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+  }
+
+  .sl-field-gps-stack {
+    right: 8px;
+    bottom: calc(env(safe-area-inset-bottom) + 76px);
+    left: 8px;
+    z-index: 1140;
+    width: auto;
+    max-height: calc(100dvh - 126px - env(safe-area-inset-top));
+  }
+
+  .sl-field-gps-panel {
+    justify-items: end;
+  }
+
+  .sl-field-gps-card {
+    max-height: min(60dvh, calc(100dvh - 148px - env(safe-area-inset-top) - env(safe-area-inset-bottom))) !important;
+    padding: 10px;
+    border-radius: 16px 16px 10px 10px;
+  }
+
+  .sl-field-gps-heading {
+    align-items: flex-start;
+  }
+
+  .sl-field-gps-heading > div {
+    display: grid;
+    min-width: 0;
+    gap: 2px;
+  }
+
+  .sl-field-gps-close {
+    flex: 0 0 auto;
+  }
+
+  .sl-tool-dock {
+    right: 8px !important;
+    bottom: calc(env(safe-area-inset-bottom) + 8px) !important;
+    left: 8px !important;
+    z-index: 1120 !important;
+    max-height: 58px !important;
+    min-height: 52px !important;
+    padding: 4px !important;
+    gap: 4px !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+
+  .sl-dock-button,
+  .sl-tool-button {
+    min-height: 44px !important;
+    height: 48px !important;
+    max-height: 50px !important;
+    padding: 3px 2px !important;
+    gap: 1px !important;
+    font-size: 11px !important;
+  }
+
+  .sl-tool-flyout {
+    right: 8px !important;
+    bottom: calc(env(safe-area-inset-bottom) + 70px) !important;
+    left: 8px !important;
+    z-index: 1136 !important;
+    max-height: min(42dvh, calc(100dvh - 150px)) !important;
+  }
+
+  .sl-context-toolbar {
+    right: 8px !important;
+    bottom: calc(env(safe-area-inset-bottom) + 8px) !important;
+    left: 8px !important;
+    z-index: 1130 !important;
+  }
+
+  .sl-floating-summary-card {
+    right: 8px !important;
+    bottom: calc(env(safe-area-inset-bottom) + 68px) !important;
+    left: 8px !important;
+    z-index: 1088 !important;
+    max-height: 66px;
+  }
+
+  .sl-map-navigation {
+    right: 8px !important;
+    bottom: calc(env(safe-area-inset-bottom) + 140px) !important;
+    z-index: 1092 !important;
+  }
+}
+
+@media (max-width: 768px) and (max-height: 640px) {
+  .sl-object-list,
+  .sl-settings-card,
+  .sl-field-gps-card {
+    max-height: min(52dvh, calc(100dvh - 132px)) !important;
+  }
+}
