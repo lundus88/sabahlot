@@ -2907,7 +2907,12 @@ export default function FieldGpsLite({
           );
         }}
       >
-        Handheld GPS
+        <span className="sl-field-gps-toggle-label-full">
+          Handheld GPS
+        </span>
+        <span className="sl-field-gps-toggle-label-short">
+          GPS
+        </span>
       </button>
 
       {open && (
