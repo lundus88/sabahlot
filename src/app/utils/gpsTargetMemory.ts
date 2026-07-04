@@ -44,6 +44,10 @@ export function saveGpsTargetMemory(
   if (!isValidGpsTarget(nextTarget)) return false;
 
   try {
+    window.localStorage.setItem(
+      GPS_TARGET_MEMORY_KEY,
+      JSON.stringify(nextTarget)
+    );
     window.sessionStorage.setItem(
       GPS_TARGET_MEMORY_KEY,
       JSON.stringify(nextTarget)
@@ -58,7 +62,9 @@ export function readGpsTargetMemory(): GpsTargetMemory | null {
   if (!isBrowser()) return null;
 
   try {
-    const raw = window.sessionStorage.getItem(GPS_TARGET_MEMORY_KEY);
+    const raw =
+      window.localStorage.getItem(GPS_TARGET_MEMORY_KEY) ??
+      window.sessionStorage.getItem(GPS_TARGET_MEMORY_KEY);
     if (!raw) return null;
 
     const parsed = JSON.parse(raw);
@@ -74,6 +80,7 @@ export function clearGpsTargetMemory(): void {
   if (!isBrowser()) return;
 
   try {
+    window.localStorage.removeItem(GPS_TARGET_MEMORY_KEY);
     window.sessionStorage.removeItem(GPS_TARGET_MEMORY_KEY);
   } catch {
     // Ignore storage error

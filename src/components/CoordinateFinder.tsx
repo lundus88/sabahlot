@@ -13,6 +13,10 @@ import {
   KEYED_COORDINATE_DISCLAIMER,
 } from "@/lib/field-gps";
 
+import {
+  saveGpsTargetMemory,
+} from "@/utils/gpsTargetMemory";
+
 import type {
   CoordinateParseResult,
 } from "@/lib/coordinate.types";
@@ -23,6 +27,20 @@ interface CoordinateFinderProps {
 
 function nextDefaultLabel(): string {
   return `P${new Date().getTime().toString().slice(-4)}`;
+}
+
+function buildGoogleMapsUrl(
+  latitude: number,
+  longitude: number,
+): string {
+  return `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+}
+
+function buildWazeUrl(
+  latitude: number,
+  longitude: number,
+): string {
+  return `https://waze.com/ul?ll=${latitude},${longitude}&navigate=yes`;
 }
 
 export default function CoordinateFinder({
@@ -99,6 +117,18 @@ export default function CoordinateFinder({
       ),
     );
 
+    saveGpsTargetMemory({
+      lat:
+        result.coordinate.latitude,
+      lng:
+        result.coordinate.longitude,
+      label:
+        label.trim() ||
+        "Keyed coordinate",
+      source:
+        "key-in",
+    });
+
     setMessage(
       navigator.onLine
         ? "Coordinate marker placed as preliminary WGS84 field reference only."
@@ -161,6 +191,12 @@ export default function CoordinateFinder({
       `${point.label} added as keyed WGS84 coordinate. Preliminary approximate field reference only.`,
     );
   };
+
+  const navigationCoordinate =
+    parsedResult.ok &&
+    parsedResult.coordinate
+      ? parsedResult.coordinate
+      : null;
 
   return (
     <section className="sl-field-gps-panel sl-coordinate-finder-panel">
@@ -299,6 +335,46 @@ export default function CoordinateFinder({
             >
               Add as Field Point
             </button>
+            <a
+              className={`sl-field-gps-link-button ${
+                navigationCoordinate
+                  ? ""
+                  : "is-disabled"
+              }`}
+              href={
+                navigationCoordinate
+                  ? buildGoogleMapsUrl(
+                      navigationCoordinate.latitude,
+                      navigationCoordinate.longitude,
+                    )
+                  : undefined
+              }
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-disabled={!navigationCoordinate}
+            >
+              Google Maps
+            </a>
+            <a
+              className={`sl-field-gps-link-button ${
+                navigationCoordinate
+                  ? ""
+                  : "is-disabled"
+              }`}
+              href={
+                navigationCoordinate
+                  ? buildWazeUrl(
+                      navigationCoordinate.latitude,
+                      navigationCoordinate.longitude,
+                    )
+                  : undefined
+              }
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-disabled={!navigationCoordinate}
+            >
+              Waze
+            </a>
           </div>
 
           {message && (
@@ -308,7 +384,7 @@ export default function CoordinateFinder({
           )}
 
           <p className="sl-field-gps-disclaimer">
-            Coordinate key-in is preliminary and for field reference only. It is not proof of legal boundary. {KEYED_COORDINATE_DISCLAIMER}
+            {KEYED_COORDINATE_DISCLAIMER}
           </p>
         </div>
       )}

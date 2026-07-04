@@ -95,6 +95,7 @@ export interface ManualPointExport {
   pointName: string;
   category: string;
   coordinate: Coordinate;
+  notes?: string;
   isVisible: boolean;
 }
 
@@ -103,6 +104,7 @@ interface MapProps {
   lotName?: string;
   initialCoordinates?: Coordinate[];
   initialDrawingObjects?: DrawingObject[];
+  initialManualPoints?: ManualPointExport[];
   initialActiveObjectId?: string | null;
   onPolygonChange: (result: PolygonResult | null) => void;
   onDrawingObjectsChange?: (
@@ -2307,6 +2309,7 @@ export default function Map({
   lotName = "",
   initialCoordinates,
   initialDrawingObjects,
+  initialManualPoints,
   initialActiveObjectId,
   onPolygonChange,
   onDrawingObjectsChange,
@@ -3488,12 +3491,106 @@ export default function Map({
               lng:
                 point.coordinate[1],
             },
+            notes:
+              point.notes,
             isVisible:
               point.isVisible,
           }),
         ),
       );
     };
+
+  const isFieldPointCategory = (
+    value: string,
+  ): value is FieldPointCategory =>
+    FIELD_POINT_CATEGORIES.some(
+      (category) =>
+        category.value === value,
+    );
+
+  const manualPointExportsFingerprint = (
+    points: ManualPointExport[],
+  ) =>
+    points
+      .map(
+        (point) =>
+          [
+            point.id,
+            point.pointCode,
+            point.pointName,
+            point.category,
+            point.coordinate.lat.toFixed(7),
+            point.coordinate.lng.toFixed(7),
+            point.notes ?? "",
+            point.isVisible ? "1" : "0",
+          ].join(","),
+      )
+      .join("|");
+
+  const currentManualPointExports =
+    (): ManualPointExport[] =>
+      manualPointsRef.current.map(
+        (point) => ({
+          id: point.id,
+          pointCode:
+            point.pointCode,
+          pointName:
+            point.pointName,
+          category:
+            point.category,
+          coordinate: {
+            lat:
+              point.coordinate[0],
+            lng:
+              point.coordinate[1],
+          },
+          notes:
+            point.notes,
+          isVisible:
+            point.isVisible,
+        }),
+      );
+
+  const manualPointExportToFieldPoint = (
+    point: ManualPointExport,
+  ): ManualFieldPoint | null => {
+    const lat =
+      Number(point.coordinate.lat);
+    const lng =
+      Number(point.coordinate.lng);
+
+    if (
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lng)
+    ) {
+      return null;
+    }
+
+    return {
+      id:
+        point.id,
+      pointCode:
+        point.pointCode,
+      pointName:
+        point.pointName,
+      category:
+        isFieldPointCategory(
+          point.category,
+        )
+          ? point.category
+          : "other",
+      notes:
+        point.notes ?? "",
+      coordinate: [
+        lat,
+        lng,
+      ],
+      isVisible:
+        point.isVisible,
+      createdAt:
+        new Date().toISOString(),
+    };
+  };
 
   const redrawManualPoints =
     () => {
@@ -6012,6 +6109,64 @@ export default function Map({
     },
     [
       onActiveObjectChange,
+    ],
+  );
+
+  useEffect(
+    () => {
+      if (
+        !mapReady ||
+        !initialManualPoints
+      ) {
+        return;
+      }
+
+      const nextPoints =
+        initialManualPoints
+          .map(
+            manualPointExportToFieldPoint,
+          )
+          .filter(
+            (
+              point,
+            ): point is ManualFieldPoint =>
+              Boolean(point),
+          );
+      const nextExports =
+        initialManualPoints.filter(
+          (point) =>
+            Number.isFinite(
+              point.coordinate.lat,
+            ) &&
+            Number.isFinite(
+              point.coordinate.lng,
+            ),
+        );
+
+      if (
+        manualPointExportsFingerprint(
+          currentManualPointExports(),
+        ) ===
+        manualPointExportsFingerprint(
+          nextExports,
+        )
+      ) {
+        return;
+      }
+
+      manualPointsRef.current =
+        nextPoints;
+
+      window.setTimeout(() => {
+        refreshManualPointState(
+          nextPoints[0]?.id ?? null,
+        );
+        redrawManualPoints();
+      }, 0);
+    },
+    [
+      initialManualPoints,
+      mapReady,
     ],
   );
 

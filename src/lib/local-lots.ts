@@ -1,5 +1,6 @@
 import type {
   Coordinate,
+  ManualPointExport,
   PolygonResult,
 } from "@/app/components/Map";
 
@@ -103,6 +104,7 @@ export interface LocalLotRecord {
     coordinates: number[][][];
   };
   coordinates: Coordinate[];
+  manual_points?: ManualPointExport[];
   drawing_objects?: DrawingObject[];
   active_object_id?: string | null;
   pdf_identities?: LocalPdfIdentities;
@@ -139,6 +141,7 @@ interface SaveLocalLotInput {
   notes?: string;
   landRecord?: LandRecordDetails;
   polygon: PolygonResult;
+  manualPoints?: ManualPointExport[];
   drawingObjects?: DrawingObject[];
   activeObjectId?: string | null;
   pdfIdentities?: LocalPdfIdentities;
@@ -339,6 +342,85 @@ function sanitizeCoordinates(
         coordinate,
       ): coordinate is Coordinate =>
         Boolean(coordinate),
+    );
+}
+
+function sanitizeManualPoints(
+  value: unknown,
+): ManualPointExport[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const ids = new Set<string>();
+
+  return value
+    .map((item): ManualPointExport | null => {
+      if (!isRecord(item)) {
+        return null;
+      }
+
+      const id = item.id;
+      const pointCode =
+        item.pointCode;
+      const coordinateValue =
+        isRecord(item.coordinate)
+          ? item.coordinate
+          : null;
+      const lat =
+        coordinateValue?.lat;
+      const lng =
+        coordinateValue?.lng;
+
+      if (
+        typeof id !== "string" ||
+        ids.has(id) ||
+        typeof pointCode !==
+          "string" ||
+        typeof lat !== "number" ||
+        !Number.isFinite(lat) ||
+        typeof lng !== "number" ||
+        !Number.isFinite(lng)
+      ) {
+        return null;
+      }
+
+      ids.add(id);
+
+      return {
+        id,
+        pointCode,
+        pointName:
+          typeof item.pointName ===
+          "string"
+            ? item.pointName
+            : "",
+        category:
+          typeof item.category ===
+          "string"
+            ? item.category
+            : "other",
+        coordinate: {
+          lat,
+          lng,
+        },
+        notes:
+          typeof item.notes ===
+          "string"
+            ? item.notes
+            : "",
+        isVisible:
+          typeof item.isVisible ===
+          "boolean"
+            ? item.isVisible
+            : true,
+      };
+    })
+    .filter(
+      (
+        point,
+      ): point is ManualPointExport =>
+        Boolean(point),
     );
 }
 
@@ -621,6 +703,10 @@ function sanitizeLocalLotRecord(
       coordinates,
     ),
     coordinates,
+    manual_points:
+      sanitizeManualPoints(
+        value.manual_points,
+      ),
     drawing_objects:
       sanitizeDrawingObjects(
         value.drawing_objects,
@@ -773,6 +859,10 @@ export function saveLocalLot(
     sanitizeDrawingObjects(
       input.drawingObjects,
     );
+  const manualPoints =
+    sanitizeManualPoints(
+      input.manualPoints,
+    );
 
   const record: LocalLotRecord = {
     id:
@@ -799,6 +889,8 @@ export function saveLocalLot(
       input.polygon.coordinates,
     ),
     coordinates: input.polygon.coordinates,
+    manual_points:
+      manualPoints,
     drawing_objects:
       drawingObjects,
     active_object_id:

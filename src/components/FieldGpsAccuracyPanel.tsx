@@ -45,15 +45,6 @@ export default function FieldGpsAccuracyPanel({
   allowApproximate,
   onAllowApproximateChange,
 }: FieldGpsAccuracyPanelProps) {
-  const accuracyWeak =
-    Boolean(
-      reading?.accuracyMeters !== undefined &&
-        (reading.accuracyMeters > 25 ||
-          (gateMeters !== null &&
-            reading.accuracyMeters >
-              gateMeters)),
-    );
-
   return (
     <section className="sl-field-gps-section">
       <div className="sl-field-gps-status-row">
@@ -71,12 +62,6 @@ export default function FieldGpsAccuracyPanel({
       <p className="sl-field-gps-quality">
         {getGpsQualityLabel(qualityGrade)}
       </p>
-
-      {accuracyWeak && (
-        <p className="sl-field-gps-warning">
-          GPS accuracy is weak. Move to an open area and wait for better accuracy. You may still save this point as approximate.
-        </p>
-      )}
 
       <div className="sl-field-gps-grid">
         <span>Latitude</span>

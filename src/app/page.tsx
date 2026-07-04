@@ -76,6 +76,7 @@ interface SavedLotRecord extends LotFormData {
   projectId?: string | null;
   polygon: PolygonResult | null;
   drawingObjects?: DrawingObject[];
+  manualPoints?: ManualPointExport[];
   activeObjectId?: string | null;
   pdfIdentities?: PdfIdentityFields;
   schemaVersion?: number;
@@ -93,6 +94,7 @@ interface PreviousSavedLotRecord {
   landRecord?: unknown;
   polygon?: PolygonResult | null;
   drawingObjects?: DrawingObject[];
+  manualPoints?: ManualPointExport[];
   activeObjectId?: string | null;
   pdfIdentities?: PreviousPdfIdentityFields;
   schemaVersion?: number;
@@ -164,7 +166,7 @@ const STORAGE_KEY =
   "sabahlot-alpha-record";
 
 const PRELIMINARY_DISCLAIMER =
-  "SabahLot output is for preliminary reference only. It is not an official survey plan, not a certified boundary plan, and must not be used as legal proof of boundary, ownership, approval, subdivision or land title status. All coordinates, boundaries and areas must be verified by the relevant authority, licensed surveyor or professional adviser before official use.";
+  "Preliminary Field Assist output is for field reference only. Measurements are user-created estimates and should be checked with the appropriate professional or authority before formal use.";
 
 const IMPORT_DISCLAIMER =
   "Imported files are used for preliminary reference only. Coordinates, boundaries and areas must be verified by the relevant authority, licensed surveyor or professional adviser before any official use.";
@@ -1089,6 +1091,13 @@ export default function HomePage() {
   });
 
       queueMicrotask(() => {
+    setManualPoints(
+        parsedRecord.manualPoints ??
+          [],
+      );
+  });
+
+      queueMicrotask(() => {
     setActiveObjectId(
         parsedRecord.activeObjectId ??
           parsedRecord.drawingObjects?.[0]
@@ -1162,6 +1171,7 @@ export default function HomePage() {
         ...formData,
         polygon,
         drawingObjects,
+        manualPoints,
         activeObjectId,
         pdfIdentities,
         schemaVersion:
@@ -1182,6 +1192,7 @@ export default function HomePage() {
     formData,
     polygon,
     drawingObjects,
+    manualPoints,
     pdfIdentities,
   ]);
 
@@ -1516,6 +1527,7 @@ export default function HomePage() {
               formData.landRecord,
             polygon,
             drawingObjects,
+            manualPoints,
             activeObjectId,
             pdfIdentities,
           });
@@ -1628,6 +1640,7 @@ export default function HomePage() {
               ...formData,
               polygon,
               drawingObjects,
+              manualPoints,
               activeObjectId,
               pdfIdentities,
               schemaVersion:
@@ -1787,6 +1800,7 @@ export default function HomePage() {
         null,
       );
       setDrawingObjects([]);
+      setManualPoints([]);
       setActiveObjectId(null);
       setHasUnsavedChanges(false);
 
@@ -1819,6 +1833,9 @@ export default function HomePage() {
       );
       setDrawingObjects(
         lot.drawing_objects ?? [],
+      );
+      setManualPoints(
+        lot.manual_points ?? [],
       );
       setActiveObjectId(
         lot.active_object_id ??
@@ -1861,6 +1878,7 @@ export default function HomePage() {
         setPolygon(null);
         setLoadedCoordinates(undefined);
         setDrawingObjects([]);
+        setManualPoints([]);
         setActiveObjectId(null);
         setHasUnsavedChanges(false);
       }
@@ -1968,6 +1986,7 @@ export default function HomePage() {
       );
 
       setDrawingObjects([]);
+      setManualPoints([]);
       setHasUnsavedChanges(false);
 
       setSaveMessage("");
@@ -6428,6 +6447,9 @@ export default function HomePage() {
         }
         initialDrawingObjects={
           drawingObjects
+        }
+        initialManualPoints={
+          manualPoints
         }
         initialActiveObjectId={
           activeObjectId

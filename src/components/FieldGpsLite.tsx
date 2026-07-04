@@ -12,6 +12,9 @@ import {
 import {
   flushSync,
 } from "react-dom";
+import {
+  useRouter,
+} from "next/navigation";
 
 import type {
   PolygonResult,
@@ -42,20 +45,18 @@ import type {
   FieldGpsPoint,
   FieldGpsReading,
   FieldGpsTrackPoint,
+  GpsQualityGrade,
 } from "@/lib/field-gps.types";
 
 import {
   getGpsQualityGrade,
 } from "@/lib/gps-quality";
+import {
+  readGpsTargetMemory,
+  saveGpsTargetMemory,
+} from "@/utils/gpsTargetMemory";
 
 import FieldGpsAccuracyPanel from "./FieldGpsAccuracyPanel";
-
-
-
-function openArStakeoutPage() {
-  if (typeof window === "undefined") return;
-  window.location.href = "/ar-stakeout";
-}
 
 interface FieldGpsLiteProps {
   enabled: boolean;
@@ -120,6 +121,7 @@ interface FieldGpsTarget {
 
 interface FoundPointRecord {
   id: string;
+  fieldNoteLabel: "Preliminary Field Assist";
   targetName: string;
   targetLatitude: number;
   targetLongitude: number;
@@ -128,9 +130,23 @@ interface FoundPointRecord {
   distanceDifferenceMeters: number;
   bearingDegrees: number;
   accuracyMeters?: number;
+  gpsQualityGrade: GpsQualityGrade;
+  gpsSignalLabel: string;
+  capturedAt: string;
   timestamp: string;
   note: string;
   mode: FoundPointMode;
+}
+
+interface FieldGpsPersistedState {
+  schemaVersion: 1;
+  points: FieldGpsPoint[];
+  foundPoints: FieldGpsPoint[];
+  foundPointRecords: FoundPointRecord[];
+  trackLog: FieldGpsTrackPoint[];
+  targetPoint: FieldGpsTarget | null;
+  generatedPolygon: PolygonResult | null;
+  savedAt: string;
 }
 
 const OCCUPATION_OPTIONS = [
@@ -141,10 +157,13 @@ const OCCUPATION_OPTIONS = [
 ];
 
 const FIELD_NAVIGATION_SAFETY_LABEL =
-  "Preliminary Field Navigation Only - Not for cadastral boundary determination.";
+  "Preliminary Field Assist: approximate field navigation support only.";
 
-const FIELD_NAVIGATION_SAFETY_LABEL_MS =
-  "Navigasi awal sahaja. Bukan penentuan sempadan kadaster rasmi.";
+const PRELIMINARY_FIELD_ASSIST_LABEL =
+  "Preliminary Field Assist";
+
+const FIELD_GPS_STORAGE_KEY =
+  "sabahlot:field-gps-lite:v1";
 
 const MOBILE_AR_VIDEO_ATTRIBUTES = {
   "webkit-playsinline": "true",
@@ -184,6 +203,20 @@ function formatDistance(
     : `${meters.toFixed(1)} m`;
 }
 
+function buildGoogleMapsUrl(
+  latitude: number,
+  longitude: number,
+): string {
+  return `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+}
+
+function buildWazeUrl(
+  latitude: number,
+  longitude: number,
+): string {
+  return `https://waze.com/ul?ll=${latitude},${longitude}&navigate=yes`;
+}
+
 function formatTimestamp(
   value?: string,
 ): string {
@@ -197,11 +230,11 @@ function getGpsSignalStatus(
   lastUpdateMs: number,
 ): GpsSignalStatus {
   const lostLabel =
-    "GPS Lost - Tiada sambungan lokasi";
+    "GPS Lost - No location connection";
   const weakLabel =
-    "GPS Weak - Signal lemah";
+    "GPS Weak - Weak signal";
   const strongLabel =
-    "GPS Active - Signal kuat";
+    "GPS Active - Strong signal";
 
   const statusText =
     `${gpsStatus} ${error}`.toLowerCase();
@@ -286,7 +319,6 @@ function getGpsSignalStatus(
     strongLabel,
   );
 }
-
 function getArrowRotationDegrees(
   bearingDegrees?: number,
   headingDegrees?: number | null,
@@ -397,12 +429,405 @@ function parseCoordinateInput(
   return coordinate;
 }
 
+function isValidLatLng(
+  latitude: number,
+  longitude: number,
+) {
+  return (
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude) &&
+    latitude >= -90 &&
+    latitude <= 90 &&
+    longitude >= -180 &&
+    longitude <= 180
+  );
+}
+
+function isRecord(
+  value: unknown,
+): value is Record<string, unknown> {
+  return Boolean(
+    value &&
+      typeof value === "object" &&
+      !Array.isArray(value),
+  );
+}
+
+function stringValue(
+  value: unknown,
+  fallback = "",
+): string {
+  return typeof value === "string"
+    ? value
+    : fallback;
+}
+
+function optionalNumber(
+  value: unknown,
+): number | undefined {
+  return typeof value === "number" &&
+    Number.isFinite(value)
+    ? value
+    : undefined;
+}
+
+function nullableNumber(
+  value: unknown,
+): number | null | undefined {
+  if (value === null) {
+    return null;
+  }
+
+  return optionalNumber(value);
+}
+
+function sanitizeQualityGrade(
+  value: unknown,
+): GpsQualityGrade {
+  return value === "A" ||
+    value === "B" ||
+    value === "C" ||
+    value === "D"
+    ? value
+    : "D";
+}
+
+function sanitizeFieldGpsPoint(
+  value: unknown,
+): FieldGpsPoint | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const latitude =
+    optionalNumber(value.latitude);
+  const longitude =
+    optionalNumber(value.longitude);
+
+  if (
+    latitude === undefined ||
+    longitude === undefined ||
+    !isValidLatLng(latitude, longitude)
+  ) {
+    return null;
+  }
+
+  return {
+    id:
+      stringValue(value.id) ||
+      createFieldGpsId(),
+    label:
+      stringValue(value.label, "Point"),
+    latitude,
+    longitude,
+    accuracyMeters:
+      optionalNumber(value.accuracyMeters),
+    altitude:
+      nullableNumber(value.altitude),
+    altitudeAccuracyMeters:
+      nullableNumber(
+        value.altitudeAccuracyMeters,
+      ),
+    heading:
+      nullableNumber(value.heading),
+    speed:
+      nullableNumber(value.speed),
+    timestamp:
+      stringValue(
+        value.timestamp,
+        new Date().toISOString(),
+      ),
+    source:
+      value.source === "keyed-coordinate"
+        ? "keyed-coordinate"
+        : "phone-gps",
+    qualityGrade:
+      sanitizeQualityGrade(
+        value.qualityGrade,
+      ),
+    sampleCount:
+      optionalNumber(value.sampleCount) ??
+      1,
+    captureMethod:
+      value.captureMethod ===
+        "manual-key-in" ||
+      value.captureMethod === "single" ||
+      value.captureMethod === "best-fix" ||
+      value.captureMethod === "averaged"
+        ? value.captureMethod
+        : "single",
+    occupationSeconds:
+      optionalNumber(
+        value.occupationSeconds,
+      ) ?? 0,
+    note:
+      stringValue(value.note) ||
+      undefined,
+  };
+}
+
+function sanitizeTrackPoint(
+  value: unknown,
+): FieldGpsTrackPoint | null {
+  const point =
+    sanitizeFieldGpsPoint(value);
+
+  if (!point) {
+    return null;
+  }
+
+  return {
+    id:
+      point.id,
+    latitude:
+      point.latitude,
+    longitude:
+      point.longitude,
+    accuracyMeters:
+      point.accuracyMeters,
+    altitude:
+      point.altitude,
+    altitudeAccuracyMeters:
+      point.altitudeAccuracyMeters,
+    heading:
+      point.heading,
+    speed:
+      point.speed,
+    timestamp:
+      point.timestamp,
+  };
+}
+
+function sanitizeTargetPoint(
+  value: unknown,
+): FieldGpsTarget | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const latitude =
+    optionalNumber(value.latitude);
+  const longitude =
+    optionalNumber(value.longitude);
+
+  if (
+    latitude === undefined ||
+    longitude === undefined ||
+    !isValidLatLng(latitude, longitude)
+  ) {
+    return null;
+  }
+
+  return {
+    id:
+      stringValue(value.id) ||
+      createFieldGpsId(),
+    label:
+      stringValue(
+        value.label,
+        "Target Point",
+      ),
+    latitude,
+    longitude,
+    source:
+      value.source ===
+        "current-position" ||
+      value.source === "manual" ||
+      value.source === "saved-point"
+        ? value.source
+        : "manual",
+    description:
+      stringValue(value.description) ||
+      undefined,
+  };
+}
+
+function sanitizeFoundPointRecord(
+  value: unknown,
+): FoundPointRecord | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const targetLatitude =
+    optionalNumber(value.targetLatitude);
+  const targetLongitude =
+    optionalNumber(value.targetLongitude);
+  const foundLatitude =
+    optionalNumber(value.foundLatitude);
+  const foundLongitude =
+    optionalNumber(value.foundLongitude);
+  const distanceDifferenceMeters =
+    optionalNumber(
+      value.distanceDifferenceMeters,
+    );
+  const bearingDegrees =
+    optionalNumber(value.bearingDegrees);
+
+  if (
+    targetLatitude === undefined ||
+    targetLongitude === undefined ||
+    foundLatitude === undefined ||
+    foundLongitude === undefined ||
+    distanceDifferenceMeters === undefined ||
+    bearingDegrees === undefined ||
+    !isValidLatLng(
+      targetLatitude,
+      targetLongitude,
+    ) ||
+    !isValidLatLng(
+      foundLatitude,
+      foundLongitude,
+    )
+  ) {
+    return null;
+  }
+
+  const timestamp =
+    stringValue(
+      value.timestamp,
+      stringValue(
+        value.capturedAt,
+        new Date().toISOString(),
+      ),
+    );
+
+  return {
+    id:
+      stringValue(value.id) ||
+      createFieldGpsId(),
+    fieldNoteLabel:
+      PRELIMINARY_FIELD_ASSIST_LABEL,
+    targetName:
+      stringValue(
+        value.targetName,
+        "Target Point",
+      ),
+    targetLatitude,
+    targetLongitude,
+    foundLatitude,
+    foundLongitude,
+    distanceDifferenceMeters,
+    bearingDegrees,
+    accuracyMeters:
+      optionalNumber(value.accuracyMeters),
+    gpsQualityGrade:
+      sanitizeQualityGrade(
+        value.gpsQualityGrade,
+      ),
+    gpsSignalLabel:
+      stringValue(
+        value.gpsSignalLabel,
+        "GPS not recorded",
+      ),
+    capturedAt:
+      stringValue(value.capturedAt, timestamp),
+    timestamp,
+    note:
+      stringValue(value.note),
+    mode:
+      value.mode === "AR Find Point Lite"
+        ? "AR Find Point Lite"
+        : "Phone GPS",
+  };
+}
+
+function readPersistedFieldGpsState():
+  | FieldGpsPersistedState
+  | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const raw =
+      window.localStorage.getItem(
+        FIELD_GPS_STORAGE_KEY,
+      );
+
+    if (!raw) {
+      return null;
+    }
+
+    const parsed =
+      JSON.parse(raw) as unknown;
+
+    if (!isRecord(parsed)) {
+      return null;
+    }
+
+    return {
+      schemaVersion: 1,
+      points: Array.isArray(parsed.points)
+        ? parsed.points
+            .map(sanitizeFieldGpsPoint)
+            .filter(
+              (
+                point,
+              ): point is FieldGpsPoint =>
+                Boolean(point),
+            )
+        : [],
+      foundPoints: Array.isArray(
+        parsed.foundPoints,
+      )
+        ? parsed.foundPoints
+            .map(sanitizeFieldGpsPoint)
+            .filter(
+              (
+                point,
+              ): point is FieldGpsPoint =>
+                Boolean(point),
+            )
+        : [],
+      foundPointRecords: Array.isArray(
+        parsed.foundPointRecords,
+      )
+        ? parsed.foundPointRecords
+            .map(sanitizeFoundPointRecord)
+            .filter(
+              (
+                record,
+              ): record is FoundPointRecord =>
+                Boolean(record),
+            )
+        : [],
+      trackLog: Array.isArray(parsed.trackLog)
+        ? parsed.trackLog
+            .map(sanitizeTrackPoint)
+            .filter(
+              (
+                point,
+              ): point is FieldGpsTrackPoint =>
+                Boolean(point),
+            )
+        : [],
+      targetPoint:
+        sanitizeTargetPoint(
+          parsed.targetPoint,
+        ),
+      generatedPolygon:
+        isRecord(parsed.generatedPolygon)
+          ? (parsed.generatedPolygon as unknown as PolygonResult)
+          : null,
+      savedAt:
+        stringValue(
+          parsed.savedAt,
+          new Date().toISOString(),
+        ),
+    };
+  } catch {
+    return null;
+  }
+}
+
 export default function FieldGpsLite({
   enabled,
   recordName,
   offlineMapNote,
   onPolygonGenerated,
 }: FieldGpsLiteProps) {
+  const router = useRouter();
   const [
     open,
     setOpen,
@@ -574,6 +999,10 @@ export default function FieldGpsLite({
     useRef<MediaStream | null>(
       null,
     );
+  const restoredGpsTargetMemoryRef =
+    useRef<string | null>(null);
+  const fieldGpsRestoredRef =
+    useRef(false);
 
   const stopCameraStream =
     useCallback(() => {
@@ -802,6 +1231,193 @@ export default function FieldGpsLite({
       reading?.heading,
     );
 
+  const restoreTargetToFieldGps =
+    useCallback(
+      (target: {
+        latitude: number;
+        longitude: number;
+        label?: string;
+        description?: string;
+        source?: "key-in" | "map" | "ar";
+        savedAt?: string;
+      }) => {
+        const latitude =
+          Number(target.latitude);
+        const longitude =
+          Number(target.longitude);
+
+        if (
+          !isValidLatLng(
+            latitude,
+            longitude,
+          )
+        ) {
+          return false;
+        }
+
+        const label =
+          target.label?.trim() ||
+          "AR Guide Target";
+        const description =
+          target.description?.trim() ?? "";
+        const source =
+          target.source ?? "key-in";
+
+        saveGpsTargetMemory({
+          lat:
+            latitude,
+          lng:
+            longitude,
+          label,
+          source,
+          savedAt:
+            target.savedAt,
+        });
+        setTargetPoint({
+          id:
+            createFieldGpsId(),
+          label,
+          latitude,
+          longitude,
+          source:
+            "manual",
+          description,
+        });
+        setTargetLabelInput(label);
+        setTargetLatitudeInput(
+          formatCoordinate(latitude),
+        );
+        setTargetLongitudeInput(
+          formatCoordinate(longitude),
+        );
+        setTargetDescriptionInput(
+          description,
+        );
+        setTargetValidationError("");
+
+        window.dispatchEvent(
+          new CustomEvent(
+            "sabahlot:find-coordinate",
+            {
+              detail: {
+                latitude,
+                longitude,
+                label,
+                note:
+                  description,
+                currentLatitude:
+                  readingRef.current
+                    ?.latitude,
+                currentLongitude:
+                  readingRef.current
+                    ?.longitude,
+                currentAccuracy:
+                  readingRef.current
+                    ?.accuracyMeters,
+              },
+            },
+          ),
+        );
+
+        return true;
+      },
+      [],
+    );
+
+  useEffect(() => {
+    if (
+      !enabled ||
+      fieldGpsRestoredRef.current
+    ) {
+      return;
+    }
+
+    const restored =
+      readPersistedFieldGpsState();
+
+    if (!restored) {
+      fieldGpsRestoredRef.current = true;
+      return;
+    }
+
+    queueMicrotask(() => {
+      setPoints(restored.points);
+      setFoundPoints(restored.foundPoints);
+      setFoundPointRecords(
+        restored.foundPointRecords,
+      );
+      setTrackLog(restored.trackLog);
+      setGeneratedPolygon(
+        restored.generatedPolygon,
+      );
+
+      if (restored.targetPoint) {
+        setTargetPoint(restored.targetPoint);
+        setTargetLabelInput(
+          restored.targetPoint.label,
+        );
+        setTargetLatitudeInput(
+          formatCoordinate(
+            restored.targetPoint.latitude,
+          ),
+        );
+        setTargetLongitudeInput(
+          formatCoordinate(
+            restored.targetPoint.longitude,
+          ),
+        );
+        setTargetDescriptionInput(
+          restored.targetPoint.description ?? "",
+        );
+      }
+
+      setCaptureMessage(
+        `${PRELIMINARY_FIELD_ASSIST_LABEL} data restored from this device.`,
+      );
+
+      window.setTimeout(() => {
+        fieldGpsRestoredRef.current = true;
+      }, 0);
+    });
+  }, [enabled]);
+
+  useEffect(() => {
+    if (
+      !enabled ||
+      !fieldGpsRestoredRef.current
+    ) {
+      return;
+    }
+
+    try {
+      const state: FieldGpsPersistedState = {
+        schemaVersion: 1,
+        points,
+        foundPoints,
+        foundPointRecords,
+        trackLog,
+        targetPoint,
+        generatedPolygon,
+        savedAt: new Date().toISOString(),
+      };
+
+      window.localStorage.setItem(
+        FIELD_GPS_STORAGE_KEY,
+        JSON.stringify(state),
+      );
+    } catch {
+      // Field capture can continue without local persistence.
+    }
+  }, [
+    enabled,
+    foundPointRecords,
+    foundPoints,
+    generatedPolygon,
+    points,
+    targetPoint,
+    trackLog,
+  ]);
+
   useEffect(() => {
     if (!enabled) {
       return;
@@ -968,6 +1584,114 @@ export default function FieldGpsLite({
     };
   }, []);
 
+  useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
+    const timeoutId =
+      window.setTimeout(() => {
+        const queryParams =
+          new URLSearchParams(
+            window.location.search,
+          );
+        const queryLatitudeText =
+          queryParams
+            .get("targetLat")
+            ?.trim() ?? "";
+        const queryLongitudeText =
+          queryParams
+            .get("targetLng")
+            ?.trim() ?? "";
+        const queryLatitude =
+          queryLatitudeText
+            ? parseCoordinateInput(
+                queryLatitudeText,
+                -90,
+                90,
+              )
+            : null;
+        const queryLongitude =
+          queryLongitudeText
+            ? parseCoordinateInput(
+                queryLongitudeText,
+                -180,
+                180,
+              )
+            : null;
+        const queryLabel =
+          queryParams
+            .get("targetLabel")
+            ?.trim() ||
+          "AR Guide Target";
+        const forceRestore =
+          queryParams.get(
+            "restoreTarget",
+          ) === "1";
+        const querySavedAt =
+          queryLatitude !== null &&
+          queryLongitude !== null
+            ? `url:${queryLatitude}:${queryLongitude}:${queryLabel}`
+            : "";
+
+        const savedTarget =
+          queryLatitude !== null &&
+          queryLongitude !== null
+            ? {
+                lat:
+                  queryLatitude,
+                lng:
+                  queryLongitude,
+                label:
+                  queryLabel,
+                source:
+                  "ar" as const,
+                savedAt:
+                  querySavedAt,
+              }
+            : readGpsTargetMemory();
+
+        if (
+          !savedTarget ||
+          (
+            !forceRestore &&
+            restoredGpsTargetMemoryRef.current ===
+              savedTarget.savedAt
+          )
+        ) {
+          return;
+        }
+
+        const label =
+          savedTarget.label?.trim() ||
+          "AR Guide Target";
+        const latitude =
+          Number(savedTarget.lat);
+        const longitude =
+          Number(savedTarget.lng);
+
+        restoredGpsTargetMemoryRef.current =
+          savedTarget.savedAt;
+        restoreTargetToFieldGps({
+          latitude,
+          longitude,
+          label,
+          source:
+            savedTarget.source,
+          savedAt:
+            savedTarget.savedAt,
+        });
+      }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [
+    enabled,
+    open,
+    restoreTargetToFieldGps,
+  ]);
+
   if (!enabled) {
     return null;
   }
@@ -1107,9 +1831,117 @@ export default function FieldGpsLite({
     }
   };
 
+  const saveTargetMemoryFromTarget = (
+    target: FieldGpsTarget,
+    source:
+      | "key-in"
+      | "map"
+      | "ar" =
+      target.source === "manual"
+        ? "key-in"
+        : "map",
+  ) =>
+    saveGpsTargetMemory({
+      lat:
+        target.latitude,
+      lng:
+        target.longitude,
+      label:
+        target.label,
+      source,
+    });
+
+  const getArTargetFromInputsOrState =
+    () => {
+      const latitudeText =
+        targetLatitudeInput.trim();
+      const longitudeText =
+        targetLongitudeInput.trim();
+      const inputLatitude =
+        latitudeText
+          ? Number.parseFloat(
+              latitudeText,
+            )
+          : Number.NaN;
+      const inputLongitude =
+        longitudeText
+          ? Number.parseFloat(
+              longitudeText,
+            )
+          : Number.NaN;
+
+      if (
+        isValidLatLng(
+          inputLatitude,
+          inputLongitude,
+        )
+      ) {
+        return {
+          latitude:
+            inputLatitude,
+          longitude:
+            inputLongitude,
+          label:
+            targetLabelInput.trim() ||
+            "AR Guide Target",
+        };
+      }
+
+      if (
+        targetPoint &&
+        isValidLatLng(
+          Number(
+            targetPoint.latitude,
+          ),
+          Number(
+            targetPoint.longitude,
+          ),
+        )
+      ) {
+        return {
+          latitude:
+            Number(
+              targetPoint.latitude,
+            ),
+          longitude:
+            Number(
+              targetPoint.longitude,
+            ),
+          label:
+            targetPoint.label ||
+            "AR Guide Target",
+        };
+      }
+
+      return null;
+    };
+
+  const applyArTarget = (
+    arTarget: {
+      latitude: number;
+      longitude: number;
+      label: string;
+    },
+    source: "key-in" | "ar" =
+      "key-in",
+  ) => {
+    return restoreTargetToFieldGps({
+      latitude:
+        arTarget.latitude,
+      longitude:
+        arTarget.longitude,
+      label:
+        arTarget.label,
+      description:
+        targetDescriptionInput,
+      source,
+    });
+  };
+
   const setTarget = (
     target: FieldGpsTarget,
   ) => {
+    saveTargetMemoryFromTarget(target);
     setTargetPoint(target);
     setTargetLabelInput(target.label);
     setTargetLatitudeInput(
@@ -1345,6 +2177,47 @@ export default function FieldGpsLite({
     });
   };
 
+  const openArStakeoutPage = () => {
+    const arTarget =
+      getArTargetFromInputsOrState();
+
+    if (!arTarget) {
+      setTargetValidationError(
+        "Enter latitude and longitude in WGS84 decimal degrees.",
+      );
+      setCaptureMessage(
+        "Enter a valid target coordinate before opening AR Guide.",
+      );
+      return;
+    }
+
+    if (
+      !applyArTarget(
+        arTarget,
+        "key-in",
+      )
+    ) {
+      setCaptureMessage(
+        "Target coordinate is invalid. Please enter a valid coordinate before opening AR Guide.",
+      );
+      return;
+    }
+
+    const params =
+      new URLSearchParams({
+        targetLat:
+          String(arTarget.latitude),
+        targetLng:
+          String(arTarget.longitude),
+        targetLabel:
+          arTarget.label,
+      });
+
+    router.push(
+      `/ar-stakeout?${params.toString()}`,
+    );
+  };
+
   const updateCameraSupportDiagnostics =
     () => {
       const snapshot =
@@ -1574,9 +2447,34 @@ export default function FieldGpsLite({
   };
 
   const startArGuide = async () => {
+    const arTarget =
+      getArTargetFromInputsOrState();
+
+    if (!arTarget) {
+      setTargetValidationError(
+        "Enter latitude and longitude in WGS84 decimal degrees.",
+      );
+      setArMessage(
+        "Enter a valid target coordinate before starting AR Guide.",
+      );
+      return;
+    }
+
+    if (
+      !applyArTarget(
+        arTarget,
+        "key-in",
+      )
+    ) {
+      setArMessage(
+        "Target coordinate is invalid. Please enter a valid coordinate before starting AR Guide.",
+      );
+      return;
+    }
+
     await startCameraSession({
       activateNavigation: true,
-      requireTarget: true,
+      requireTarget: false,
       testOnly: false,
     });
   };
@@ -1608,7 +2506,7 @@ export default function FieldGpsLite({
 
     if (accuracyBlocked) {
       setCaptureMessage(
-        "GPS accuracy is weak. Move to an open area and wait for better accuracy. You may still save this point as approximate.",
+        "GPS accuracy is weak. You may still save this point as approximate.",
       );
       return;
     }
@@ -1657,6 +2555,8 @@ export default function FieldGpsLite({
       FoundPointRecord = {
         id:
           foundPoint.id,
+        fieldNoteLabel:
+          PRELIMINARY_FIELD_ASSIST_LABEL,
         targetName:
           targetPoint.label,
         targetLatitude:
@@ -1671,6 +2571,12 @@ export default function FieldGpsLite({
         bearingDegrees,
         accuracyMeters:
           reading.accuracyMeters,
+        gpsQualityGrade:
+          qualityGrade,
+        gpsSignalLabel:
+          gpsSignalStatus.label,
+        capturedAt:
+          foundPoint.timestamp,
         timestamp:
           foundPoint.timestamp,
         note,
@@ -1690,7 +2596,7 @@ export default function FieldGpsLite({
       ],
     );
     setCaptureMessage(
-      `${foundPoint.label} saved locally in ${mode}; offset ${formatDistance(
+      `${PRELIMINARY_FIELD_ASSIST_LABEL} saved locally in ${mode}; offset ${formatDistance(
         distanceDifferenceMeters,
       )}.`,
     );
@@ -1712,7 +2618,7 @@ export default function FieldGpsLite({
 
     if (accuracyBlocked) {
       setCaptureMessage(
-        "GPS accuracy is weak. Move to an open area and wait for better accuracy. You may still save this point as approximate.",
+        "GPS accuracy is weak. You may still save this point as approximate.",
       );
       return;
     }
@@ -1811,7 +2717,7 @@ export default function FieldGpsLite({
       !allowApproximate
     ) {
       setCaptureMessage(
-        "GPS accuracy is weak. Move to an open area and wait for better accuracy. You may still save this point as approximate.",
+        "GPS accuracy is weak. You may still save this point as approximate.",
       );
       setCaptureBusy(null);
       return;
@@ -1900,6 +2806,21 @@ export default function FieldGpsLite({
     offlineMapNote,
   };
 
+  const targetGoogleMapsUrl =
+    targetPoint
+      ? buildGoogleMapsUrl(
+          targetPoint.latitude,
+          targetPoint.longitude,
+        )
+      : "";
+  const targetWazeUrl =
+    targetPoint
+      ? buildWazeUrl(
+          targetPoint.latitude,
+          targetPoint.longitude,
+        )
+      : "";
+
   const safeFileName =
     (recordName?.trim() ||
       "preliminary-field-gps")
@@ -1944,7 +2865,7 @@ export default function FieldGpsLite({
           </div>
 
           <p className="sl-field-gps-note">
-            Internal founder field test only.
+            Preliminary Field Assist
           </p>
 
           <FieldGpsAccuracyPanel
@@ -1968,28 +2889,14 @@ export default function FieldGpsLite({
           />
 
           <section className="sl-field-gps-section">
-            
-          <div className="sl-gps-quick-guide">
-            <strong>Panduan Ringkas GPS</strong>
-            <ol>
-              <li><b>Saya di mana?</b> Start GPS - Track My Position</li>
-              <li><b>Titik di mana?</b> Find Coordinate / Find Point</li>
-              <li><b>Arah ke titik?</b> AR Guide - Start AR Stake Out</li>
-            </ol>
-            <p>
-              Satelit: tidak tersedia dalam browser GPS. Gunakan accuracy (+/- meter)
-              sebagai rujukan kualiti signal.
-            </p>
-          </div>
-
-          <div className="sl-field-gps-actions">
-            <button
-              type="button"
-              onClick={openArStakeoutPage}
-              className="sl-field-gps-action-primary"
-            >
-              AR Guide
-            </button>
+            <div className="sl-field-gps-actions">
+              <button
+                type="button"
+                onClick={openArStakeoutPage}
+                className="sl-field-gps-action-primary"
+              >
+                AR Guide
+              </button>
               <button
                 type="button"
                 onClick={toggleGps}
@@ -2024,7 +2931,7 @@ export default function FieldGpsLite({
                   !targetPoint
                 }
               >
-                Save Found Point
+                Save Field Note
               </button>
             </div>
 
@@ -2222,6 +3129,40 @@ export default function FieldGpsLite({
               >
                 Clear Target
               </button>
+              <a
+                className={`sl-field-gps-link-button ${
+                  targetPoint
+                    ? ""
+                    : "is-disabled"
+                }`}
+                href={
+                  targetPoint
+                    ? targetGoogleMapsUrl
+                    : undefined
+                }
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-disabled={!targetPoint}
+              >
+                Google Maps
+              </a>
+              <a
+                className={`sl-field-gps-link-button ${
+                  targetPoint
+                    ? ""
+                    : "is-disabled"
+                }`}
+                href={
+                  targetPoint
+                    ? targetWazeUrl
+                    : undefined
+                }
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-disabled={!targetPoint}
+              >
+                Waze
+              </a>
             </div>
 
             <div className="sl-field-gps-grid">
@@ -2341,7 +3282,7 @@ export default function FieldGpsLite({
                   )
                 }
                 rows={2}
-                placeholder="Optional note for Save Found Point"
+                placeholder="Optional note for Save Field Note"
               />
             </label>
 
@@ -2372,7 +3313,6 @@ export default function FieldGpsLite({
                     : () =>
                         void startArGuide()
                 }
-                disabled={!targetPoint}
                 className={
                   arActive
                     ? "is-active"
@@ -2405,7 +3345,7 @@ export default function FieldGpsLite({
                   !targetPoint
                 }
               >
-                Save Found Point
+                Save Field Note
               </button>
             </div>
 
@@ -2427,8 +3367,6 @@ export default function FieldGpsLite({
 
             <p className="sl-field-gps-disclaimer">
               {FIELD_NAVIGATION_SAFETY_LABEL}
-              <br />
-              {FIELD_NAVIGATION_SAFETY_LABEL_MS}
             </p>
           </section>
 
@@ -2569,7 +3507,7 @@ export default function FieldGpsLite({
                 <button
                   type="button"
                   onClick={() =>
-                    saveFoundPointRecord(
+                  saveFoundPointRecord(
                       "AR Find Point Lite",
                     )
                   }
@@ -2578,12 +3516,10 @@ export default function FieldGpsLite({
                     !targetPoint
                   }
                 >
-                  Save Found Point
+                  Save Field Note
                 </button>
                 <p className="sl-field-gps-disclaimer">
                   {FIELD_NAVIGATION_SAFETY_LABEL}
-                  <br />
-                  {FIELD_NAVIGATION_SAFETY_LABEL_MS}
                 </p>
               </div>
             </section>
@@ -2901,7 +3837,7 @@ export default function FieldGpsLite({
 
           <section className="sl-field-gps-section">
             <div className="sl-field-gps-heading">
-              <span>Saved found point records</span>
+              <span>Field Notes</span>
               <strong>
                 {foundPointRecords.length}
               </strong>
@@ -2910,7 +3846,7 @@ export default function FieldGpsLite({
             {foundPointRecords.length ===
             0 ? (
               <p className="sl-field-gps-note">
-                No local found point record saved yet.
+                No local field note saved yet.
               </p>
             ) : (
               <div className="sl-field-gps-point-list">
@@ -2922,8 +3858,11 @@ export default function FieldGpsLite({
                     >
                       <div>
                         <strong>
-                          {record.targetName} | {record.mode}
+                          {record.fieldNoteLabel} | {record.targetName}
                         </strong>
+                        <span>
+                          Capture mode {record.mode}
+                        </span>
                         <span>
                           Target {formatCoordinate(
                             record.targetLatitude,
@@ -2945,11 +3884,14 @@ export default function FieldGpsLite({
                             1,
                           )} deg | Accuracy {formatAccuracy(
                             record.accuracyMeters,
-                          )}
+                          )} | Quality {record.gpsQualityGrade}
+                        </small>
+                        <small>
+                          GPS {record.gpsSignalLabel}
                         </small>
                         <small>
                           {formatTimestamp(
-                            record.timestamp,
+                            record.capturedAt,
                           )}
                           {record.note
                             ? ` | ${record.note}`
@@ -2996,4 +3938,3 @@ export default function FieldGpsLite({
     </section>
   );
 }
-

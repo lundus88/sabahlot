@@ -12,39 +12,48 @@ function isBrowser() {
   return typeof window !== "undefined";
 }
 
-export function isValidGpsTarget(value: unknown): value is GpsTargetMemory {
-  if (!value || typeof value !== "object") return false;
-
-  const target = value as Partial<GpsTargetMemory>;
-
+function isValidLatLng(
+  lat: number,
+  lng: number,
+) {
   return (
-    typeof target.lat === "number" &&
-    typeof target.lng === "number" &&
-    Number.isFinite(target.lat) &&
-    Number.isFinite(target.lng) &&
-    target.lat >= -90 &&
-    target.lat <= 90 &&
-    target.lng >= -180 &&
-    target.lng <= 180
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lng >= -180 &&
+    lng <= 180
   );
 }
 
 export function saveGpsTargetMemory(
-  target: Omit<GpsTargetMemory, "savedAt"> & { savedAt?: string }
+  target: Omit<GpsTargetMemory, "savedAt"> & {
+    savedAt?: string;
+  },
 ): boolean {
   if (!isBrowser()) return false;
 
+  const lat = Number(target.lat);
+  const lng = Number(target.lng);
+
+  if (!isValidLatLng(lat, lng)) return false;
+
   const nextTarget: GpsTargetMemory = {
-    ...target,
+    lat,
+    lng,
+    label: target.label,
+    source: target.source,
     savedAt: target.savedAt ?? new Date().toISOString(),
   };
 
-  if (!isValidGpsTarget(nextTarget)) return false;
-
   try {
+    window.localStorage.setItem(
+      GPS_TARGET_MEMORY_KEY,
+      JSON.stringify(nextTarget),
+    );
     window.sessionStorage.setItem(
       GPS_TARGET_MEMORY_KEY,
-      JSON.stringify(nextTarget)
+      JSON.stringify(nextTarget),
     );
     return true;
   } catch {
@@ -56,13 +65,24 @@ export function readGpsTargetMemory(): GpsTargetMemory | null {
   if (!isBrowser()) return null;
 
   try {
-    const raw = window.sessionStorage.getItem(GPS_TARGET_MEMORY_KEY);
+    const raw =
+      window.localStorage.getItem(GPS_TARGET_MEMORY_KEY) ??
+      window.sessionStorage.getItem(GPS_TARGET_MEMORY_KEY);
     if (!raw) return null;
 
-    const parsed = JSON.parse(raw);
-    if (!isValidGpsTarget(parsed)) return null;
+    const parsed = JSON.parse(raw) as GpsTargetMemory;
+    const lat = Number(parsed.lat);
+    const lng = Number(parsed.lng);
 
-    return parsed;
+    if (!isValidLatLng(lat, lng)) return null;
+
+    return {
+      lat,
+      lng,
+      label: parsed.label,
+      source: parsed.source,
+      savedAt: parsed.savedAt,
+    };
   } catch {
     return null;
   }

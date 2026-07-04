@@ -24,10 +24,10 @@ const METERS_PER_LINK = 0.201168;
 const METERS_PER_CHAIN = 20.1168;
 
 export const FIELD_GPS_DISCLAIMER =
-  "GPS phone position is approximate and for preliminary field reference only. It is not a cadastral boundary confirmation or official survey result.";
+  "Preliminary Field Assist: phone GPS positions are approximate and for field reference only.";
 
 export const KEYED_COORDINATE_DISCLAIMER =
-  "Keyed coordinates are user-entered and have not been independently verified by SabahLot. They are for preliminary field reference only and must not be treated as legal boundary evidence.";
+  "Preliminary Field Assist: keyed coordinates are user-entered and for field reference only.";
 
 export const GEOLOCATION_OPTIONS: PositionOptions = {
   enableHighAccuracy: true,

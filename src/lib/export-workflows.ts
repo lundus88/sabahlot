@@ -13,7 +13,7 @@ export const DXF_CRS_NOTICE =
   "DXF Alpha output uses WGS84 longitude/latitude coordinates. Metric projected coordinate export will be handled in a later CRS enhancement phase.";
 
 const PRELIMINARY_NOTICE =
-  "Preliminary output only. This is not a legal survey plan, not proof of land boundary, and not an official approval by JTU, Land Office, or any authority. Final boundary and land matters must be verified through the proper Sabah land and survey procedures.";
+  "Preliminary Field Assist output only. Measurements are user-created estimates for field reference and should be checked through the proper Sabah land and survey procedures before formal use.";
 
 const xmlEscape = (value: string) =>
   value.replace(/[&<>"']/g, (character) =>

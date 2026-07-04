@@ -1,6 +1,13 @@
 ﻿"use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useRouter,
+} from "next/navigation";
+import {
+  readGpsTargetMemory,
+  saveGpsTargetMemory,
+} from "@/utils/gpsTargetMemory";
 import styles from "./ar-stakeout.module.css";
 
 type GpsFix = {
@@ -42,6 +49,14 @@ type FoundPoint = {
 
 type WebkitOrientationEvent = DeviceOrientationEvent & {
   webkitCompassHeading?: number;
+};
+
+type RestoredTarget = {
+  lat: number;
+  lng: number;
+  label: string;
+  source: "key-in" | "map" | "ar";
+  savedAt?: string;
 };
 
 const toRad = (value: number) => (value * Math.PI) / 180;
@@ -101,11 +116,77 @@ function bearingToCardinal(value: number | null | undefined) {
   return directions[index];
 }
 
+function isValidLatLng(lat: number, lng: number) {
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lng >= -180 &&
+    lng <= 180
+  );
+}
+
+function readTargetFromUrlOrMemory(): RestoredTarget | null {
+  const params = new URLSearchParams(window.location.search);
+  const queryLatText = params.get("targetLat")?.trim() ?? "";
+  const queryLngText = params.get("targetLng")?.trim() ?? "";
+  const queryLat = queryLatText ? Number(queryLatText) : Number.NaN;
+  const queryLng = queryLngText ? Number(queryLngText) : Number.NaN;
+
+  if (isValidLatLng(queryLat, queryLng)) {
+    const label = params.get("targetLabel")?.trim() || "Target Point";
+
+    return {
+      lat: queryLat,
+      lng: queryLng,
+      label,
+      source: "ar",
+      savedAt: `url:${queryLat}:${queryLng}:${label}`,
+    };
+  }
+
+  const savedTarget = readGpsTargetMemory();
+
+  if (!savedTarget) {
+    return null;
+  }
+
+  return {
+    lat: savedTarget.lat,
+    lng: savedTarget.lng,
+    label: savedTarget.label?.trim() || "Target Point",
+    source: savedTarget.source,
+    savedAt: savedTarget.savedAt,
+  };
+}
+
+function buildMapHref(
+  target: {
+    name: string;
+    latitude: number;
+    longitude: number;
+  } | null
+) {
+  if (!target) {
+    return "/?restoreTarget=1";
+  }
+
+  const params = new URLSearchParams({
+    restoreTarget: "1",
+    targetLat: String(target.latitude),
+    targetLng: String(target.longitude),
+    targetLabel: target.name,
+  });
+
+  return `/?${params.toString()}`;
+}
+
 function getGpsSignal(gps: GpsFix | null, gpsError: string) {
   if (gpsError || !gps) {
     return {
       level: "lost",
-      label: "GPS Lost - Tiada sambungan lokasi",
+      label: "GPS Lost - No location connection",
       detail: gpsError || "No GPS fix",
     };
   }
@@ -116,7 +197,7 @@ function getGpsSignal(gps: GpsFix | null, gpsError: string) {
   if (accuracy <= 10 && ageSec <= 15) {
     return {
       level: "strong",
-      label: "GPS Active - Signal kuat",
+      label: "GPS Active - Strong signal",
       detail: `±${accuracy.toFixed(1)} m`,
     };
   }
@@ -124,14 +205,14 @@ function getGpsSignal(gps: GpsFix | null, gpsError: string) {
   if (accuracy <= 30 && ageSec <= 30) {
     return {
       level: "weak",
-      label: "GPS Weak - Signal lemah",
+      label: "GPS Weak - Weak signal",
       detail: `±${accuracy.toFixed(1)} m`,
     };
   }
 
   return {
     level: "lost",
-    label: "GPS Lost - Tiada sambungan lokasi",
+    label: "GPS Lost - No location connection",
     detail: accuracy > 30 ? `Accuracy weak ±${accuracy.toFixed(1)} m` : "GPS update too old",
   };
 }
@@ -157,11 +238,12 @@ function cameraMessage(errorName: string, fallback: string) {
 }
 
 export default function ArStakeoutPage() {
+  const router = useRouter();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const gpsWatchRef = useRef<number | null>(null);
 
-  const [targetName, setTargetName] = useState("Pt2");
+  const [targetName, setTargetName] = useState("Target Point");
   const [targetLatText, setTargetLatText] = useState("");
   const [targetLngText, setTargetLngText] = useState("");
   const [note, setNote] = useState("");
@@ -206,6 +288,33 @@ export default function ArStakeoutPage() {
       longitude: lng,
     };
   }, [targetName, targetLatText, targetLngText]);
+
+  const backToMapHref = useMemo(() => buildMapHref(target), [target]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      const restoredTarget = readTargetFromUrlOrMemory();
+
+      if (!restoredTarget) {
+        return;
+      }
+
+      setTargetName(restoredTarget.label);
+      setTargetLatText(String(restoredTarget.lat));
+      setTargetLngText(String(restoredTarget.lng));
+      saveGpsTargetMemory({
+        lat: restoredTarget.lat,
+        lng: restoredTarget.lng,
+        label: restoredTarget.label,
+        source: restoredTarget.source,
+        savedAt: restoredTarget.savedAt,
+      });
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, []);
 
   const metrics = useMemo(() => {
     if (!gps || !target) return null;
@@ -518,14 +627,21 @@ export default function ArStakeoutPage() {
     await startCamera();
   }
 
-  async function startArStakeout() {
+  async function startArGuide() {
     if (!target) {
       setFieldMessage("Enter valid target coordinate first.");
       return;
     }
 
+    saveGpsTargetMemory({
+      lat: target.latitude,
+      lng: target.longitude,
+      label: target.name,
+      source: "ar",
+    });
+
     if (!gps) {
-      setFieldMessage("Start GPS first before AR Stake Out.");
+      setFieldMessage("Start GPS first before AR Guide.");
       return;
     }
 
@@ -536,7 +652,7 @@ export default function ArStakeoutPage() {
     await startCamera();
   }
 
-  function stopArStakeout() {
+  function stopArGuide() {
     setArActive(false);
     stopCamera();
   }
@@ -587,15 +703,51 @@ export default function ArStakeoutPage() {
       <section className={styles.header}>
         <div>
           <p className={styles.kicker}>SabahLot Beta</p>
-          <h1>AR Stake Out Lite</h1>
+          <h1>AR Guide</h1>
           <p>
-            Navigasi awal menggunakan GPS telefon, kamera dan anak panah. Bukan penentuan
-            sempadan kadaster rasmi.
+            Preliminary Field Assist using phone GPS, camera, and directional arrow.
           </p>
         </div>
-        <a className={styles.backLink} href="/">
+        <button
+          type="button"
+          className={styles.backLink}
+          onClick={() => {
+            if (target) {
+              saveGpsTargetMemory({
+                lat: target.latitude,
+                lng: target.longitude,
+                label: target.name,
+                source: "ar",
+              });
+              router.push(backToMapHref);
+              return;
+            }
+
+            const savedTarget =
+              readGpsTargetMemory();
+
+            if (savedTarget) {
+              router.push(
+                buildMapHref({
+                  name:
+                    savedTarget.label ||
+                    "AR Guide Target",
+                  latitude:
+                    savedTarget.lat,
+                  longitude:
+                    savedTarget.lng,
+                }),
+              );
+              return;
+            }
+
+            router.push(
+              "/?restoreTarget=1",
+            );
+          }}
+        >
           ← Back to Map
-        </a>
+        </button>
       </section>
 
       <section className={styles.grid}>
@@ -611,7 +763,7 @@ export default function ArStakeoutPage() {
             Latitude
             <input
               inputMode="decimal"
-              placeholder="contoh 5.980412"
+              placeholder="example 5.980412"
               value={targetLatText}
               onChange={(event) => setTargetLatText(event.target.value)}
             />
@@ -621,14 +773,14 @@ export default function ArStakeoutPage() {
             Longitude
             <input
               inputMode="decimal"
-              placeholder="contoh 116.073456"
+              placeholder="example 116.073456"
               value={targetLngText}
               onChange={(event) => setTargetLngText(event.target.value)}
             />
           </label>
 
           {!target && (
-            <p className={styles.warning}>Masukkan koordinat WGS84 decimal degree yang sah.</p>
+            <p className={styles.warning}>Enter a valid WGS84 decimal degree coordinate.</p>
           )}
 
           <div className={styles.buttonRow}>
@@ -645,10 +797,10 @@ export default function ArStakeoutPage() {
           </button>
 
           <div className={styles.buttonRow}>
-            <button type="button" className={styles.primaryButton} onClick={startArStakeout}>
-              Start AR Stake Out
+            <button type="button" className={styles.primaryButton} onClick={startArGuide}>
+              Start AR Guide
             </button>
-            <button type="button" onClick={stopArStakeout}>
+            <button type="button" onClick={stopArGuide}>
               Stop AR
             </button>
           </div>
@@ -656,7 +808,7 @@ export default function ArStakeoutPage() {
           <label>
             Found point note
             <textarea
-              placeholder="Nota ringkas lokasi dijumpai"
+              placeholder="Brief note for found location"
               value={note}
               onChange={(event) => setNote(event.target.value)}
             />
@@ -714,10 +866,10 @@ export default function ArStakeoutPage() {
 
           <div className={styles.diagnostics}>
             <strong>Mobile diagnostic</strong>
-            <span>Secure context: {secureContext}</span>
-            <span>MediaDevices: {mediaDevicesSupport}</span>
-            <span>getUserMedia: {getUserMediaSupport}</span>
-            <span>Camera mode: {cameraMode}</span>
+            <span suppressHydrationWarning>Secure context: {secureContext}</span>
+            <span suppressHydrationWarning>MediaDevices: {mediaDevicesSupport}</span>
+            <span suppressHydrationWarning>getUserMedia: {getUserMediaSupport}</span>
+            <span suppressHydrationWarning>Camera mode: {cameraMode}</span>
             <span>Video ready: {videoReady ? "yes" : "no"}</span>
             {cameraErrorName && <span>Error name: {cameraErrorName}</span>}
             {cameraErrorMessage && <span>Error message: {cameraErrorMessage}</span>}
@@ -735,7 +887,7 @@ export default function ArStakeoutPage() {
               <h2>{target?.name || "Target Point"}</h2>
               <p>{directionText}</p>
             </div>
-            <button type="button" onClick={stopArStakeout}>
+            <button type="button" onClick={stopArGuide}>
               Stop AR
             </button>
           </div>
@@ -810,22 +962,20 @@ export default function ArStakeoutPage() {
 
           {!arActive && (
             <div className={styles.notActive}>
-              Tekan Test Camera untuk uji kamera atau Start AR Stake Out untuk mod penuh.
+              Tap Test Camera to test the camera or Start AR Guide for find point guidance.
             </div>
           )}
         </div>
       </section>
 
       <section className={styles.disclaimer}>
-        Preliminary field navigation only. Not for cadastral boundary determination.
-        <br />
-        Navigasi awal sahaja. Bukan penentuan sempadan kadaster rasmi.
+        Preliminary Field Assist navigation only.
       </section>
 
       <section className={styles.panel}>
         <h2>Saved Found Points</h2>
         {savedPoints.length === 0 ? (
-          <p>Belum ada rekod.</p>
+          <p>No records yet.</p>
         ) : (
           <div className={styles.savedList}>
             {savedPoints.map((point) => (
@@ -847,6 +997,7 @@ export default function ArStakeoutPage() {
     </main>
   );
 }
+
 
 
 

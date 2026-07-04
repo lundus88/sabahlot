@@ -4,7 +4,7 @@ import type {
 } from "@/app/components/Map";
 
 export const PRELIMINARY_EXPORT_DISCLAIMER =
-  "SabahLot output is for preliminary reference only. It is not an official survey plan, not a certified boundary plan, and must not be used as legal proof of boundary, ownership, approval, subdivision or land title status. All coordinates, boundaries and areas must be verified by the relevant authority, licensed surveyor or professional adviser before official use.";
+  "Preliminary Field Assist output is for field reference only. Measurements are user-created estimates and should be checked with the appropriate professional or authority before formal use.";
 
 export interface PreliminaryExportMetadata {
   recordTitle: string;
