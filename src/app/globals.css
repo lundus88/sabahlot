@@ -6270,3 +6270,75 @@ select:focus-visible {
     display: none;
   }
 }
+
+/* Alpha mobile field polish: keep secondary controls compact and quiet. */
+@media (max-width: 640px) {
+  .sl-topbar-actions {
+    top: calc(env(safe-area-inset-top) + 8px) !important;
+    right: 8px !important;
+    width: 38px !important;
+    height: 38px !important;
+  }
+
+  .sl-topbar .sl-icon-button,
+  .sl-topbar-actions .sl-icon-button {
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
+    min-height: 34px !important;
+    color: #475569;
+    background: rgba(255, 255, 255, 0.84) !important;
+    border-color: rgba(226, 232, 240, 0.74) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08) !important;
+  }
+
+  .sl-topbar .sl-icon-button svg,
+  .sl-topbar-actions .sl-icon-button svg {
+    width: 17px;
+    height: 17px;
+  }
+
+  .sl-mobile-top-control-stack {
+    top: calc(env(safe-area-inset-top) + 54px);
+    gap: 6px;
+  }
+
+  .sl-mobile-top-control-stack .sl-object-list-tab,
+  .sl-mobile-top-control-stack .sl-field-gps-toggle {
+    min-height: 38px !important;
+    height: 38px;
+    max-height: 38px;
+    border-radius: 11px !important;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08) !important;
+    font-size: 12px;
+  }
+
+  .sl-mobile-top-control-stack .sl-object-list-tab {
+    line-height: 38px;
+  }
+
+  .sl-mobile-top-control-stack .sl-field-gps-toggle {
+    min-width: 52px;
+    padding: 0 10px;
+  }
+
+  .sl-map-navigation {
+    gap: 3px !important;
+    padding: 3px !important;
+    border-radius: 12px !important;
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.1) !important;
+  }
+
+  .sl-map-navigation button {
+    width: 30px !important;
+    height: 30px !important;
+    border-radius: 9px !important;
+    box-shadow: none !important;
+  }
+
+  .sl-map-navigation svg {
+    width: 16px !important;
+    height: 16px !important;
+  }
+}
