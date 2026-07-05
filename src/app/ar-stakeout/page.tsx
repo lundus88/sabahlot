@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import Link from "next/link";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -118,7 +118,7 @@ function getGpsSignal(gps: GpsFix | null, gpsError: string) {
     return {
       level: "strong",
       label: "GPS Active - Signal kuat",
-      detail: `±${accuracy.toFixed(1)} m`,
+      detail: `ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡±${accuracy.toFixed(1)} m`,
     };
   }
 
@@ -126,14 +126,14 @@ function getGpsSignal(gps: GpsFix | null, gpsError: string) {
     return {
       level: "weak",
       label: "GPS Weak - Signal lemah",
-      detail: `±${accuracy.toFixed(1)} m`,
+      detail: `ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡±${accuracy.toFixed(1)} m`,
     };
   }
 
   return {
     level: "lost",
     label: "GPS Lost - Tiada sambungan lokasi",
-    detail: accuracy > 30 ? `Accuracy weak ±${accuracy.toFixed(1)} m` : "GPS update too old",
+    detail: accuracy > 30 ? `Accuracy weak ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡±${accuracy.toFixed(1)} m` : "GPS update too old",
   };
 }
 
@@ -158,7 +158,7 @@ function cameraMessage(errorName: string, fallback: string) {
 }
 
 export default function ArStakeoutPage() {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
+const videoRef = useRef<HTMLVideoElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const gpsWatchRef = useRef<number | null>(null);
 
@@ -236,12 +236,12 @@ export default function ArStakeoutPage() {
     if (!metrics) return "Waiting for navigation data.";
 
     if (heading === null || relativeAngle === null) {
-      return `Compass heading unavailable. Bearing to target: ${metrics.bearing.toFixed(1)}°`;
+      return `Compass heading unavailable. Bearing to target: ${metrics.bearing.toFixed(1)}ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡°`;
     }
 
     if (Math.abs(relativeAngle) <= 15) return "Face target";
-    if (relativeAngle > 15) return `Turn right ${Math.abs(relativeAngle).toFixed(0)}°`;
-    return `Turn left ${Math.abs(relativeAngle).toFixed(0)}°`;
+    if (relativeAngle > 15) return `Turn right ${Math.abs(relativeAngle).toFixed(0)}ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡°`;
+    return `Turn left ${Math.abs(relativeAngle).toFixed(0)}ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡°`;
   }, [target, gps, metrics, heading, relativeAngle]);
 
   function startGps() {
@@ -303,7 +303,7 @@ export default function ArStakeoutPage() {
       gpsWatchRef.current = null;
     }
 
-    setGpsStatus(gps ? "GPS stopped · last fix retained" : "GPS stopped");
+    setGpsStatus(gps ? "GPS stopped ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· last fix retained" : "GPS stopped");
   }
 
   function handleOrientation(event: DeviceOrientationEvent) {
@@ -595,7 +595,7 @@ export default function ArStakeoutPage() {
           </p>
         </div>
         <Link className={styles.backLink} href="/">
-          ← Back to Map
+          ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Back to Map
         </Link>
       </section>
 
@@ -693,15 +693,15 @@ export default function ArStakeoutPage() {
             </div>
             <div>
               <dt>Accuracy</dt>
-              <dd>{gps?.accuracy ? `±${gps.accuracy.toFixed(1)} m` : "-"}</dd>
+              <dd>{gps?.accuracy ? `ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡±${gps.accuracy.toFixed(1)} m` : "-"}</dd>
             </div>
             <div>
               <dt>Bearing</dt>
-              <dd>{metrics ? `${metrics.bearing.toFixed(1)}° ${targetDirection}` : "-"}</dd>
+              <dd>{metrics ? `${metrics.bearing.toFixed(1)}ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡° ${targetDirection}` : "-"}</dd>
             </div>
             <div>
               <dt>Heading</dt>
-              <dd>{heading !== null ? `${heading.toFixed(1)}° ${headingDirection}` : headingStatus}</dd>
+              <dd>{heading !== null ? `${heading.toFixed(1)}ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡° ${headingDirection}` : headingStatus}</dd>
             </div>
             <div>
               <dt>Direction</dt>
@@ -715,10 +715,10 @@ export default function ArStakeoutPage() {
 
           <div className={styles.diagnostics}>
             <strong>Mobile diagnostic</strong>
-            <span>Secure context: {secureContext}</span>
-            <span>MediaDevices: {mediaDevicesSupport}</span>
-            <span>getUserMedia: {getUserMediaSupport}</span>
-            <span>Camera mode: {cameraMode}</span>
+            <span suppressHydrationWarning>Secure context: {secureContext}</span>
+            <span suppressHydrationWarning>MediaDevices: {mediaDevicesSupport}</span>
+            <span suppressHydrationWarning>getUserMedia: {getUserMediaSupport}</span>
+            <span suppressHydrationWarning>Camera mode: {cameraMode}</span>
             <span>Video ready: {videoReady ? "yes" : "no"}</span>
             {cameraErrorName && <span>Error name: {cameraErrorName}</span>}
             {cameraErrorMessage && <span>Error message: {cameraErrorMessage}</span>}
@@ -768,7 +768,7 @@ export default function ArStakeoutPage() {
                   transform: `rotate(${arrowRotation}deg)`,
                 }}
               >
-                ↑
+                ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¹Ã…â€œ
               </div>
             </div>
           </div>
@@ -784,7 +784,7 @@ export default function ArStakeoutPage() {
             </div>
             <div>
               <span>Bearing</span>
-              <strong>{metrics ? `${metrics.bearing.toFixed(1)}° ${targetDirection}` : "-"}</strong>
+              <strong>{metrics ? `${metrics.bearing.toFixed(1)}ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡° ${targetDirection}` : "-"}</strong>
             </div>
             <div>
               <span>N / E</span>
@@ -798,7 +798,7 @@ export default function ArStakeoutPage() {
             <span className={`${styles.signalDot} ${styles[signal.level] ?? ""}`} />
             <span>{signal.label}</span>
             <span>Camera: {cameraStatus}</span>
-            <span>Heading: {heading !== null ? `${heading.toFixed(1)}° ${headingDirection}` : headingStatus}</span>
+            <span>Heading: {heading !== null ? `${heading.toFixed(1)}ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡° ${headingDirection}` : headingStatus}</span>
             <span>Video: {videoReady ? "ready" : "not ready"}</span>
           </div>
 
@@ -836,8 +836,8 @@ export default function ArStakeoutPage() {
                   Found: {point.foundLat.toFixed(7)}, {point.foundLng.toFixed(7)}
                 </span>
                 <span>Distance: {formatMeters(point.distance)}</span>
-                <span>Bearing: {point.bearing.toFixed(1)}°</span>
-                <span>Accuracy: {point.accuracy ? `±${point.accuracy.toFixed(1)} m` : "-"}</span>
+                <span>Bearing: {point.bearing.toFixed(1)}ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡°</span>
+                <span>Accuracy: {point.accuracy ? `ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡±${point.accuracy.toFixed(1)} m` : "-"}</span>
                 <span>{point.timestamp}</span>
                 {point.note && <span>Note: {point.note}</span>}
               </article>
