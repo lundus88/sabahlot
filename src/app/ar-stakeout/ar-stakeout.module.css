@@ -4,6 +4,8 @@
   background: #eef4f8;
   color: #0f172a;
   font-family: Arial, Helvetica, sans-serif;
+  display: flex;
+  flex-direction: column;
 }
 
 .header {
@@ -48,6 +50,14 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 14px;
+}
+
+.statusPanel {
+  order: 1;
+}
+
+.targetPanel {
+  order: 2;
 }
 
 .panel {
@@ -128,6 +138,52 @@
   font-weight: 900;
 }
 
+.activeTargetSummary {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 12px;
+  border: 1px solid #bfdbfe;
+  border-radius: 14px;
+  padding: 12px;
+  background: #eff6ff;
+  color: #0f172a;
+}
+
+.activeTargetSummary span {
+  color: #475569;
+  font-weight: 800;
+}
+
+.activeTargetSummary strong {
+  font-weight: 900;
+}
+
+.findPointResult {
+  display: grid;
+  gap: 5px;
+  margin: 0 0 12px;
+  border: 1px solid #bbf7d0;
+  border-radius: 14px;
+  padding: 12px;
+  background: #f0fdf4;
+  color: #14532d;
+}
+
+.findPointResult span {
+  font-weight: 800;
+}
+
+.findPointResult strong {
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.findPointResult em {
+  color: #92400e;
+  font-style: normal;
+  font-weight: 900;
+}
+
 .statusList {
   display: grid;
   gap: 8px;
@@ -202,6 +258,7 @@
   border: 2px solid #0f172a;
   background: #020617;
   box-shadow: 0 18px 34px rgba(15, 23, 42, 0.25);
+  order: 5;
 }
 
 .stageFullscreen {
@@ -264,6 +321,21 @@
   color: #e0f2fe;
 }
 
+.arTargetMeta {
+  display: block;
+  margin-top: 4px;
+  color: #bfdbfe;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.arTopActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .targetDot {
   position: absolute;
   top: 96px;
@@ -276,10 +348,18 @@
   transform: translateX(-50%);
   z-index: 3;
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+  transition: left 0.18s ease, opacity 0.18s ease, transform 0.18s ease;
+}
+
+.targetDotEdge {
+  opacity: 0.72;
+  transform: translateX(-50%) scale(0.92);
 }
 
 .distanceBubble {
-  justify-self: center;
+  position: absolute;
+  top: 130px;
+  left: 50%;
   border-radius: 999px;
   background: rgba(37, 99, 235, 0.9);
   color: #ffffff;
@@ -288,18 +368,24 @@
   font-weight: 900;
   box-shadow: 0 12px 24px rgba(2, 6, 23, 0.25);
   z-index: 3;
+  max-width: min(240px, calc(100% - 24px));
+  text-align: center;
+  transform: translateX(-50%);
+  transition: left 0.18s ease;
+  white-space: nowrap;
 }
 
 .guideLine {
   position: absolute;
   left: 50%;
-  top: 145px;
+  top: 188px;
   bottom: 245px;
   width: 6px;
   border-left: 6px dotted rgba(59, 130, 246, 0.95);
   transform: translateX(-50%);
   z-index: 2;
   pointer-events: none;
+  transition: left 0.18s ease, opacity 0.18s ease;
 }
 
 .guideLine span {
@@ -336,6 +422,17 @@
   line-height: 1;
   background: rgba(15, 23, 42, 0.62);
   transition: transform 0.2s ease;
+}
+
+.arrow::before {
+  content: "";
+  width: 0;
+  height: 0;
+  border-left: 32px solid transparent;
+  border-right: 32px solid transparent;
+  border-bottom: 82px solid #ef4444;
+  filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.36));
+  transform: translateY(-8px);
 }
 
 .bottomStrip {
@@ -416,6 +513,60 @@
   font-weight: 800;
   line-height: 1.45;
   margin-bottom: 16px;
+  order: 6;
+}
+
+.savedTargetLibrary {
+  margin: 16px 0 0;
+  order: 4;
+}
+
+.libraryHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.libraryHeader h2 {
+  margin: 0;
+}
+
+.savedTargetList {
+  display: grid;
+  gap: 10px;
+}
+
+.savedTargetList article {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 12px;
+  background: #f8fafc;
+}
+
+.savedTargetList article > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.savedTargetList strong {
+  font-weight: 900;
+}
+
+.savedTargetList span {
+  color: #475569;
+  font-weight: 800;
+}
+
+.savedTargetActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .savedList {
@@ -432,6 +583,15 @@
   background: #f8fafc;
 }
 
+.savedList button {
+  justify-self: start;
+  margin-top: 6px;
+}
+
+.foundPointRecords {
+  order: 7;
+}
+
 @media (max-width: 760px) {
   .page {
     padding: 10px;
@@ -443,6 +603,11 @@
 
   .grid {
     grid-template-columns: 1fr;
+  }
+
+  .statusPanel,
+  .targetPanel {
+    order: initial;
   }
 
   .stage {
@@ -470,12 +635,43 @@
     font-size: 68px;
   }
 
+  .arTop {
+    display: grid;
+  }
+
+  .arTopActions {
+    justify-content: stretch;
+  }
+
+  .arTopActions button {
+    flex: 1 1 140px;
+  }
+
   .bottomStrip {
     grid-template-columns: 1fr 1fr;
   }
 
+  .libraryHeader,
+  .savedTargetList article {
+    display: grid;
+  }
+
+  .savedTargetActions {
+    justify-content: stretch;
+  }
+
+  .savedTargetActions button {
+    flex: 1 1 96px;
+  }
+
+  .distanceBubble {
+    top: 122px;
+    padding: 10px 14px;
+    font-size: 20px;
+  }
+
   .guideLine {
-    top: 130px;
+    top: 174px;
     bottom: 260px;
   }
 

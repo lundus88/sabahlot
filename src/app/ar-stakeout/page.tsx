@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import styles from "./ar-stakeout.module.css";
 
 type GpsFix = {
@@ -41,18 +41,48 @@ type FoundPoint = {
   note: string;
 };
 
+type ActiveTarget = {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type SavedStakeOutTarget = ActiveTarget & {
+  lastUsedAt?: string;
+};
+
+type TargetDraft = {
+  name: string;
+  lat: number;
+  lng: number;
+};
+
 type WebkitOrientationEvent = DeviceOrientationEvent & {
   webkitCompassHeading?: number;
 };
 
+const ACTIVE_TARGET_STORAGE_KEY = "sabahlot.arStakeout.activeTarget";
+const SAVED_TARGETS_STORAGE_KEY = "sabahlot.arStakeout.savedTargets";
+const AR_FOV_DEG = 60;
+const AR_MARKER_EDGE_OFFSET_PERCENT = 45;
+const ON_TARGET_DEG = 7;
+const TARGET_BEHIND_DEG = 150;
+
 const toRad = (value: number) => (value * Math.PI) / 180;
 const toDeg = (value: number) => (value * 180) / Math.PI;
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
 
 function normalize360(value: number) {
   return ((value % 360) + 360) % 360;
 }
 
-function normalizeSigned(value: number) {
+function normalizeRelativeBearing(value: number) {
   return ((value + 540) % 360) - 180;
 }
 
@@ -93,6 +123,91 @@ function formatMeters(value: number | null | undefined) {
   return `${value.toFixed(1)} m`;
 }
 
+function formatDegrees(value: number, decimals = 1) {
+  return `${value.toFixed(decimals)}\u00b0`;
+}
+
+function formatAccuracy(value: number | null | undefined) {
+  if (value === null || value === undefined || Number.isNaN(value)) return "-";
+  return `\u00b1${value.toFixed(1)} m`;
+}
+
+function isValidActiveTarget(value: unknown): value is ActiveTarget {
+  if (!value || typeof value !== "object") return false;
+
+  const target = value as Partial<ActiveTarget>;
+
+  return (
+    typeof target.id === "string" &&
+    typeof target.name === "string" &&
+    typeof target.lat === "number" &&
+    Number.isFinite(target.lat) &&
+    target.lat >= -90 &&
+    target.lat <= 90 &&
+    typeof target.lng === "number" &&
+    Number.isFinite(target.lng) &&
+    target.lng >= -180 &&
+    target.lng <= 180 &&
+    typeof target.createdAt === "string" &&
+    typeof target.updatedAt === "string"
+  );
+}
+
+function activeTargetFromText(
+  targetNameText: string,
+  targetLatValue: string,
+  targetLngValue: string
+): TargetDraft | null {
+  const lat = Number(targetLatValue);
+  const lng = Number(targetLngValue);
+
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+
+  return {
+    name: targetNameText.trim() || "Target Point",
+    lat,
+    lng,
+  };
+}
+
+function createTargetId() {
+  return `target-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function targetFromDraft(draft: TargetDraft, existingTarget?: ActiveTarget | null): ActiveTarget {
+  const now = new Date().toISOString();
+
+  return {
+    id: existingTarget?.id || createTargetId(),
+    name: draft.name,
+    lat: draft.lat,
+    lng: draft.lng,
+    createdAt: existingTarget?.createdAt || now,
+    updatedAt: now,
+  };
+}
+
+function isSavedStakeOutTarget(value: unknown): value is SavedStakeOutTarget {
+  if (!isValidActiveTarget(value)) return false;
+
+  const target = value as Partial<SavedStakeOutTarget>;
+
+  return target.lastUsedAt === undefined || typeof target.lastUsedAt === "string";
+}
+
+function isSameSavedTarget(a: Pick<ActiveTarget, "name" | "lat" | "lng">, b: Pick<ActiveTarget, "name" | "lat" | "lng">) {
+  return (
+    a.name.trim().toLowerCase() === b.name.trim().toLowerCase() &&
+    Math.abs(a.lat - b.lat) < 0.0000001 &&
+    Math.abs(a.lng - b.lng) < 0.0000001
+  );
+}
+
+function isSabahLikeCoordinate(lat: number, lng: number) {
+  return lat >= 4 && lat <= 7 && lng >= 115 && lng <= 119;
+}
+
 function bearingToCardinal(value: number | null | undefined) {
   if (value === null || value === undefined || Number.isNaN(value)) return "-";
 
@@ -118,7 +233,7 @@ function getGpsSignal(gps: GpsFix | null, gpsError: string) {
     return {
       level: "strong",
       label: "GPS Active - Signal kuat",
-      detail: `ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡±${accuracy.toFixed(1)} m`,
+      detail: formatAccuracy(accuracy),
     };
   }
 
@@ -126,17 +241,16 @@ function getGpsSignal(gps: GpsFix | null, gpsError: string) {
     return {
       level: "weak",
       label: "GPS Weak - Signal lemah",
-      detail: `ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡±${accuracy.toFixed(1)} m`,
+      detail: formatAccuracy(accuracy),
     };
   }
 
   return {
     level: "lost",
     label: "GPS Lost - Tiada sambungan lokasi",
-    detail: accuracy > 30 ? `Accuracy weak ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡±${accuracy.toFixed(1)} m` : "GPS update too old",
+    detail: accuracy > 30 ? `Accuracy weak ${formatAccuracy(accuracy)}` : "GPS update too old",
   };
 }
-
 function cameraMessage(errorName: string, fallback: string) {
   if (errorName === "NotAllowedError") {
     return "Camera permission denied. Allow Camera permission in browser site settings.";
@@ -158,14 +272,17 @@ function cameraMessage(errorName: string, fallback: string) {
 }
 
 export default function ArStakeoutPage() {
-const videoRef = useRef<HTMLVideoElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const gpsWatchRef = useRef<number | null>(null);
+  const targetPanelRef = useRef<HTMLDivElement | null>(null);
 
   const [targetName, setTargetName] = useState("Pt2");
   const [targetLatText, setTargetLatText] = useState("");
   const [targetLngText, setTargetLngText] = useState("");
+  const [activeTarget, setActiveTarget] = useState<ActiveTarget | null>(null);
   const [note, setNote] = useState("");
+  const [findPointVisible, setFindPointVisible] = useState(false);
 
   const [gps, setGps] = useState<GpsFix | null>(null);
   const [gpsStatus, setGpsStatus] = useState("GPS stopped");
@@ -183,6 +300,7 @@ const videoRef = useRef<HTMLVideoElement | null>(null);
   const [arActive, setArActive] = useState(false);
   const [fieldMessage, setFieldMessage] = useState("");
   const [savedPoints, setSavedPoints] = useState<FoundPoint[]>([]);
+  const [savedTargets, setSavedTargets] = useState<SavedStakeOutTarget[]>([]);
 
   const secureContext =
     typeof window !== "undefined" && window.isSecureContext ? "yes" : "no";
@@ -195,25 +313,62 @@ const videoRef = useRef<HTMLVideoElement | null>(null);
       : "no";
 
   const target = useMemo(() => {
+    return activeTargetFromText(targetName, targetLatText, targetLngText);
+  }, [targetName, targetLatText, targetLngText]);
+
+  const targetValidationMessage = useMemo(() => {
+    if (!targetLatText.trim() && !targetLngText.trim()) {
+      return "Enter target coordinate, then press Set Active Target.";
+    }
+
+    if (!targetLatText.trim() || !targetLngText.trim()) {
+      return "Latitude and longitude are required.";
+    }
+
     const lat = Number(targetLatText);
     const lng = Number(targetLngText);
 
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return "Latitude and longitude must be numbers.";
+    }
 
-    return {
-      name: targetName.trim() || "Target Point",
-      latitude: lat,
-      longitude: lng,
-    };
-  }, [targetName, targetLatText, targetLngText]);
+    if (lat < -90 || lat > 90) {
+      return "Latitude must be between -90 and 90.";
+    }
+
+    if (lng < -180 || lng > 180) {
+      return "Longitude must be between -180 and 180.";
+    }
+
+    return "";
+  }, [targetLatText, targetLngText]);
+
+  const sabahWarning =
+    target && !isSabahLikeCoordinate(target.lat, target.lng)
+      ? "Coordinate may be outside Sabah or lat/lng may be swapped."
+      : "";
 
   const metrics = useMemo(() => {
-    if (!gps || !target) return null;
+    if (!gps || !activeTarget) return null;
 
-    const distance = distanceMeters(gps.latitude, gps.longitude, target.latitude, target.longitude);
-    const bearing = bearingDeg(gps.latitude, gps.longitude, target.latitude, target.longitude);
-    const offset = offsetNE(gps.latitude, gps.longitude, target.latitude, target.longitude);
+    const distance = distanceMeters(
+      gps.latitude,
+      gps.longitude,
+      activeTarget.lat,
+      activeTarget.lng
+    );
+    const bearing = bearingDeg(
+      gps.latitude,
+      gps.longitude,
+      activeTarget.lat,
+      activeTarget.lng
+    );
+    const offset = offsetNE(
+      gps.latitude,
+      gps.longitude,
+      activeTarget.lat,
+      activeTarget.lng
+    );
 
     return {
       distance,
@@ -221,28 +376,123 @@ const videoRef = useRef<HTMLVideoElement | null>(null);
       north: offset.north,
       east: offset.east,
     };
-  }, [gps, target]);
+  }, [gps, activeTarget]);
 
   const signal = getGpsSignal(gps, gpsError);
 
-  const relativeAngle = useMemo(() => {
+  const relativeBearing = useMemo(() => {
     if (!metrics || heading === null) return null;
-    return normalizeSigned(metrics.bearing - heading);
+    return normalizeRelativeBearing(metrics.bearing - heading);
   }, [metrics, heading]);
 
   const directionText = useMemo(() => {
-    if (!target) return "Enter valid target coordinate.";
+    if (!activeTarget) return "Please enter target coordinate first.";
     if (!gps) return "Start GPS first.";
     if (!metrics) return "Waiting for navigation data.";
 
-    if (heading === null || relativeAngle === null) {
-      return `Compass heading unavailable. Bearing to target: ${metrics.bearing.toFixed(1)}ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡°`;
+    if (heading === null || relativeBearing === null) {
+      return `Compass heading unavailable. Bearing to target: ${formatDegrees(metrics.bearing)}`;
     }
 
-    if (Math.abs(relativeAngle) <= 15) return "Face target";
-    if (relativeAngle > 15) return `Turn right ${Math.abs(relativeAngle).toFixed(0)}ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡°`;
-    return `Turn left ${Math.abs(relativeAngle).toFixed(0)}ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡°`;
-  }, [target, gps, metrics, heading, relativeAngle]);
+    const absoluteRelativeBearing = Math.abs(relativeBearing);
+
+    if (absoluteRelativeBearing <= ON_TARGET_DEG) return "On target direction";
+    if (absoluteRelativeBearing >= TARGET_BEHIND_DEG) return "Turn around - target behind";
+    if (relativeBearing > 0) return `Turn right ${formatDegrees(absoluteRelativeBearing, 0)}`;
+    return `Turn left ${formatDegrees(absoluteRelativeBearing, 0)}`;
+  }, [activeTarget, gps, metrics, heading, relativeBearing]);
+
+  const persistActiveTarget = useCallback((nextTarget: ActiveTarget) => {
+    try {
+      localStorage.setItem(ACTIVE_TARGET_STORAGE_KEY, JSON.stringify(nextTarget));
+    } catch {
+      // Active target still works for this page if storage is blocked.
+    }
+  }, []);
+
+  const persistSavedTargets = useCallback((targets: SavedStakeOutTarget[]) => {
+    try {
+      localStorage.setItem(SAVED_TARGETS_STORAGE_KEY, JSON.stringify(targets));
+    } catch {
+      // Saved targets remain available until refresh if storage is blocked.
+    }
+  }, []);
+
+  const applyTarget = useCallback((nextTarget: ActiveTarget) => {
+    setTargetName(nextTarget.name);
+    setTargetLatText(`${nextTarget.lat}`);
+    setTargetLngText(`${nextTarget.lng}`);
+    setActiveTarget(nextTarget);
+    persistActiveTarget(nextTarget);
+    setFindPointVisible(false);
+    setFieldMessage("");
+  }, [persistActiveTarget]);
+
+  useEffect(() => {
+    let restoredTarget: ActiveTarget | null = null;
+    let restoreTimer: number | null = null;
+    let libraryTimer: number | null = null;
+    const params = new URLSearchParams(window.location.search);
+    const queryLat = Number(params.get("lat"));
+    const queryLng = Number(params.get("lng"));
+
+    if (Number.isFinite(queryLat) && Number.isFinite(queryLng)) {
+      const queryDraft = activeTargetFromText(
+        params.get("name")?.trim() || "Target Point",
+        `${queryLat}`,
+        `${queryLng}`
+      );
+
+      if (queryDraft) {
+        restoredTarget = targetFromDraft(queryDraft);
+      }
+    }
+
+    if (!restoredTarget) {
+      try {
+        const storedTarget = localStorage.getItem(ACTIVE_TARGET_STORAGE_KEY);
+        const parsedTarget = storedTarget ? JSON.parse(storedTarget) : null;
+
+        if (isValidActiveTarget(parsedTarget)) {
+          restoredTarget = parsedTarget;
+        }
+      } catch {
+        localStorage.removeItem(ACTIVE_TARGET_STORAGE_KEY);
+      }
+    }
+
+    try {
+      const storedTargets = localStorage.getItem(SAVED_TARGETS_STORAGE_KEY);
+      const parsedTargets = storedTargets ? JSON.parse(storedTargets) : null;
+
+      if (Array.isArray(parsedTargets)) {
+        const validTargets = parsedTargets.filter(isSavedStakeOutTarget);
+
+        libraryTimer = window.setTimeout(() => {
+          setSavedTargets(validTargets);
+        }, 0);
+      }
+    } catch {
+      localStorage.removeItem(SAVED_TARGETS_STORAGE_KEY);
+    }
+
+    if (restoredTarget) {
+      const targetToRestore = restoredTarget;
+      restoreTimer = window.setTimeout(() => {
+        applyTarget(targetToRestore);
+      }, 0);
+    }
+
+    return () => {
+      if (restoreTimer !== null) {
+        window.clearTimeout(restoreTimer);
+      }
+
+      if (libraryTimer !== null) {
+        window.clearTimeout(libraryTimer);
+      }
+    };
+  }, [applyTarget]);
 
   function startGps() {
     setGpsError("");
@@ -303,7 +553,7 @@ const videoRef = useRef<HTMLVideoElement | null>(null);
       gpsWatchRef.current = null;
     }
 
-    setGpsStatus(gps ? "GPS stopped ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· last fix retained" : "GPS stopped");
+    setGpsStatus(gps ? "GPS stopped - last fix retained" : "GPS stopped");
   }
 
   function handleOrientation(event: DeviceOrientationEvent) {
@@ -519,9 +769,48 @@ const videoRef = useRef<HTMLVideoElement | null>(null);
     await startCamera();
   }
 
-  async function startArStakeout() {
+  function returnToTargetInput(message?: string) {
+    setArActive(false);
+
+    if (message) {
+      setFieldMessage(message);
+    }
+
+    window.setTimeout(() => {
+      targetPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
+  }
+
+  function setActiveTargetFromDraft() {
     if (!target) {
-      setFieldMessage("Enter valid target coordinate first.");
+      setFieldMessage(targetValidationMessage || "Please enter target coordinate first.");
+      return;
+    }
+
+    const nextTarget = targetFromDraft(target, activeTarget);
+
+    applyTarget(nextTarget);
+    setFieldMessage("Active target set.");
+  }
+
+  function findPoint() {
+    if (!gps) {
+      setFieldMessage("Start GPS first before Find Point.");
+      return;
+    }
+
+    if (!activeTarget) {
+      returnToTargetInput("Please enter target coordinate first.");
+      return;
+    }
+
+    setFindPointVisible(true);
+    setFieldMessage("");
+  }
+
+  async function startArStakeout() {
+    if (!activeTarget) {
+      returnToTargetInput("Please enter target coordinate first.");
       return;
     }
 
@@ -542,17 +831,142 @@ const videoRef = useRef<HTMLVideoElement | null>(null);
     stopCamera();
   }
 
+  function editTarget() {
+    stopCamera();
+    returnToTargetInput();
+  }
+
+  function saveTargetToLibrary(targetToSave: ActiveTarget) {
+    const now = new Date().toISOString();
+    const savedTarget: SavedStakeOutTarget = {
+      ...targetToSave,
+      updatedAt: now,
+    };
+    const duplicate = savedTargets.find((item) => isSameSavedTarget(item, savedTarget));
+
+    if (duplicate) {
+      setFieldMessage("Target already saved.");
+      return;
+    }
+
+    const sameNameIndex = savedTargets.findIndex(
+      (item) => item.name.trim().toLowerCase() === savedTarget.name.trim().toLowerCase()
+    );
+    const nextTargets =
+      sameNameIndex >= 0
+        ? savedTargets.map((item, index) =>
+            index === sameNameIndex
+              ? {
+                  ...savedTarget,
+                  id: item.id,
+                  createdAt: item.createdAt,
+                }
+              : item
+          )
+        : [savedTarget, ...savedTargets];
+    const resultMessage = sameNameIndex >= 0 ? "Saved target updated." : "Target saved.";
+
+    setSavedTargets(nextTargets);
+    persistSavedTargets(nextTargets);
+    setFieldMessage(resultMessage);
+  }
+
+  function saveActiveTarget() {
+    if (activeTarget) {
+      saveTargetToLibrary(activeTarget);
+      return;
+    }
+
+    if (!target) {
+      setFieldMessage(targetValidationMessage || "Please enter target coordinate first.");
+      return;
+    }
+
+    const nextTarget = targetFromDraft(target);
+
+    applyTarget(nextTarget);
+    saveTargetToLibrary(nextTarget);
+  }
+
+  function saveDraftTarget() {
+    if (!target) {
+      setFieldMessage(targetValidationMessage || "Please enter target coordinate first.");
+      return;
+    }
+
+    const nextTarget = targetFromDraft(target, activeTarget);
+
+    applyTarget(nextTarget);
+    saveTargetToLibrary(nextTarget);
+  }
+
+  function applySavedTarget(savedTarget: SavedStakeOutTarget) {
+    const now = new Date().toISOString();
+    const nextTarget: ActiveTarget = {
+      id: savedTarget.id,
+      name: savedTarget.name,
+      lat: savedTarget.lat,
+      lng: savedTarget.lng,
+      createdAt: savedTarget.createdAt,
+      updatedAt: now,
+    };
+    const nextSavedTargets = savedTargets.map((item) =>
+      item.id === savedTarget.id ? { ...item, lastUsedAt: now, updatedAt: now } : item
+    );
+
+    setSavedTargets(nextSavedTargets);
+    persistSavedTargets(nextSavedTargets);
+    applyTarget(nextTarget);
+    setFieldMessage("Saved target selected.");
+    returnToTargetInput();
+  }
+
+  function stakeOutSavedTarget(savedTarget: SavedStakeOutTarget) {
+    const now = new Date().toISOString();
+    const nextTarget: ActiveTarget = {
+      id: savedTarget.id,
+      name: savedTarget.name,
+      lat: savedTarget.lat,
+      lng: savedTarget.lng,
+      createdAt: savedTarget.createdAt,
+      updatedAt: now,
+    };
+    const nextSavedTargets = savedTargets.map((item) =>
+      item.id === savedTarget.id ? { ...item, lastUsedAt: now, updatedAt: now } : item
+    );
+
+    setSavedTargets(nextSavedTargets);
+    persistSavedTargets(nextSavedTargets);
+    applyTarget(nextTarget);
+
+    if (gps) {
+      setFindPointVisible(true);
+      setFieldMessage("Saved target ready for stake out.");
+      return;
+    }
+
+    setFieldMessage("Saved target selected. Start GPS before Find Point or AR Guide.");
+  }
+
+  function deleteSavedTarget(targetId: string) {
+    const nextTargets = savedTargets.filter((item) => item.id !== targetId);
+
+    setSavedTargets(nextTargets);
+    persistSavedTargets(nextTargets);
+    setFieldMessage("Saved target deleted.");
+  }
+
   function saveFoundPoint() {
-    if (!gps || !target || !metrics) {
+    if (!gps || !activeTarget || !metrics) {
       setFieldMessage("Start GPS and enter target coordinate first.");
       return;
     }
 
     const record: FoundPoint = {
       id: `${Date.now()}`,
-      targetName: target.name,
-      targetLat: target.latitude,
-      targetLng: target.longitude,
+      targetName: activeTarget.name,
+      targetLat: activeTarget.lat,
+      targetLng: activeTarget.lng,
       foundLat: gps.latitude,
       foundLng: gps.longitude,
       distance: metrics.distance,
@@ -578,8 +992,22 @@ const videoRef = useRef<HTMLVideoElement | null>(null);
     };
   }, []);
 
-  const canSave = Boolean(gps && target && metrics);
-  const arrowRotation = heading !== null && relativeAngle !== null ? relativeAngle : 0;
+  const canSave = Boolean(gps && activeTarget && metrics);
+  const markerOffsetPercent =
+    relativeBearing !== null
+      ? clamp(
+          (relativeBearing / (AR_FOV_DEG / 2)) * AR_MARKER_EDGE_OFFSET_PERCENT,
+          -AR_MARKER_EDGE_OFFSET_PERCENT,
+          AR_MARKER_EDGE_OFFSET_PERCENT
+        )
+      : 0;
+  const markerLeftPercent = 50 + markerOffsetPercent;
+  const markerStyle = { left: `${markerLeftPercent}%` };
+  const bubbleStyle = {
+    left: `clamp(72px, ${markerLeftPercent}%, calc(100% - 72px))`,
+  };
+  const targetOutsideFov = relativeBearing !== null && Math.abs(relativeBearing) > AR_FOV_DEG / 2;
+  const arrowRotation = heading !== null && relativeBearing !== null ? relativeBearing : 0;
   const targetDirection = metrics ? bearingToCardinal(metrics.bearing) : "-";
   const headingDirection = heading !== null ? bearingToCardinal(heading) : "-";
 
@@ -595,17 +1023,24 @@ const videoRef = useRef<HTMLVideoElement | null>(null);
           </p>
         </div>
         <Link className={styles.backLink} href="/">
-          ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Back to Map
+          Back to Map
         </Link>
       </section>
 
       <section className={styles.grid}>
-        <div className={styles.panel}>
+        <div ref={targetPanelRef} className={`${styles.panel} ${styles.targetPanel}`}>
           <h2>Target Coordinate</h2>
 
           <label>
             Point name
-            <input value={targetName} onChange={(event) => setTargetName(event.target.value)} />
+            <input
+              value={targetName}
+              onChange={(event) => {
+                const nextName = event.target.value;
+                setTargetName(nextName);
+                setFindPointVisible(false);
+              }}
+            />
           </label>
 
           <label>
@@ -614,7 +1049,11 @@ const videoRef = useRef<HTMLVideoElement | null>(null);
               inputMode="decimal"
               placeholder="contoh 5.980412"
               value={targetLatText}
-              onChange={(event) => setTargetLatText(event.target.value)}
+              onChange={(event) => {
+                const nextLatText = event.target.value;
+                setTargetLatText(nextLatText);
+                setFindPointVisible(false);
+              }}
             />
           </label>
 
@@ -624,33 +1063,54 @@ const videoRef = useRef<HTMLVideoElement | null>(null);
               inputMode="decimal"
               placeholder="contoh 116.073456"
               value={targetLngText}
-              onChange={(event) => setTargetLngText(event.target.value)}
+              onChange={(event) => {
+                const nextLngText = event.target.value;
+                setTargetLngText(nextLngText);
+                setFindPointVisible(false);
+              }}
             />
           </label>
 
-          {!target && (
-            <p className={styles.warning}>Masukkan koordinat WGS84 decimal degree yang sah.</p>
+          {targetValidationMessage && <p className={styles.warning}>{targetValidationMessage}</p>}
+          {sabahWarning && <p className={styles.warning}>{sabahWarning}</p>}
+
+          {activeTarget && (
+            <div className={styles.activeTargetSummary}>
+              <span>Active target</span>
+              <strong>Target: {activeTarget.name}</strong>
+              <span>Latitude: {activeTarget.lat.toFixed(7)}</span>
+              <span>Longitude: {activeTarget.lng.toFixed(7)}</span>
+            </div>
           )}
 
           <div className={styles.buttonRow}>
-            <button type="button" onClick={startGps}>
-              Start GPS
+            <button type="button" className={styles.primaryButton} onClick={setActiveTargetFromDraft}>
+              Set Active Target
             </button>
-            <button type="button" onClick={stopGps}>
-              Stop GPS
+            <button type="button" onClick={saveDraftTarget}>
+              Save Target
             </button>
           </div>
 
-          <button type="button" className={styles.secondaryButton} onClick={testCamera}>
-            Test Camera
-          </button>
+          {findPointVisible && activeTarget && metrics && (
+            <div className={styles.findPointResult}>
+              <span>Find Point result</span>
+              <strong>{formatMeters(metrics.distance)} to {activeTarget.name}</strong>
+              <span>Bearing: {formatDegrees(metrics.bearing)} {targetDirection}</span>
+              <span>N / E: {formatMeters(metrics.north)} / {formatMeters(metrics.east)}</span>
+              <span>GPS accuracy: {formatAccuracy(gps?.accuracy)}</span>
+              {gps?.accuracy && metrics.distance <= gps.accuracy && (
+                <em>Target is within GPS accuracy range. Use as direction guide only.</em>
+              )}
+            </div>
+          )}
 
           <div className={styles.buttonRow}>
-            <button type="button" className={styles.primaryButton} onClick={startArStakeout}>
-              Start AR Stake Out
+            <button type="button" onClick={findPoint}>
+              Find Point
             </button>
-            <button type="button" onClick={stopArStakeout}>
-              Stop AR
+            <button type="button" className={styles.primaryButton} onClick={startArStakeout}>
+              AR Guide
             </button>
           </div>
 
@@ -670,12 +1130,30 @@ const videoRef = useRef<HTMLVideoElement | null>(null);
           {fieldMessage && <p className={styles.fieldMessage}>{fieldMessage}</p>}
         </div>
 
-        <div className={styles.panel}>
-          <h2>Status & Diagnostic</h2>
+        <div className={`${styles.panel} ${styles.statusPanel}`}>
+          <h2>GPS Status / Track My Position</h2>
 
           <div className={`${styles.signalBadge} ${styles[signal.level] ?? ""}`}>
             <span>{signal.label}</span>
             <strong>{signal.detail}</strong>
+          </div>
+
+          <div className={styles.buttonRow}>
+            <button type="button" className={styles.primaryButton} onClick={startGps}>
+              Start GPS
+            </button>
+            <button type="button" onClick={startGps}>
+              Track My Position
+            </button>
+          </div>
+
+          <div className={styles.buttonRow}>
+            <button type="button" onClick={stopGps}>
+              Stop GPS
+            </button>
+            <button type="button" className={styles.secondaryButton} onClick={testCamera}>
+              Test Camera
+            </button>
           </div>
 
           <dl className={styles.statusList}>
@@ -693,15 +1171,15 @@ const videoRef = useRef<HTMLVideoElement | null>(null);
             </div>
             <div>
               <dt>Accuracy</dt>
-              <dd>{gps?.accuracy ? `ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡±${gps.accuracy.toFixed(1)} m` : "-"}</dd>
+              <dd>{formatAccuracy(gps?.accuracy)}</dd>
             </div>
             <div>
               <dt>Bearing</dt>
-              <dd>{metrics ? `${metrics.bearing.toFixed(1)}ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡° ${targetDirection}` : "-"}</dd>
+              <dd>{metrics ? `${formatDegrees(metrics.bearing)} ${targetDirection}` : "-"}</dd>
             </div>
             <div>
               <dt>Heading</dt>
-              <dd>{heading !== null ? `${heading.toFixed(1)}ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡° ${headingDirection}` : headingStatus}</dd>
+              <dd>{heading !== null ? `${formatDegrees(heading)} ${headingDirection}` : headingStatus}</dd>
             </div>
             <div>
               <dt>Direction</dt>
@@ -726,6 +1204,52 @@ const videoRef = useRef<HTMLVideoElement | null>(null);
         </div>
       </section>
 
+      <section className={`${styles.panel} ${styles.savedTargetLibrary}`}>
+        <div className={styles.libraryHeader}>
+          <div>
+            <p className={styles.kicker}>Stake Out Library</p>
+            <h2>Saved Stake Out Targets</h2>
+          </div>
+          <button type="button" disabled={!activeTarget} onClick={saveActiveTarget}>
+            Save Active Target
+          </button>
+        </div>
+
+        {savedTargets.length === 0 ? (
+          <p>Belum ada target disimpan.</p>
+        ) : (
+          <div className={styles.savedTargetList}>
+            {savedTargets.map((savedTarget) => (
+              <article key={savedTarget.id}>
+                <div>
+                  <strong>{savedTarget.name}</strong>
+                  <span>
+                    {savedTarget.lat.toFixed(7)}, {savedTarget.lng.toFixed(7)}
+                  </span>
+                  <span>Updated: {savedTarget.updatedAt}</span>
+                  {savedTarget.lastUsedAt && <span>Last used: {savedTarget.lastUsedAt}</span>}
+                </div>
+                <div className={styles.savedTargetActions}>
+                  <button type="button" onClick={() => applySavedTarget(savedTarget)}>
+                    Use
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.primaryButton}
+                    onClick={() => stakeOutSavedTarget(savedTarget)}
+                  >
+                    Stake Out
+                  </button>
+                  <button type="button" onClick={() => deleteSavedTarget(savedTarget.id)}>
+                    Delete
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
       <section className={`${styles.stage} ${arActive ? styles.stageFullscreen : ""}`}>
         <video ref={videoRef} className={styles.arVideo} autoPlay muted playsInline />
 
@@ -733,18 +1257,33 @@ const videoRef = useRef<HTMLVideoElement | null>(null);
           <div className={styles.arTop}>
             <div>
               <p className={styles.kicker}>AR Guide</p>
-              <h2>{target?.name || "Target Point"}</h2>
+              <h2>{activeTarget?.name || "Target Point"}</h2>
+              {activeTarget && (
+                <span className={styles.arTargetMeta}>
+                  {activeTarget.lat.toFixed(7)}, {activeTarget.lng.toFixed(7)}
+                </span>
+              )}
               <p>{directionText}</p>
             </div>
-            <button type="button" onClick={stopArStakeout}>
-              Stop AR
-            </button>
+            <div className={styles.arTopActions}>
+              <button type="button" onClick={editTarget}>
+                Edit Target
+              </button>
+              <button type="button" onClick={stopArStakeout}>
+                Stop AR
+              </button>
+            </div>
           </div>
 
-          <div className={styles.targetDot} />
-          <div className={styles.distanceBubble}>{metrics ? formatMeters(metrics.distance) : "-"}</div>
+          <div
+            className={`${styles.targetDot} ${targetOutsideFov ? styles.targetDotEdge : ""}`}
+            style={markerStyle}
+          />
+          <div className={styles.distanceBubble} style={bubbleStyle}>
+            {metrics ? formatMeters(metrics.distance) : "-"}
+          </div>
 
-          <div className={styles.guideLine}>
+          <div className={styles.guideLine} style={markerStyle}>
             <span />
             <span />
             <span />
@@ -764,19 +1303,18 @@ const videoRef = useRef<HTMLVideoElement | null>(null);
 
               <div
                 className={styles.arrow}
+                aria-label="Target direction"
                 style={{
                   transform: `rotate(${arrowRotation}deg)`,
                 }}
-              >
-                ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¹Ã…â€œ
-              </div>
+              />
             </div>
           </div>
 
           <div className={styles.bottomStrip}>
             <div>
               <span>Target</span>
-              <strong>{target?.name || "-"}</strong>
+              <strong>{activeTarget?.name || "-"}</strong>
             </div>
             <div>
               <span>Distance</span>
@@ -784,7 +1322,7 @@ const videoRef = useRef<HTMLVideoElement | null>(null);
             </div>
             <div>
               <span>Bearing</span>
-              <strong>{metrics ? `${metrics.bearing.toFixed(1)}ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡° ${targetDirection}` : "-"}</strong>
+              <strong>{metrics ? `${formatDegrees(metrics.bearing)} ${targetDirection}` : "-"}</strong>
             </div>
             <div>
               <span>N / E</span>
@@ -797,8 +1335,12 @@ const videoRef = useRef<HTMLVideoElement | null>(null);
           <div className={styles.arStatusRow}>
             <span className={`${styles.signalDot} ${styles[signal.level] ?? ""}`} />
             <span>{signal.label}</span>
+            <span>Accuracy: {formatAccuracy(gps?.accuracy)}</span>
             <span>Camera: {cameraStatus}</span>
-            <span>Heading: {heading !== null ? `${heading.toFixed(1)}ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡° ${headingDirection}` : headingStatus}</span>
+            <span>Heading: {heading !== null ? `${formatDegrees(heading)} ${headingDirection}` : headingStatus}</span>
+            <span>
+              Relative: {relativeBearing !== null ? `${formatDegrees(relativeBearing)} ${targetOutsideFov ? "edge" : "view"}` : "-"}
+            </span>
             <span>Video: {videoReady ? "ready" : "not ready"}</span>
           </div>
 
@@ -811,7 +1353,7 @@ const videoRef = useRef<HTMLVideoElement | null>(null);
 
           {!arActive && (
             <div className={styles.notActive}>
-              Tekan Test Camera untuk uji kamera atau Start AR Stake Out untuk mod penuh.
+              Tekan Test Camera untuk uji kamera atau AR Guide untuk mod penuh.
             </div>
           )}
         </div>
@@ -823,7 +1365,7 @@ const videoRef = useRef<HTMLVideoElement | null>(null);
         Navigasi awal sahaja. Bukan penentuan sempadan kadaster rasmi.
       </section>
 
-      <section className={styles.panel}>
+      <section className={`${styles.panel} ${styles.foundPointRecords}`}>
         <h2>Saved Found Points</h2>
         {savedPoints.length === 0 ? (
           <p>Belum ada rekod.</p>
@@ -836,10 +1378,24 @@ const videoRef = useRef<HTMLVideoElement | null>(null);
                   Found: {point.foundLat.toFixed(7)}, {point.foundLng.toFixed(7)}
                 </span>
                 <span>Distance: {formatMeters(point.distance)}</span>
-                <span>Bearing: {point.bearing.toFixed(1)}ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡°</span>
-                <span>Accuracy: {point.accuracy ? `ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡±${point.accuracy.toFixed(1)} m` : "-"}</span>
+                <span>Bearing: {formatDegrees(point.bearing)}</span>
+                <span>Accuracy: {formatAccuracy(point.accuracy)}</span>
                 <span>{point.timestamp}</span>
                 {point.note && <span>Note: {point.note}</span>}
+                <button
+                  type="button"
+                  onClick={() =>
+                    applyTarget(
+                      targetFromDraft({
+                        name: point.targetName,
+                        lat: point.targetLat,
+                        lng: point.targetLng,
+                      })
+                    )
+                  }
+                >
+                  Use Target
+                </button>
               </article>
             ))}
           </div>
