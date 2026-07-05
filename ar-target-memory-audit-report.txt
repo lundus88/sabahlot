@@ -1,0 +1,2479 @@
+
+============================================================
+1. BRANCH STATUS
+============================================================
+sprint-06b-ar-find-point-navigation
+## sprint-06b-ar-find-point-navigation...origin/sprint-06b-ar-find-point-navigation
+?? ar-target-memory-audit-report.txt
+?? make-ar-target-audit.cjs
+b43996a (HEAD -> sprint-06b-ar-find-point-navigation, tag: backup-sprint-06b-simplified-gps-usage-guide, origin/sprint-06b-ar-find-point-navigation) feat: add simplified gps usage guide
+
+============================================================
+2. FIELD GPS STATES AND AR GUIDE
+============================================================
+
+============================================================
+FILE: src/components/FieldGpsLite.tsx
+============================================================
+PATTERN: useState|openArStakeoutPage|AR Guide|ar-stakeout|Find Coordinate|Find Point|target|Target|latitude|longitude|Latitude|Longitude
+------------------------------------------------------------
+
+--- around line 10 ---
+   6:   useCallback,
+   7:   useEffect,
+   8:   useMemo,
+   9:   useRef,
+  10:   useState,
+  11: } from "react";
+  12: import {
+  13:   flushSync,
+  14: } from "react-dom";
+  15: 
+  16: import type {
+  17:   PolygonResult,
+  18: } from "@/app/components/Map";
+
+--- around line 55 ---
+  51: import FieldGpsAccuracyPanel from "./FieldGpsAccuracyPanel";
+  52: 
+  53: 
+  54: 
+  55: function openArStakeoutPage() {
+  56:   if (typeof window === "undefined") return;
+  57:   window.location.href = "/ar-stakeout";
+  58: }
+  59: 
+  60: interface FieldGpsLiteProps {
+  61:   enabled: boolean;
+  62:   recordName?: string;
+  63:   offlineMapNote?: string;
+
+--- around line 57 ---
+  64:   onPolygonGenerated?: (
+  65:     polygon: PolygonResult,
+
+--- around line 73 ---
+  69: type CaptureMode =
+  70:   | "best-fix"
+  71:   | "averaged";
+  72: 
+  73: type TargetSource =
+  74:   | "current-position"
+  75:   | "manual"
+  76:   | "saved-point";
+  77: 
+  78: type FoundPointMode =
+  79:   | "Phone GPS"
+  80:   | "AR Find Point Lite";
+  81: 
+
+--- around line 80 ---
+  82: type CameraStatus =
+  83:   | "Starting"
+  84:   | "Active"
+  85:   | "Permission denied"
+  86:   | "Not supported"
+  87:   | "Failed to start"
+  88:   | "Stopped";
+
+--- around line 112 ---
+ 108:   label: string;
+ 109:   className: string;
+ 110: }
+ 111: 
+ 112: interface FieldGpsTarget {
+ 113:   id: string;
+ 114:   label: string;
+ 115:   latitude: number;
+ 116:   longitude: number;
+ 117:   source: TargetSource;
+ 118:   description?: string;
+ 119: }
+ 120: 
+
+--- around line 115 ---
+ 121: interface FoundPointRecord {
+ 122:   id: string;
+ 123:   targetName: string;
+
+--- around line 116 ---
+ 124:   targetLatitude: number;
+
+--- around line 117 ---
+ 125:   targetLongitude: number;
+
+--- around line 123 ---
+ 126:   foundLatitude: number;
+ 127:   foundLongitude: number;
+ 128:   distanceDifferenceMeters: number;
+ 129:   bearingDegrees: number;
+ 130:   accuracyMeters?: number;
+ 131:   timestamp: string;
+
+--- around line 124 ---
+ 132:   note: string;
+
+--- around line 125 ---
+ 133:   mode: FoundPointMode;
+
+--- around line 126 ---
+ 134: }
+
+--- around line 127 ---
+ 135: 
+
+--- around line 315 ---
+ 311: 
+ 312:   return bearingDegrees;
+ 313: }
+ 314: 
+ 315: function getTargetZoneStatus(
+ 316:   distanceMeters: number,
+ 317: ): string {
+ 318:   if (distanceMeters < 2) {
+ 319:     return "At target zone";
+ 320:   }
+ 321: 
+ 322:   if (distanceMeters <= 5) {
+ 323:     return "Near target";
+
+--- around line 319 ---
+ 324:   }
+ 325: 
+ 326:   if (distanceMeters <= 20) {
+ 327:     return "Approaching target";
+
+--- around line 323 ---
+ 328:   }
+ 329: 
+ 330:   return "Far from target";
+ 331: }
+
+--- around line 327 ---
+ 332: 
+ 333: function getCameraErrorDetails(
+ 334:   error: unknown,
+ 335: ): CameraErrorDetails {
+
+--- around line 330 ---
+ 336:   if (error instanceof DOMException) {
+ 337:     return {
+ 338:       name:
+
+--- around line 409 ---
+ 405: }: FieldGpsLiteProps) {
+ 406:   const [
+ 407:     open,
+ 408:     setOpen,
+ 409:   ] = useState(false);
+ 410:   const [
+ 411:     status,
+ 412:     setStatus,
+ 413:   ] = useState(
+ 414:     "GPS not started",
+ 415:   );
+ 416:   const [
+ 417:     lastGpsError,
+
+--- around line 413 ---
+ 418:     setLastGpsError,
+ 419:   ] = useState("");
+ 420:   const [
+ 421:     gpsNowMs,
+
+--- around line 419 ---
+ 422:     setGpsNowMs,
+ 423:   ] = useState(() => Date.now());
+ 424:   const [
+ 425:     gpsActive,
+ 426:     setGpsActive,
+ 427:   ] = useState(false);
+
+--- around line 423 ---
+ 428:   const [
+ 429:     reading,
+ 430:     setReading,
+ 431:   ] = useState<FieldGpsReading | null>(
+
+--- around line 427 ---
+ 432:     null,
+ 433:   );
+ 434:   const [
+ 435:     points,
+
+--- around line 431 ---
+ 436:     setPoints,
+ 437:   ] = useState<FieldGpsPoint[]>([]);
+ 438:   const [
+ 439:     trackLog,
+
+--- around line 437 ---
+ 440:     setTrackLog,
+ 441:   ] = useState<FieldGpsTrackPoint[]>(
+ 442:     [],
+ 443:   );
+ 444:   const [
+ 445:     foundPoints,
+
+--- around line 441 ---
+ 446:     setFoundPoints,
+ 447:   ] = useState<FieldGpsPoint[]>([]);
+ 448:   const [
+ 449:     foundPointRecords,
+
+--- around line 447 ---
+ 450:     setFoundPointRecords,
+ 451:   ] = useState<FoundPointRecord[]>([]);
+ 452:   const [
+ 453:     targetPoint,
+ 454:     setTargetPoint,
+ 455:   ] = useState<FieldGpsTarget | null>(
+
+--- around line 451 ---
+ 456:     null,
+ 457:   );
+ 458:   const [
+ 459:     targetLabelInput,
+
+--- around line 453 ---
+ 460:     setTargetLabelInput,
+ 461:   ] = useState("Target Point");
+
+--- around line 454 ---
+ 462:   const [
+
+--- around line 455 ---
+ 463:     targetLatitudeInput,
+
+--- around line 459 ---
+ 464:     setTargetLatitudeInput,
+ 465:   ] = useState("");
+ 466:   const [
+ 467:     targetLongitudeInput,
+
+--- around line 460 ---
+ 468:     setTargetLongitudeInput,
+
+--- around line 461 ---
+ 469:   ] = useState("");
+
+--- around line 463 ---
+ 470:   const [
+ 471:     targetDescriptionInput,
+
+--- around line 464 ---
+ 472:     setTargetDescriptionInput,
+
+--- around line 465 ---
+ 473:   ] = useState("");
+
+--- around line 467 ---
+ 474:   const [
+ 475:     targetValidationError,
+
+--- around line 468 ---
+ 476:     setTargetValidationError,
+
+--- around line 469 ---
+ 477:   ] = useState("");
+
+--- around line 471 ---
+ 478:   const [
+ 479:     tracking,
+
+--- around line 472 ---
+ 480:     setTracking,
+
+--- around line 473 ---
+ 481:   ] = useState(false);
+
+--- around line 475 ---
+ 482:   const [
+ 483:     navigationActive,
+
+--- around line 476 ---
+ 484:     setNavigationActive,
+
+--- around line 477 ---
+ 485:   ] = useState(false);
+
+--- around line 481 ---
+ 486:   const [
+ 487:     arActive,
+ 488:     setArActive,
+ 489:   ] = useState(false);
+
+--- around line 485 ---
+ 490:   const [
+ 491:     arMessage,
+ 492:     setArMessage,
+ 493:   ] = useState("");
+
+--- around line 489 ---
+ 494:   const [
+ 495:     cameraStatus,
+ 496:     setCameraStatus,
+ 497:   ] = useState<CameraStatus>(
+
+--- around line 493 ---
+ 498:     "Stopped",
+ 499:   );
+ 500:   const [
+ 501:     cameraMode,
+
+--- around line 497 ---
+ 502:     setCameraMode,
+ 503:   ] = useState<CameraMode>(
+ 504:     "unknown",
+ 505:   );
+
+--- around line 503 ---
+ 506:   const [
+ 507:     cameraSecureContext,
+ 508:     setCameraSecureContext,
+ 509:   ] = useState(false);
+ 510:   const [
+ 511:     mediaDevicesSupported,
+
+--- around line 509 ---
+ 512:     setMediaDevicesSupported,
+ 513:   ] = useState(false);
+ 514:   const [
+ 515:     getUserMediaSupported,
+ 516:     setGetUserMediaSupported,
+ 517:   ] = useState(false);
+
+--- around line 513 ---
+ 518:   const [
+ 519:     cameraErrorName,
+ 520:     setCameraErrorName,
+ 521:   ] = useState("");
+
+--- around line 517 ---
+ 522:   const [
+ 523:     cameraErrorMessage,
+ 524:     setCameraErrorMessage,
+ 525:   ] = useState("");
+
+--- around line 521 ---
+ 526:   const [
+ 527:     cameraTestActive,
+ 528:     setCameraTestActive,
+ 529:   ] = useState(false);
+
+--- around line 525 ---
+ 530:   const [
+ 531:     foundPointNoteInput,
+ 532:     setFoundPointNoteInput,
+ 533:   ] = useState("");
+
+--- around line 529 ---
+ 534:   const [
+ 535:     gateMeters,
+ 536:     setGateMeters,
+ 537:   ] = useState<number | null>(10);
+
+--- around line 533 ---
+ 538:   const [
+ 539:     allowApproximate,
+ 540:     setAllowApproximate,
+ 541:   ] = useState(false);
+
+--- around line 537 ---
+ 542:   const [
+ 543:     occupationSeconds,
+ 544:     setOccupationSeconds,
+ 545:   ] = useState(10);
+
+--- around line 541 ---
+ 546:   const [
+ 547:     captureMessage,
+ 548:     setCaptureMessage,
+ 549:   ] = useState("");
+
+--- around line 545 ---
+ 550:   const [
+ 551:     captureBusy,
+ 552:     setCaptureBusy,
+ 553:   ] = useState<CaptureMode | null>(null);
+
+--- around line 549 ---
+ 554:   const [
+ 555:     generatedPolygon,
+ 556:     setGeneratedPolygon,
+ 557:   ] = useState<PolygonResult | null>(
+
+--- around line 553 ---
+ 558:     null,
+ 559:   );
+ 560: 
+ 561:   const watchRef =
+
+--- around line 557 ---
+ 562:     useRef<number | null>(null);
+ 563:   const trackRef =
+ 564:     useRef(false);
+ 565:   const readingRef =
+
+--- around line 757 ---
+ 753:         foundPoints,
+ 754:       ],
+ 755:     );
+ 756: 
+ 757:   const targetNavigation =
+ 758:     useMemo(() => {
+ 759:       if (
+ 760:         !reading ||
+ 761:         !targetPoint
+ 762:       ) {
+ 763:         return null;
+ 764:       }
+ 765: 
+
+--- around line 761 ---
+ 766:       const start: [number, number] =
+ 767:         [
+ 768:           reading.latitude,
+ 769:           reading.longitude,
+
+--- around line 768 ---
+ 770:         ];
+ 771:       const end: [number, number] =
+ 772:         [
+ 773:           targetPoint.latitude,
+ 774:           targetPoint.longitude,
+ 775:         ];
+ 776:       const bearingDegrees =
+
+--- around line 769 ---
+ 777:         calculateFieldGpsBearingDegrees(
+
+--- around line 773 ---
+ 778:           start,
+ 779:           end,
+ 780:         );
+ 781: 
+
+--- around line 774 ---
+ 782:       return {
+
+--- around line 796 ---
+ 792:           ),
+ 793:       };
+ 794:     }, [
+ 795:       reading,
+ 796:       targetPoint,
+ 797:     ]);
+ 798: 
+ 799:   const directionArrowDegrees =
+ 800:     getArrowRotationDegrees(
+ 801:       targetNavigation?.bearingDegrees,
+ 802:       reading?.heading,
+ 803:     );
+ 804: 
+
+--- around line 801 ---
+ 805:   useEffect(() => {
+ 806:     if (!enabled) {
+ 807:       return;
+ 808:     }
+ 809: 
+
+--- around line 887 ---
+ 883:         setCameraStatus(
+ 884:           "Failed to start",
+ 885:         );
+ 886:         setArMessage(
+ 887:           "Camera stream started but video playback was blocked. Tap Test Camera or Start AR Guide again.",
+ 888:         );
+ 889:       },
+ 890:     );
+ 891: 
+ 892:     return () => {
+ 893:       cancelled = true;
+ 894:     };
+ 895:   }, [
+
+--- around line 919 ---
+ 915:           setCameraStatus(
+ 916:             "Failed to start",
+ 917:           );
+ 918:           setArMessage(
+ 919:             "Camera stream started but video playback was blocked. Tap Test Camera or Start AR Guide again.",
+ 920:           );
+ 921:         }
+ 922:       });
+ 923:     }, [
+ 924:       arActive,
+ 925:       playCameraStream,
+ 926:     ]);
+ 927: 
+
+--- around line 1110 ---
+1106:       startGps();
+1107:     }
+1108:   };
+1109: 
+1110:   const setTarget = (
+1111:     target: FieldGpsTarget,
+1112:   ) => {
+1113:     setTargetPoint(target);
+1114:     setTargetLabelInput(target.label);
+1115:     setTargetLatitudeInput(
+1116:       formatCoordinate(
+1117:         target.latitude,
+1118:       ),
+
+--- around line 1111 ---
+1119:     );
+
+--- around line 1113 ---
+1120:     setTargetLongitudeInput(
+1121:       formatCoordinate(
+
+--- around line 1114 ---
+1122:         target.longitude,
+
+--- around line 1115 ---
+1123:       ),
+
+--- around line 1117 ---
+1124:     );
+1125:     setTargetDescriptionInput(
+
+--- around line 1120 ---
+1126:       target.description ?? "",
+1127:     );
+1128:     setTargetValidationError("");
+
+--- around line 1122 ---
+1129:     window.dispatchEvent(
+1130:       new CustomEvent(
+
+--- around line 1125 ---
+1131:         "sabahlot:find-coordinate",
+1132:         {
+1133:           detail: {
+
+--- around line 1126 ---
+1134:             latitude:
+
+--- around line 1128 ---
+1135:               target.latitude,
+1136:             longitude:
+
+--- around line 1134 ---
+1137:               target.longitude,
+1138:             label:
+1139:               target.label,
+1140:             note:
+1141:               target.description,
+1142:             currentLatitude:
+
+--- around line 1135 ---
+1143:               readingRef.current?.latitude,
+
+--- around line 1136 ---
+1144:             currentLongitude:
+
+--- around line 1137 ---
+1145:               readingRef.current?.longitude,
+
+--- around line 1139 ---
+1146:             currentAccuracy:
+1147:               readingRef.current?.accuracyMeters,
+
+--- around line 1141 ---
+1148:           },
+1149:         },
+
+--- around line 1142 ---
+1150:       ),
+
+--- around line 1143 ---
+1151:     );
+
+--- around line 1144 ---
+1152:     setCaptureMessage(
+
+--- around line 1145 ---
+1153:       `${target.label} target point placed on the map.`,
+
+--- around line 1153 ---
+1154:     );
+1155:   };
+1156: 
+1157:   const setTargetFromReading = () => {
+1158:     if (!reading) {
+1159:       setCaptureMessage(
+1160:         "Waiting for location before setting target.",
+1161:       );
+
+--- around line 1157 ---
+1162:       return;
+1163:     }
+1164: 
+1165:     setTarget({
+
+--- around line 1160 ---
+1166:       id:
+1167:         createFieldGpsId(),
+1168:       label:
+
+--- around line 1165 ---
+1169:         targetLabelInput.trim() ||
+1170:         "Target Point",
+1171:       latitude:
+1172:         reading.latitude,
+1173:       longitude:
+
+--- around line 1169 ---
+1174:         reading.longitude,
+1175:       source:
+1176:         "current-position",
+1177:       description:
+
+--- around line 1170 ---
+1178:         targetDescriptionInput.trim(),
+
+--- around line 1171 ---
+1179:     });
+
+--- around line 1172 ---
+1180:   };
+
+--- around line 1173 ---
+1181: 
+
+--- around line 1174 ---
+1182:   const findPointFromKeyedCoordinate = () => {
+
+--- around line 1178 ---
+1183:     const label =
+1184:       targetLabelInput.trim() ||
+1185:       "Target Point";
+1186:     const trimmedLatitude =
+
+--- around line 1184 ---
+1187:       targetLatitudeInput.trim();
+1188:     const trimmedLongitude =
+1189:       targetLongitudeInput.trim();
+1190: 
+1191:     if (
+1192:       !trimmedLatitude ||
+
+--- around line 1185 ---
+1193:       !trimmedLongitude
+
+--- around line 1186 ---
+1194:     ) {
+
+--- around line 1187 ---
+1195:       setTargetValidationError(
+
+--- around line 1188 ---
+1196:         "Enter latitude and longitude in WGS84 decimal degrees.",
+
+--- around line 1189 ---
+1197:       );
+
+--- around line 1192 ---
+1198:       setCaptureMessage(
+1199:         "Enter latitude and longitude before finding the point.",
+1200:       );
+
+--- around line 1193 ---
+1201:       return;
+
+--- around line 1195 ---
+1202:     }
+1203: 
+
+--- around line 1196 ---
+1204:     const latitude =
+
+--- around line 1199 ---
+1205:       parseCoordinateInput(
+1206:         trimmedLatitude,
+1207:         -90,
+
+--- around line 1204 ---
+1208:         90,
+1209:       );
+1210:     const longitude =
+1211:       parseCoordinateInput(
+1212:         trimmedLongitude,
+
+--- around line 1206 ---
+1213:         -180,
+1214:         180,
+
+--- around line 1210 ---
+1215:       );
+1216: 
+1217:     if (latitude === null) {
+1218:       setTargetValidationError(
+
+--- around line 1212 ---
+1219:         "Latitude must be a decimal number between -90 and 90.",
+1220:       );
+
+--- around line 1217 ---
+1221:       setCaptureMessage(
+1222:         "Latitude is outside the valid WGS84 range.",
+1223:       );
+1224:       return;
+1225:     }
+
+--- around line 1218 ---
+1226: 
+
+--- around line 1219 ---
+1227:     if (longitude === null) {
+
+--- around line 1222 ---
+1228:       setTargetValidationError(
+1229:         "Longitude must be a decimal number between -180 and 180.",
+1230:       );
+
+--- around line 1227 ---
+1231:       setCaptureMessage(
+1232:         "Longitude is outside the valid WGS84 range.",
+1233:       );
+1234:       return;
+1235:     }
+
+--- around line 1228 ---
+1236: 
+
+--- around line 1229 ---
+1237:     setTarget({
+
+--- around line 1232 ---
+1238:       id:
+1239:         createFieldGpsId(),
+1240:       label:
+
+--- around line 1237 ---
+1241:         label,
+1242:       latitude,
+1243:       longitude,
+1244:       source:
+1245:         "manual",
+
+--- around line 1242 ---
+1246:       description:
+1247:         targetDescriptionInput.trim(),
+1248:     });
+1249:   };
+1250: 
+
+--- around line 1243 ---
+1251:   const setTargetFromPoint = (
+
+--- around line 1247 ---
+1252:     point: FieldGpsPoint,
+1253:   ) => {
+1254:     setTarget({
+1255:       id:
+
+--- around line 1251 ---
+1256:         point.id,
+1257:       label:
+1258:         point.label,
+1259:       latitude:
+
+--- around line 1254 ---
+1260:         point.latitude,
+1261:       longitude:
+1262:         point.longitude,
+
+--- around line 1259 ---
+1263:       source:
+1264:         "saved-point",
+1265:       description:
+1266:         point.note,
+1267:     });
+
+--- around line 1260 ---
+1268:   };
+
+--- around line 1261 ---
+1269: 
+
+--- around line 1262 ---
+1270:   const startNavigation = () => {
+
+--- around line 1271 ---
+1271:     if (!targetPoint) {
+1272:       setCaptureMessage(
+1273:         "Set a Target Point before starting navigation.",
+1274:       );
+1275:       return;
+1276:     }
+1277: 
+1278:     if (!gpsActive) {
+1279:       startGps();
+
+--- around line 1273 ---
+1280:     }
+1281: 
+
+--- around line 1303 ---
+1299:       new CustomEvent(
+1300:         "sabahlot:track-my-position",
+1301:         {
+1302:           detail: {
+1303:             latitude:
+1304:               gpsReading.latitude,
+1305:             longitude:
+1306:               gpsReading.longitude,
+1307:             accuracy:
+1308:               gpsReading.accuracyMeters,
+1309:             label:
+1310:               "Current GPS",
+1311:           },
+
+--- around line 1304 ---
+1312:         },
+
+--- around line 1305 ---
+1313:       ),
+
+--- around line 1306 ---
+1314:     );
+
+--- around line 1446 ---
+1442: 
+1443:   const startCameraSession =
+1444:     async ({
+1445:       activateNavigation,
+1446:       requireTarget,
+1447:       testOnly,
+1448:     }: {
+1449:       activateNavigation: boolean;
+1450:       requireTarget: boolean;
+1451:       testOnly: boolean;
+1452:     }) => {
+1453:         if (
+1454:           requireTarget &&
+
+--- around line 1450 ---
+1455:           !targetPoint
+1456:         ) {
+1457:           setArMessage(
+1458:             "Set a Target Point before starting AR Guide.",
+
+--- around line 1454 ---
+1459:           );
+1460:           return;
+1461:         }
+1462: 
+
+--- around line 1455 ---
+1463:         flushSync(() => {
+
+--- around line 1458 ---
+1464:           setArActive(true);
+1465:           setCameraTestActive(testOnly);
+1466:         });
+
+--- around line 1526 ---
+1522:             setCameraStatus(
+1523:               "Failed to start",
+1524:             );
+1525:             setArMessage(
+1526:               "Camera stream started but video playback was blocked. Tap Test Camera or Start AR Guide again.",
+1527:             );
+1528:             return;
+1529:           }
+1530: 
+1531:           setCameraStatus("Active");
+1532:           setArMessage(
+1533:             testOnly
+1534:               ? "Camera test active."
+
+--- around line 1535 ---
+1535:               : "AR Guide active.",
+1536:           );
+1537:         } catch (error) {
+1538:           stopCameraStream();
+1539:           const details =
+1540:             setCameraErrorDetails(error);
+1541: 
+1542:           if (
+1543:             error instanceof DOMException &&
+
+--- around line 1555 ---
+1551:             setCameraStatus(
+1552:               "Permission denied",
+1553:             );
+1554:             setArMessage(
+1555:               "Camera permission denied. Please allow camera access to use AR Guide.",
+1556:             );
+1557:             return;
+1558:           }
+1559: 
+1560:           setCameraStatus(
+1561:             "Failed to start",
+1562:           );
+1563:           setArMessage(
+
+--- around line 1573 ---
+1569:   const stopArGuide = () => {
+1570:     stopCameraStream();
+1571:     setArActive(false);
+1572:     setCameraTestActive(false);
+1573:     setArMessage("AR Guide stopped.");
+1574:   };
+1575: 
+1576:   const startArGuide = async () => {
+1577:     await startCameraSession({
+1578:       activateNavigation: true,
+1579:       requireTarget: true,
+1580:       testOnly: false,
+1581:     });
+
+--- around line 1579 ---
+1582:   };
+1583: 
+1584:   const testCamera = async () => {
+1585:     await startCameraSession({
+1586:       activateNavigation: false,
+1587:       requireTarget: false,
+
+--- around line 1587 ---
+1588:       testOnly: true,
+1589:     });
+1590:   };
+1591: 
+1592:   const saveFoundPointRecord = (
+1593:     mode: FoundPointMode,
+1594:   ) => {
+1595:     if (!reading) {
+
+--- around line 1602 ---
+1598:       );
+1599:       return;
+1600:     }
+1601: 
+1602:     if (!targetPoint) {
+1603:       setCaptureMessage(
+1604:         "Set a Target Point before saving a found point.",
+1605:       );
+1606:       return;
+1607:     }
+1608: 
+1609:     if (accuracyBlocked) {
+1610:       setCaptureMessage(
+
+--- around line 1604 ---
+1611:         "GPS accuracy is weak. Move to an open area and wait for better accuracy. You may still save this point as approximate.",
+1612:       );
+
+--- around line 1618 ---
+1614:     }
+1615: 
+1616:     const start: [number, number] =
+1617:       [
+1618:         reading.latitude,
+1619:         reading.longitude,
+1620:       ];
+1621:     const end: [number, number] =
+1622:       [
+1623:         targetPoint.latitude,
+1624:         targetPoint.longitude,
+1625:       ];
+1626:     const distanceDifferenceMeters =
+
+--- around line 1619 ---
+1627:       calculateFieldGpsDistanceMeters(
+
+--- around line 1623 ---
+1628:         start,
+1629:         end,
+1630:       );
+1631:     const bearingDegrees =
+
+--- around line 1624 ---
+1632:       calculateFieldGpsBearingDegrees(
+
+--- around line 1638 ---
+1634:         end,
+1635:       );
+1636:     const note =
+1637:       foundPointNoteInput.trim() ||
+1638:       targetPoint.description ||
+1639:       "Saved from Handheld GPS.";
+1640:     const foundPoint =
+1641:       createFieldGpsPoint(
+1642:         reading,
+1643:         nextFoundLabel(
+1644:           foundPoints,
+1645:         ),
+1646:         "single",
+
+--- around line 1649 ---
+1647:         1,
+1648:         0,
+1649:         `${mode}; target ${targetPoint.label}; offset ${formatDistance(
+1650:           distanceDifferenceMeters,
+1651:         )} at ${bearingDegrees.toFixed(
+1652:           1,
+1653:         )} deg. ${note}`,
+1654:       );
+1655: 
+1656:     const record:
+1657:       FoundPointRecord = {
+
+--- around line 1660 ---
+1658:         id:
+1659:           foundPoint.id,
+1660:         targetName:
+1661:           targetPoint.label,
+1662:         targetLatitude:
+1663:           targetPoint.latitude,
+1664:         targetLongitude:
+1665:           targetPoint.longitude,
+1666:         foundLatitude:
+1667:           reading.latitude,
+1668:         foundLongitude:
+
+--- around line 1661 ---
+1669:           reading.longitude,
+
+--- around line 1662 ---
+1670:         distanceDifferenceMeters,
+
+--- around line 1663 ---
+1671:         bearingDegrees,
+
+--- around line 1664 ---
+1672:         accuracyMeters:
+
+--- around line 1665 ---
+1673:           reading.accuracyMeters,
+
+--- around line 1666 ---
+1674:         timestamp:
+
+--- around line 1667 ---
+1675:           foundPoint.timestamp,
+
+--- around line 1668 ---
+1676:         note,
+
+--- around line 1669 ---
+1677:         mode,
+
+--- around line 1976 ---
+1972:           <div className="sl-gps-quick-guide">
+1973:             <strong>Panduan Ringkas GPS</strong>
+1974:             <ol>
+1975:               <li><b>Saya di mana?</b> Start GPS - Track My Position</li>
+1976:               <li><b>Titik di mana?</b> Find Coordinate / Find Point</li>
+1977:               <li><b>Arah ke titik?</b> AR Guide - Start AR Stake Out</li>
+1978:             </ol>
+1979:             <p>
+1980:               Satelit: tidak tersedia dalam browser GPS. Gunakan accuracy (+/- meter)
+1981:               sebagai rujukan kualiti signal.
+1982:             </p>
+1983:           </div>
+1984: 
+
+--- around line 1977 ---
+1985:           <div className="sl-field-gps-actions">
+
+--- around line 1988 ---
+1986:             <button
+1987:               type="button"
+1988:               onClick={openArStakeoutPage}
+1989:               className="sl-field-gps-action-primary"
+1990:             >
+1991:               AR Guide
+1992:             </button>
+1993:               <button
+1994:                 type="button"
+1995:                 onClick={toggleGps}
+1996:                 className={
+
+--- around line 1991 ---
+1997:                   gpsActive
+1998:                     ? "is-active"
+1999:                     : ""
+
+--- around line 2024 ---
+2020:                 type="button"
+2021:                 onClick={recordFoundPoint}
+2022:                 disabled={
+2023:                   !reading ||
+2024:                   !targetPoint
+2025:                 }
+2026:               >
+2027:                 Save Found Point
+2028:               </button>
+2029:             </div>
+2030: 
+2031:             <div className="sl-field-gps-grid">
+2032:               <span>GPS signal</span>
+
+--- around line 2075 ---
+2071:           <section className="sl-field-gps-section">
+2072:             <div className="sl-field-gps-heading">
+2073:               <span>Key-in Coordinate</span>
+2074:               <strong>
+2075:                 {targetPoint
+2076:                   ? targetPoint.label
+2077:                   : "Not set"}
+2078:               </strong>
+2079:             </div>
+2080: 
+2081:             <label className="sl-field-gps-label">
+2082:               <span>Point Name</span>
+2083:               <input
+
+--- around line 2076 ---
+2084:                 type="text"
+
+--- around line 2085 ---
+2085:                 value={targetLabelInput}
+2086:                 onChange={(event) =>
+2087:                   setTargetLabelInput(
+2088:                     event.target.value,
+2089:                   )
+2090:                 }
+2091:                 placeholder="Target Point"
+2092:               />
+2093:             </label>
+
+--- around line 2087 ---
+2094: 
+2095:             <div className="sl-field-gps-target-grid">
+
+--- around line 2088 ---
+2096:               <label className="sl-field-gps-label">
+
+--- around line 2091 ---
+2097:                 <span>Latitude</span>
+2098:                 <input
+2099:                   type="number"
+
+--- around line 2095 ---
+2100:                   inputMode="decimal"
+2101:                   step="0.0000001"
+2102:                   value={targetLatitudeInput}
+2103:                   onChange={(event) =>
+
+--- around line 2097 ---
+2104:                     setTargetLatitudeInput(
+2105:                       event.target.value,
+
+--- around line 2102 ---
+2106:                     )
+2107:                   }
+2108:                   placeholder="5.980412"
+2109:                 />
+2110:               </label>
+
+--- around line 2104 ---
+2111: 
+2112:               <label className="sl-field-gps-label">
+
+--- around line 2105 ---
+2113:                 <span>Longitude</span>
+
+--- around line 2113 ---
+2114:                 <input
+2115:                   type="number"
+2116:                   inputMode="decimal"
+2117:                   step="0.0000001"
+2118:                   value={targetLongitudeInput}
+2119:                   onChange={(event) =>
+2120:                     setTargetLongitudeInput(
+2121:                       event.target.value,
+
+--- around line 2118 ---
+2122:                     )
+2123:                   }
+2124:                   placeholder="116.073456"
+2125:                 />
+2126:               </label>
+
+--- around line 2120 ---
+2127:             </div>
+2128: 
+
+--- around line 2121 ---
+2129:             <label className="sl-field-gps-label">
+
+--- around line 2132 ---
+2130:               <span>Description optional</span>
+2131:               <textarea
+2132:                 value={targetDescriptionInput}
+2133:                 onChange={(event) =>
+2134:                   setTargetDescriptionInput(
+2135:                     event.target.value,
+2136:                   )
+2137:                 }
+2138:                 rows={3}
+2139:                 placeholder="Optional field note"
+2140:               />
+
+--- around line 2134 ---
+2141:             </label>
+2142: 
+
+--- around line 2135 ---
+2143:             {targetValidationError && (
+
+--- around line 2143 ---
+2144:               <p className="sl-field-gps-warning">
+2145:                 {targetValidationError}
+2146:               </p>
+2147:             )}
+2148: 
+2149:             <label className="sl-field-gps-label">
+2150:               <span>Select saved point as target</span>
+2151:               <select
+
+--- around line 2145 ---
+2152:                 value={
+2153:                   targetPoint?.source ===
+
+--- around line 2150 ---
+2154:                   "saved-point"
+2155:                     ? targetPoint.id
+2156:                     : ""
+2157:                 }
+2158:                 onChange={(event) => {
+
+--- around line 2153 ---
+2159:                   const selectedPoint =
+2160:                     allRecordedPoints.find(
+2161:                       (point) =>
+
+--- around line 2155 ---
+2162:                         point.id ===
+2163:                         event.target.value,
+
+--- around line 2163 ---
+2164:                     );
+2165: 
+2166:                   if (selectedPoint) {
+2167:                     setTargetFromPoint(
+2168:                       selectedPoint,
+2169:                     );
+2170:                   }
+2171:                 }}
+
+--- around line 2167 ---
+2172:                 disabled={
+2173:                   allRecordedPoints.length ===
+2174:                   0
+2175:                 }
+
+--- around line 2198 ---
+2194:               <button
+2195:                 type="button"
+2196:                 onClick={findPointFromKeyedCoordinate}
+2197:               >
+2198:                 Find Point
+2199:               </button>
+2200:               <button
+2201:                 type="button"
+2202:                 onClick={setTargetFromReading}
+2203:                 disabled={!reading}
+2204:               >
+2205:                 Use Current
+2206:               </button>
+
+--- around line 2202 ---
+2207:               <button
+2208:                 type="button"
+2209:                 onClick={() => {
+2210:                   setTargetPoint(null);
+
+--- around line 2210 ---
+2211:                   setTargetValidationError("");
+2212:                   window.dispatchEvent(
+2213:                     new CustomEvent(
+2214:                       "sabahlot:clear-coordinate-marker",
+2215:                     ),
+2216:                   );
+2217:                   setCaptureMessage(
+2218:                     "Target Point cleared.",
+
+--- around line 2211 ---
+2219:                   );
+
+--- around line 2218 ---
+2220:                 }}
+2221:                 disabled={!targetPoint}
+2222:               >
+2223:                 Clear Target
+2224:               </button>
+2225:             </div>
+2226: 
+
+--- around line 2221 ---
+2227:             <div className="sl-field-gps-grid">
+2228:               <span>Target point name</span>
+2229:               <strong>
+
+--- around line 2223 ---
+2230:                 {targetPoint
+2231:                   ? targetPoint.label
+
+--- around line 2228 ---
+2232:                   : "-"}
+2233:               </strong>
+2234:               <span>Target coordinate</span>
+2235:               <strong>
+2236:                 {targetPoint
+
+--- around line 2230 ---
+2237:                   ? `${formatCoordinate(
+2238:                       targetPoint.latitude,
+
+--- around line 2231 ---
+2239:                     )}, ${formatCoordinate(
+
+--- around line 2234 ---
+2240:                       targetPoint.longitude,
+2241:                     )}`
+2242:                   : "-"}
+
+--- around line 2236 ---
+2243:               </strong>
+2244:               <span>Current GPS accuracy</span>
+
+--- around line 2238 ---
+2245:               <strong>
+2246:                 {reading?.accuracyMeters !==
+
+--- around line 2240 ---
+2247:                 undefined
+2248:                   ? formatAccuracy(
+
+--- around line 2253 ---
+2249:                       reading.accuracyMeters,
+2250:                     )
+2251:                   : "-"}
+2252:               </strong>
+2253:               <span>Distance to target</span>
+2254:               <strong>
+2255:                 {targetNavigation
+2256:                   ? formatDistance(
+2257:                       targetNavigation.distanceMeters,
+2258:                     )
+2259:                   : "-"}
+2260:               </strong>
+2261:               <span>Bearing to target</span>
+
+--- around line 2255 ---
+2262:               <strong>
+2263:                 {targetNavigation
+
+--- around line 2257 ---
+2264:                   ? `${targetNavigation.bearingDegrees.toFixed(
+2265:                       1,
+
+--- around line 2261 ---
+2266:                     )} deg`
+2267:                   : "-"}
+2268:               </strong>
+2269:               <span>Bearing DMS</span>
+
+--- around line 2263 ---
+2270:               <strong>
+2271:                 {targetNavigation
+
+--- around line 2264 ---
+2272:                   ? targetNavigation.bearingDms
+
+--- around line 2271 ---
+2273:                   : "-"}
+2274:               </strong>
+2275:               <span>Target status</span>
+2276:               <strong>
+2277:                 {targetNavigation
+2278:                   ? getTargetZoneStatus(
+2279:                       targetNavigation.distanceMeters,
+
+--- around line 2272 ---
+2280:                     )
+
+--- around line 2275 ---
+2281:                   : "-"}
+2282:               </strong>
+2283:               <span>Device heading</span>
+
+--- around line 2277 ---
+2284:               <strong>
+2285:                 {reading?.heading !== null &&
+
+--- around line 2278 ---
+2286:                 reading?.heading !== undefined
+
+--- around line 2279 ---
+2287:                   ? `${reading.heading.toFixed(
+
+--- around line 2318 ---
+2314:                 >
+2315:                   {gpsSignalStatus.label}
+2316:                 </span>
+2317:                 <span>
+2318:                   {targetNavigation
+2319:                     ? `Arrow uses ${
+2320:                         reading?.heading !==
+2321:                           null &&
+2322:                         reading?.heading !==
+2323:                           undefined
+2324:                           ? "device heading"
+2325:                           : "map north"
+2326:                       }; bearing ${targetNavigation.bearingDegrees.toFixed(
+
+--- around line 2326 ---
+2327:                         1,
+2328:                       )} deg.`
+2329:                     : "Set a Target Point and start GPS."}
+2330:                 </span>
+2331:               </div>
+2332:             </div>
+2333: 
+2334:             <label className="sl-field-gps-label">
+
+--- around line 2329 ---
+2335:               <span>Found point note</span>
+2336:               <textarea
+2337:                 value={foundPointNoteInput}
+
+--- around line 2340 ---
+2338:                 onChange={(event) =>
+2339:                   setFoundPointNoteInput(
+2340:                     event.target.value,
+2341:                   )
+2342:                 }
+2343:                 rows={2}
+2344:                 placeholder="Optional note for Save Found Point"
+2345:               />
+2346:             </label>
+2347: 
+2348:             <div className="sl-field-gps-actions">
+
+--- around line 2356 ---
+2352:                   navigationActive
+2353:                     ? stopNavigation
+2354:                     : startNavigation
+2355:                 }
+2356:                 disabled={!targetPoint}
+2357:                 className={
+2358:                   navigationActive
+2359:                     ? "is-active"
+2360:                     : ""
+2361:                 }
+2362:               >
+2363:                 {navigationActive
+2364:                   ? "Stop Navigation"
+
+--- around line 2375 ---
+2371:                     ? stopArGuide
+2372:                     : () =>
+2373:                         void startArGuide()
+2374:                 }
+2375:                 disabled={!targetPoint}
+2376:                 className={
+2377:                   arActive
+2378:                     ? "is-active"
+2379:                     : ""
+2380:                 }
+2381:               >
+2382:                 {arActive
+2383:                   ? "Stop AR Guide"
+
+--- around line 2383 ---
+2384:                   : "Start AR Guide"}
+2385:               </button>
+2386:               <button
+2387:                 type="button"
+2388:                 onClick={() =>
+2389:                   void testCamera()
+2390:                 }
+2391:               >
+
+--- around line 2384 ---
+2392:                 Test Camera
+
+--- around line 2399 ---
+2395:                 type="button"
+2396:                 onClick={() =>
+2397:                   saveFoundPointRecord(
+2398:                     arActive
+2399:                       ? "AR Find Point Lite"
+2400:                       : "Phone GPS",
+2401:                   )
+2402:                 }
+2403:                 disabled={
+2404:                   !reading ||
+2405:                   !targetPoint
+2406:                 }
+2407:               >
+
+--- around line 2405 ---
+2408:                 Save Found Point
+2409:               </button>
+2410:             </div>
+2411: 
+2412:             {arMessage && (
+2413:               <p className="sl-field-gps-note">
+
+--- around line 2418 ---
+2414:                 {arMessage}
+2415:               </p>
+2416:             )}
+2417: 
+2418:             {targetNavigation &&
+2419:               reading?.accuracyMeters !==
+2420:                 undefined &&
+2421:               reading.accuracyMeters >
+2422:                 targetNavigation.distanceMeters && (
+2423:                 <p className="sl-field-gps-warning">
+2424:                   Accuracy warning: current GPS accuracy is greater than the distance to target.
+2425:                 </p>
+2426:               )}
+
+--- around line 2422 ---
+2427: 
+2428:             <p className="sl-field-gps-disclaimer">
+2429:               {FIELD_NAVIGATION_SAFETY_LABEL}
+2430:               <br />
+
+--- around line 2424 ---
+2431:               {FIELD_NAVIGATION_SAFETY_LABEL_MS}
+2432:             </p>
+
+--- around line 2438 ---
+2434: 
+2435:           {arActive && (
+2436:             <section
+2437:               className="sl-ar-guide"
+2438:               aria-label="AR Guide"
+2439:             >
+2440:               <video
+2441:                 ref={videoRef}
+2442:                 className="sl-ar-video"
+2443:                 {...MOBILE_AR_VIDEO_ATTRIBUTES}
+2444:                 onLoadedMetadata={
+2445:                   handleVideoLoadedMetadata
+2446:                 }
+
+--- around line 2457 ---
+2453:                 <div className="sl-ar-guide-heading">
+2454:                   <strong>
+2455:                     {cameraTestActive
+2456:                       ? "Camera Test"
+2457:                       : "AR Guide"}
+2458:                   </strong>
+2459:                   <button
+2460:                     type="button"
+2461:                     onClick={stopArGuide}
+2462:                   >
+2463:                     Stop AR Guide
+2464:                   </button>
+2465:                 </div>
+
+--- around line 2463 ---
+2466:                 <div className="sl-ar-guide-target">
+2467:                   <span>
+2468:                     {targetPoint?.label ??
+2469:                       "Target Point"}
+2470:                   </span>
+2471:                   <strong>
+
+--- around line 2466 ---
+2472:                     {targetNavigation
+2473:                       ? formatDistance(
+2474:                           targetNavigation.distanceMeters,
+
+--- around line 2468 ---
+2475:                         )
+2476:                       : "-"}
+
+--- around line 2469 ---
+2477:                   </strong>
+
+--- around line 2472 ---
+2478:                 </div>
+2479:                 <p className="sl-ar-guide-status">
+2480:                   Camera: {cameraStatus}
+
+--- around line 2474 ---
+2481:                 </p>
+2482:                 <p className="sl-ar-guide-status">
+
+--- around line 2513 ---
+2509:                     </span>
+2510:                   </strong>
+2511:                   <span>Bearing</span>
+2512:                   <strong>
+2513:                     {targetNavigation
+2514:                       ? `${targetNavigation.bearingDegrees.toFixed(
+2515:                           1,
+2516:                         )} deg`
+2517:                       : "-"}
+2518:                   </strong>
+2519:                   <span>Accuracy</span>
+2520:                   <strong>
+2521:                     {reading?.accuracyMeters !==
+
+--- around line 2514 ---
+2522:                     undefined
+
+--- around line 2532 ---
+2528:                   <span>Mode</span>
+2529:                   <strong>
+2530:                     {cameraTestActive
+2531:                       ? "Camera Test"
+2532:                       : "AR Find Point Lite"}
+2533:                   </strong>
+2534:                   <span>Secure context</span>
+2535:                   <strong>
+2536:                     {cameraSecureContext
+2537:                       ? "yes"
+2538:                       : "no"}
+2539:                   </strong>
+2540:                   <span>MediaDevices support</span>
+
+--- around line 2573 ---
+2569:                 <button
+2570:                   type="button"
+2571:                   onClick={() =>
+2572:                     saveFoundPointRecord(
+2573:                       "AR Find Point Lite",
+2574:                     )
+2575:                   }
+2576:                   disabled={
+2577:                     !reading ||
+2578:                     !targetPoint
+2579:                   }
+2580:                 >
+2581:                   Save Found Point
+
+--- around line 2578 ---
+2582:                 </button>
+2583:                 <p className="sl-field-gps-disclaimer">
+2584:                   {FIELD_NAVIGATION_SAFETY_LABEL}
+2585:                   <br />
+2586:                   {FIELD_NAVIGATION_SAFETY_LABEL_MS}
+
+--- around line 2600 ---
+2596:                 value={occupationSeconds}
+2597:                 onChange={(event) =>
+2598:                   setOccupationSeconds(
+2599:                     Number(
+2600:                       event.target.value,
+2601:                     ),
+2602:                   )
+2603:                 }
+2604:               >
+2605:                 {OCCUPATION_OPTIONS.map(
+2606:                   (seconds) => (
+2607:                     <option
+2608:                       key={seconds}
+
+--- around line 2790 ---
+2786:                         </button>
+2787:                         <button
+2788:                           type="button"
+2789:                           onClick={() =>
+2790:                             setTargetFromPoint(
+2791:                               point,
+2792:                             )
+2793:                           }
+2794:                         >
+2795:                           Target
+2796:                         </button>
+2797:                         <button
+2798:                           type="button"
+
+--- around line 2795 ---
+2799:                           onClick={() =>
+2800:                             setPoints(
+2801:                               (current) =>
+2802:                                 current.filter(
+2803:                                   (item) =>
+
+--- around line 2846 ---
+2842:                           {point.label}
+2843:                         </strong>
+2844:                         <span>
+2845:                           {formatCoordinate(
+2846:                             point.latitude,
+2847:                           )}, {formatCoordinate(
+2848:                             point.longitude,
+2849:                           )} | {formatAccuracy(
+2850:                             point.accuracyMeters,
+2851:                           )} | Grade {point.qualityGrade}
+2852:                         </span>
+2853:                         <small>
+2854:                           {point.timestamp}
+
+--- around line 2848 ---
+2855:                           {point.note
+2856:                             ? ` | ${point.note}`
+
+--- around line 2864 ---
+2860:                       <div className="sl-field-gps-point-actions">
+2861:                         <button
+2862:                           type="button"
+2863:                           onClick={() =>
+2864:                             setTargetFromPoint(
+2865:                               point,
+2866:                             )
+2867:                           }
+2868:                         >
+2869:                           Target
+2870:                         </button>
+2871:                         <button
+2872:                           type="button"
+
+--- around line 2869 ---
+2873:                           onClick={() => {
+2874:                             setFoundPoints(
+2875:                               (current) =>
+2876:                                 current.filter(
+2877:                                   (item) =>
+
+--- around line 2925 ---
+2921:                       className="sl-field-gps-point"
+2922:                     >
+2923:                       <div>
+2924:                         <strong>
+2925:                           {record.targetName} | {record.mode}
+2926:                         </strong>
+2927:                         <span>
+2928:                           Target {formatCoordinate(
+2929:                             record.targetLatitude,
+2930:                           )}, {formatCoordinate(
+2931:                             record.targetLongitude,
+2932:                           )}
+2933:                         </span>
+
+--- around line 2928 ---
+2934:                         <span>
+2935:                           Found {formatCoordinate(
+2936:                             record.foundLatitude,
+
+--- around line 2929 ---
+2937:                           )}, {formatCoordinate(
+
+--- around line 2931 ---
+2938:                             record.foundLongitude,
+2939:                           )}
+
+--- around line 2936 ---
+2940:                         </span>
+2941:                         <small>
+2942:                           Offset {formatDistance(
+2943:                             record.distanceDifferenceMeters,
+2944:                           )} | Bearing {record.bearingDegrees.toFixed(
+
+--- around line 2938 ---
+2945:                             1,
+2946:                           )} deg | Accuracy {formatAccuracy(
+
+============================================================
+3. AR STAKEOUT STATES AND BACK BUTTON
+============================================================
+
+============================================================
+FILE: src/app/ar-stakeout/page.tsx
+============================================================
+PATTERN: useState|Back to Map|Start AR Stake Out|target|Target|label|Label|latitude|longitude|Latitude|Longitude|window.location|router.push|href=
+------------------------------------------------------------
+
+--- around line 3 ---
+   1: ﻿"use client";
+   2: 
+   3: import { useEffect, useMemo, useRef, useState } from "react";
+   4: import styles from "./ar-stakeout.module.css";
+   5: 
+   6: type GpsFix = {
+   7:   latitude: number;
+   8:   longitude: number;
+   9:   accuracy: number | null;
+  10:   altitude: number | null;
+  11:   altitudeAccuracy: number | null;
+
+--- around line 7 ---
+  12:   heading: number | null;
+  13:   speed: number | null;
+  14:   timestamp: number;
+  15: };
+
+--- around line 8 ---
+  16: 
+
+--- around line 31 ---
+  27: type HeadingStatus = "Inactive" | "Requesting" | "Active" | "Denied" | "Unavailable";
+  28: 
+  29: type FoundPoint = {
+  30:   id: string;
+  31:   targetName: string;
+  32:   targetLat: number;
+  33:   targetLng: number;
+  34:   foundLat: number;
+  35:   foundLng: number;
+  36:   distance: number;
+  37:   bearing: number;
+  38:   accuracy: number | null;
+  39:   timestamp: string;
+
+--- around line 32 ---
+  40:   note: string;
+
+--- around line 33 ---
+  41: };
+
+--- around line 78 ---
+  74: 
+  75:   return normalize360(toDeg(Math.atan2(y, x)));
+  76: }
+  77: 
+  78: function offsetNE(currentLat: number, currentLng: number, targetLat: number, targetLng: number) {
+  79:   const metersPerDegLat = 111320;
+  80:   const metersPerDegLng = 111320 * Math.cos(toRad(currentLat));
+  81: 
+  82:   return {
+  83:     north: (targetLat - currentLat) * metersPerDegLat,
+  84:     east: (targetLng - currentLng) * metersPerDegLng,
+  85:   };
+  86: }
+
+--- around line 83 ---
+  87: 
+  88: function formatMeters(value: number | null | undefined) {
+  89:   if (value === null || value === undefined || Number.isNaN(value)) return "-";
+  90:   if (Math.abs(value) < 10) return `${value.toFixed(3)} m`;
+  91:   if (Math.abs(value) < 100) return `${value.toFixed(2)} m`;
+
+--- around line 84 ---
+  92:   return `${value.toFixed(1)} m`;
+
+--- around line 108 ---
+ 104: function getGpsSignal(gps: GpsFix | null, gpsError: string) {
+ 105:   if (gpsError || !gps) {
+ 106:     return {
+ 107:       level: "lost",
+ 108:       label: "GPS Lost - Tiada sambungan lokasi",
+ 109:       detail: gpsError || "No GPS fix",
+ 110:     };
+ 111:   }
+ 112: 
+ 113:   const ageSec = (Date.now() - gps.timestamp) / 1000;
+ 114:   const accuracy = gps.accuracy ?? Number.POSITIVE_INFINITY;
+ 115: 
+ 116:   if (accuracy <= 10 && ageSec <= 15) {
+
+--- around line 119 ---
+ 117:     return {
+ 118:       level: "strong",
+ 119:       label: "GPS Active - Signal kuat",
+ 120:       detail: `±${accuracy.toFixed(1)} m`,
+ 121:     };
+ 122:   }
+ 123: 
+ 124:   if (accuracy <= 30 && ageSec <= 30) {
+ 125:     return {
+ 126:       level: "weak",
+ 127:       label: "GPS Weak - Signal lemah",
+
+--- around line 127 ---
+ 128:       detail: `±${accuracy.toFixed(1)} m`,
+ 129:     };
+ 130:   }
+ 131: 
+ 132:   return {
+ 133:     level: "lost",
+ 134:     label: "GPS Lost - Tiada sambungan lokasi",
+ 135:     detail: accuracy > 30 ? `Accuracy weak ±${accuracy.toFixed(1)} m` : "GPS update too old",
+
+--- around line 134 ---
+ 136:   };
+ 137: }
+ 138: 
+ 139: function cameraMessage(errorName: string, fallback: string) {
+ 140:   if (errorName === "NotAllowedError") {
+ 141:     return "Camera permission denied. Allow Camera permission in browser site settings.";
+ 142:   }
+
+--- around line 164 ---
+ 160:   const videoRef = useRef<HTMLVideoElement | null>(null);
+ 161:   const cameraStreamRef = useRef<MediaStream | null>(null);
+ 162:   const gpsWatchRef = useRef<number | null>(null);
+ 163: 
+ 164:   const [targetName, setTargetName] = useState("Pt2");
+ 165:   const [targetLatText, setTargetLatText] = useState("");
+ 166:   const [targetLngText, setTargetLngText] = useState("");
+ 167:   const [note, setNote] = useState("");
+ 168: 
+ 169:   const [gps, setGps] = useState<GpsFix | null>(null);
+ 170:   const [gpsStatus, setGpsStatus] = useState("GPS stopped");
+ 171:   const [gpsError, setGpsError] = useState("");
+ 172: 
+
+--- around line 165 ---
+ 173:   const [cameraStatus, setCameraStatus] = useState<CameraStatus>("Stopped");
+
+--- around line 166 ---
+ 174:   const [cameraErrorName, setCameraErrorName] = useState("");
+
+--- around line 167 ---
+ 175:   const [cameraErrorMessage, setCameraErrorMessage] = useState("");
+
+--- around line 169 ---
+ 176:   const [cameraMode, setCameraMode] = useState("not started");
+ 177:   const [videoReady, setVideoReady] = useState(false);
+
+--- around line 170 ---
+ 178: 
+
+--- around line 171 ---
+ 179:   const [heading, setHeading] = useState<number | null>(null);
+
+--- around line 173 ---
+ 180:   const [headingStatus, setHeadingStatus] = useState<HeadingStatus>("Inactive");
+ 181: 
+
+--- around line 174 ---
+ 182:   const [arActive, setArActive] = useState(false);
+
+--- around line 175 ---
+ 183:   const [fieldMessage, setFieldMessage] = useState("");
+
+--- around line 176 ---
+ 184:   const [savedPoints, setSavedPoints] = useState<FoundPoint[]>([]);
+
+--- around line 177 ---
+ 185: 
+
+--- around line 179 ---
+ 186:   const secureContext =
+ 187:     typeof window !== "undefined" && window.isSecureContext ? "yes" : "no";
+
+--- around line 180 ---
+ 188:   const mediaDevicesSupport =
+
+--- around line 182 ---
+ 189:     typeof navigator !== "undefined" && navigator.mediaDevices ? "yes" : "no";
+ 190:   const getUserMediaSupport =
+
+--- around line 183 ---
+ 191:     typeof navigator !== "undefined" &&
+
+--- around line 184 ---
+ 192:     typeof navigator.mediaDevices?.getUserMedia === "function"
+
+--- around line 196 ---
+ 193:       ? "yes"
+ 194:       : "no";
+ 195: 
+ 196:   const target = useMemo(() => {
+ 197:     const lat = Number(targetLatText);
+ 198:     const lng = Number(targetLngText);
+ 199: 
+ 200:     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+ 201:     if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+ 202: 
+ 203:     return {
+ 204:       name: targetName.trim() || "Target Point",
+
+--- around line 197 ---
+ 205:       latitude: lat,
+
+--- around line 198 ---
+ 206:       longitude: lng,
+
+--- around line 204 ---
+ 207:     };
+ 208:   }, [targetName, targetLatText, targetLngText]);
+ 209: 
+ 210:   const metrics = useMemo(() => {
+ 211:     if (!gps || !target) return null;
+ 212: 
+
+--- around line 205 ---
+ 213:     const distance = distanceMeters(gps.latitude, gps.longitude, target.latitude, target.longitude);
+
+--- around line 206 ---
+ 214:     const bearing = bearingDeg(gps.latitude, gps.longitude, target.latitude, target.longitude);
+
+--- around line 208 ---
+ 215:     const offset = offsetNE(gps.latitude, gps.longitude, target.latitude, target.longitude);
+ 216: 
+
+--- around line 211 ---
+ 217:     return {
+ 218:       distance,
+ 219:       bearing,
+
+--- around line 213 ---
+ 220:       north: offset.north,
+ 221:       east: offset.east,
+
+--- around line 214 ---
+ 222:     };
+
+--- around line 215 ---
+ 223:   }, [gps, target]);
+
+--- around line 223 ---
+ 224: 
+ 225:   const signal = getGpsSignal(gps, gpsError);
+ 226: 
+ 227:   const relativeAngle = useMemo(() => {
+ 228:     if (!metrics || heading === null) return null;
+ 229:     return normalizeSigned(metrics.bearing - heading);
+ 230:   }, [metrics, heading]);
+ 231: 
+
+--- around line 233 ---
+ 232:   const directionText = useMemo(() => {
+ 233:     if (!target) return "Enter valid target coordinate.";
+ 234:     if (!gps) return "Start GPS first.";
+ 235:     if (!metrics) return "Waiting for navigation data.";
+ 236: 
+ 237:     if (heading === null || relativeAngle === null) {
+ 238:       return `Compass heading unavailable. Bearing to target: ${metrics.bearing.toFixed(1)}°`;
+ 239:     }
+ 240: 
+ 241:     if (Math.abs(relativeAngle) <= 15) return "Face target";
+
+--- around line 238 ---
+ 242:     if (relativeAngle > 15) return `Turn right ${Math.abs(relativeAngle).toFixed(0)}°`;
+ 243:     return `Turn left ${Math.abs(relativeAngle).toFixed(0)}°`;
+ 244:   }, [target, gps, metrics, heading, relativeAngle]);
+ 245: 
+ 246:   function startGps() {
+
+--- around line 241 ---
+ 247:     setGpsError("");
+ 248:     setFieldMessage("");
+ 249: 
+
+--- around line 244 ---
+ 250:     if (!("geolocation" in navigator)) {
+ 251:       setGpsStatus("GPS not supported");
+ 252:       setGpsError("Browser geolocation is not supported.");
+
+--- around line 266 ---
+ 262: 
+ 263:     gpsWatchRef.current = navigator.geolocation.watchPosition(
+ 264:       (position) => {
+ 265:         setGps({
+ 266:           latitude: position.coords.latitude,
+ 267:           longitude: position.coords.longitude,
+ 268:           accuracy: position.coords.accuracy ?? null,
+ 269:           altitude: position.coords.altitude ?? null,
+ 270:           altitudeAccuracy: position.coords.altitudeAccuracy ?? null,
+ 271:           heading: position.coords.heading ?? null,
+ 272:           speed: position.coords.speed ?? null,
+ 273:           timestamp: position.timestamp,
+ 274:         });
+
+--- around line 267 ---
+ 275:         setGpsStatus("GPS active");
+
+--- around line 522 ---
+ 518:     await startCamera();
+ 519:   }
+ 520: 
+ 521:   async function startArStakeout() {
+ 522:     if (!target) {
+ 523:       setFieldMessage("Enter valid target coordinate first.");
+ 524:       return;
+ 525:     }
+ 526: 
+ 527:     if (!gps) {
+ 528:       setFieldMessage("Start GPS first before AR Stake Out.");
+ 529:       return;
+ 530:     }
+
+--- around line 523 ---
+ 531: 
+
+--- around line 545 ---
+ 541:     stopCamera();
+ 542:   }
+ 543: 
+ 544:   function saveFoundPoint() {
+ 545:     if (!gps || !target || !metrics) {
+ 546:       setFieldMessage("Start GPS and enter target coordinate first.");
+ 547:       return;
+ 548:     }
+ 549: 
+ 550:     const record: FoundPoint = {
+ 551:       id: `${Date.now()}`,
+ 552:       targetName: target.name,
+ 553:       targetLat: target.latitude,
+
+--- around line 546 ---
+ 554:       targetLng: target.longitude,
+
+--- around line 552 ---
+ 555:       foundLat: gps.latitude,
+ 556:       foundLng: gps.longitude,
+ 557:       distance: metrics.distance,
+ 558:       bearing: metrics.bearing,
+ 559:       accuracy: gps.accuracy,
+ 560:       timestamp: new Date().toISOString(),
+
+--- around line 553 ---
+ 561:       note,
+
+--- around line 554 ---
+ 562:     };
+
+--- around line 555 ---
+ 563: 
+
+--- around line 556 ---
+ 564:     setSavedPoints((items) => [record, ...items].slice(0, 10));
+
+--- around line 580 ---
+ 576:       window.removeEventListener("deviceorientation", handleOrientation, true);
+ 577:     };
+ 578:   }, []);
+ 579: 
+ 580:   const canSave = Boolean(gps && target && metrics);
+ 581:   const arrowRotation = heading !== null && relativeAngle !== null ? relativeAngle : 0;
+ 582:   const targetDirection = metrics ? bearingToCardinal(metrics.bearing) : "-";
+ 583:   const headingDirection = heading !== null ? bearingToCardinal(heading) : "-";
+ 584: 
+ 585:   return (
+ 586:     <main className={styles.page}>
+ 587:       <section className={styles.header}>
+ 588:         <div>
+
+--- around line 582 ---
+ 589:           <p className={styles.kicker}>SabahLot Beta</p>
+ 590:           <h1>AR Stake Out Lite</h1>
+
+--- around line 596 ---
+ 592:             Navigasi awal menggunakan GPS telefon, kamera dan anak panah. Bukan penentuan
+ 593:             sempadan kadaster rasmi.
+ 594:           </p>
+ 595:         </div>
+ 596:         <a className={styles.backLink} href="/">
+ 597:           ← Back to Map
+ 598:         </a>
+ 599:       </section>
+ 600: 
+ 601:       <section className={styles.grid}>
+ 602:         <div className={styles.panel}>
+ 603:           <h2>Target Coordinate</h2>
+ 604: 
+
+--- around line 597 ---
+ 605:           <label>
+
+--- around line 603 ---
+ 606:             Point name
+ 607:             <input value={targetName} onChange={(event) => setTargetName(event.target.value)} />
+ 608:           </label>
+ 609: 
+ 610:           <label>
+ 611:             Latitude
+
+--- around line 605 ---
+ 612:             <input
+ 613:               inputMode="decimal"
+
+--- around line 607 ---
+ 614:               placeholder="contoh 5.980412"
+ 615:               value={targetLatText}
+
+--- around line 608 ---
+ 616:               onChange={(event) => setTargetLatText(event.target.value)}
+
+--- around line 610 ---
+ 617:             />
+ 618:           </label>
+
+--- around line 611 ---
+ 619: 
+
+--- around line 615 ---
+ 620:           <label>
+ 621:             Longitude
+ 622:             <input
+ 623:               inputMode="decimal"
+
+--- around line 616 ---
+ 624:               placeholder="contoh 116.073456"
+
+--- around line 618 ---
+ 625:               value={targetLngText}
+ 626:               onChange={(event) => setTargetLngText(event.target.value)}
+
+--- around line 620 ---
+ 627:             />
+ 628:           </label>
+
+--- around line 621 ---
+ 629: 
+
+--- around line 625 ---
+ 630:           {!target && (
+ 631:             <p className={styles.warning}>Masukkan koordinat WGS84 decimal degree yang sah.</p>
+ 632:           )}
+ 633: 
+
+--- around line 626 ---
+ 634:           <div className={styles.buttonRow}>
+
+--- around line 628 ---
+ 635:             <button type="button" onClick={startGps}>
+ 636:               Start GPS
+
+--- around line 630 ---
+ 637:             </button>
+ 638:             <button type="button" onClick={stopGps}>
+
+--- around line 649 ---
+ 645:           </button>
+ 646: 
+ 647:           <div className={styles.buttonRow}>
+ 648:             <button type="button" className={styles.primaryButton} onClick={startArStakeout}>
+ 649:               Start AR Stake Out
+ 650:             </button>
+ 651:             <button type="button" onClick={stopArStakeout}>
+ 652:               Stop AR
+ 653:             </button>
+ 654:           </div>
+ 655: 
+ 656:           <label>
+ 657:             Found point note
+
+--- around line 656 ---
+ 658:             <textarea
+ 659:               placeholder="Nota ringkas lokasi dijumpai"
+ 660:               value={note}
+ 661:               onChange={(event) => setNote(event.target.value)}
+ 662:             />
+ 663:           </label>
+ 664: 
+
+--- around line 661 ---
+ 665:           <button type="button" disabled={!canSave} onClick={saveFoundPoint}>
+ 666:             Save Found Point
+ 667:           </button>
+ 668: 
+ 669:           {fieldMessage && <p className={styles.fieldMessage}>{fieldMessage}</p>}
+
+--- around line 663 ---
+ 670:         </div>
+ 671: 
+
+--- around line 676 ---
+ 672:         <div className={styles.panel}>
+ 673:           <h2>Status & Diagnostic</h2>
+ 674: 
+ 675:           <div className={`${styles.signalBadge} ${styles[signal.level] ?? ""}`}>
+ 676:             <span>{signal.label}</span>
+ 677:             <strong>{signal.detail}</strong>
+ 678:           </div>
+ 679: 
+ 680:           <dl className={styles.statusList}>
+ 681:             <div>
+ 682:               <dt>GPS status</dt>
+ 683:               <dd>{gpsStatus}</dd>
+ 684:             </div>
+
+--- around line 686 ---
+ 685:             <div>
+ 686:               <dt>Latitude</dt>
+ 687:               <dd>{gps ? gps.latitude.toFixed(7) : "-"}</dd>
+ 688:             </div>
+ 689:             <div>
+ 690:               <dt>Longitude</dt>
+ 691:               <dd>{gps ? gps.longitude.toFixed(7) : "-"}</dd>
+ 692:             </div>
+ 693:             <div>
+ 694:               <dt>Accuracy</dt>
+
+--- around line 687 ---
+ 695:               <dd>{gps?.accuracy ? `±${gps.accuracy.toFixed(1)} m` : "-"}</dd>
+
+--- around line 690 ---
+ 696:             </div>
+ 697:             <div>
+ 698:               <dt>Bearing</dt>
+
+--- around line 691 ---
+ 699:               <dd>{metrics ? `${metrics.bearing.toFixed(1)}° ${targetDirection}` : "-"}</dd>
+
+--- around line 699 ---
+ 700:             </div>
+ 701:             <div>
+ 702:               <dt>Heading</dt>
+ 703:               <dd>{heading !== null ? `${heading.toFixed(1)}° ${headingDirection}` : headingStatus}</dd>
+ 704:             </div>
+ 705:             <div>
+ 706:               <dt>Direction</dt>
+ 707:               <dd>{directionText}</dd>
+
+--- around line 735 ---
+ 731:         <div className={styles.arOverlay}>
+ 732:           <div className={styles.arTop}>
+ 733:             <div>
+ 734:               <p className={styles.kicker}>AR Guide</p>
+ 735:               <h2>{target?.name || "Target Point"}</h2>
+ 736:               <p>{directionText}</p>
+ 737:             </div>
+ 738:             <button type="button" onClick={stopArStakeout}>
+ 739:               Stop AR
+ 740:             </button>
+ 741:           </div>
+ 742: 
+ 743:           <div className={styles.targetDot} />
+
+--- around line 743 ---
+ 744:           <div className={styles.distanceBubble}>{metrics ? formatMeters(metrics.distance) : "-"}</div>
+ 745: 
+ 746:           <div className={styles.guideLine}>
+ 747:             <span />
+ 748:             <span />
+ 749:             <span />
+ 750:             <span />
+ 751:           </div>
+
+--- around line 754 ---
+ 752: 
+ 753:           <div className={styles.arrowWrap}>
+ 754:             <div className={styles.compassRose} aria-label="Compass direction reference">
+ 755:               <span className={styles.compassN}>N</span>
+ 756:               <span className={styles.compassNE}>NE</span>
+ 757:               <span className={styles.compassE}>E</span>
+ 758:               <span className={styles.compassSE}>SE</span>
+ 759:               <span className={styles.compassS}>S</span>
+ 760:               <span className={styles.compassSW}>SW</span>
+ 761:               <span className={styles.compassW}>W</span>
+ 762:               <span className={styles.compassNW}>NW</span>
+
+--- around line 777 ---
+ 773:           </div>
+ 774: 
+ 775:           <div className={styles.bottomStrip}>
+ 776:             <div>
+ 777:               <span>Target</span>
+ 778:               <strong>{target?.name || "-"}</strong>
+ 779:             </div>
+ 780:             <div>
+ 781:               <span>Distance</span>
+ 782:               <strong>{metrics ? formatMeters(metrics.distance) : "-"}</strong>
+ 783:             </div>
+ 784:             <div>
+ 785:               <span>Bearing</span>
+
+--- around line 778 ---
+ 786:               <strong>{metrics ? `${metrics.bearing.toFixed(1)}° ${targetDirection}` : "-"}</strong>
+
+--- around line 786 ---
+ 787:             </div>
+ 788:             <div>
+ 789:               <span>N / E</span>
+ 790:               <strong>
+ 791:                 {metrics ? `${formatMeters(metrics.north)} / ${formatMeters(metrics.east)}` : "-"}
+ 792:               </strong>
+ 793:             </div>
+ 794:           </div>
+
+--- around line 798 ---
+ 795: 
+ 796:           <div className={styles.arStatusRow}>
+ 797:             <span className={`${styles.signalDot} ${styles[signal.level] ?? ""}`} />
+ 798:             <span>{signal.label}</span>
+ 799:             <span>Camera: {cameraStatus}</span>
+ 800:             <span>Heading: {heading !== null ? `${heading.toFixed(1)}° ${headingDirection}` : headingStatus}</span>
+ 801:             <span>Video: {videoReady ? "ready" : "not ready"}</span>
+ 802:           </div>
+ 803: 
+ 804:           {!videoReady && cameraStatus === "Active" && (
+ 805:             <div className={styles.videoWarning}>
+ 806:               Camera stream active but video frame is not visible. Try Test Camera again or reopen
+
+--- around line 813 ---
+ 809:           )}
+ 810: 
+ 811:           {!arActive && (
+ 812:             <div className={styles.notActive}>
+ 813:               Tekan Test Camera untuk uji kamera atau Start AR Stake Out untuk mod penuh.
+ 814:             </div>
+ 815:           )}
+ 816:         </div>
+ 817:       </section>
+ 818: 
+ 819:       <section className={styles.disclaimer}>
+ 820:         Preliminary field navigation only. Not for cadastral boundary determination.
+ 821:         <br />
+
+--- around line 833 ---
+ 829:         ) : (
+ 830:           <div className={styles.savedList}>
+ 831:             {savedPoints.map((point) => (
+ 832:               <article key={point.id}>
+ 833:                 <strong>{point.targetName}</strong>
+ 834:                 <span>
+ 835:                   Found: {point.foundLat.toFixed(7)}, {point.foundLng.toFixed(7)}
+ 836:                 </span>
+ 837:                 <span>Distance: {formatMeters(point.distance)}</span>
+ 838:                 <span>Bearing: {point.bearing.toFixed(1)}°</span>
+ 839:                 <span>Accuracy: {point.accuracy ? `±${point.accuracy.toFixed(1)} m` : "-"}</span>
+ 840:                 <span>{point.timestamp}</span>
+ 841:                 {point.note && <span>Note: {point.note}</span>}
+
+============================================================
+4. MEMORY HELPER CHECK
+============================================================
+src/utils/gpsTargetMemory.ts exists: false
+src/app/utils/gpsTargetMemory.ts exists: false
+
+============================================================
+FILE: src/components/FieldGpsLite.tsx
+============================================================
+PATTERN: gpsTargetMemory|readGpsTarget|saveGpsTarget|sessionStorage|sabahlot:gps-target
+------------------------------------------------------------
+NO MATCH
+
+============================================================
+FILE: src/app/ar-stakeout/page.tsx
+============================================================
+PATTERN: gpsTargetMemory|readGpsTarget|saveGpsTarget|sessionStorage|sabahlot:gps-target
+------------------------------------------------------------
+NO MATCH
+
+============================================================
+5. ENCODING CHECK
+============================================================
+
+============================================================
+FILE: src/components/FieldGpsLite.tsx
+============================================================
+PATTERN: Â|Ã|�
+------------------------------------------------------------
+NO MATCH
+
+============================================================
+FILE: src/app/ar-stakeout/page.tsx
+============================================================
+PATTERN: Â|Ã|�
+------------------------------------------------------------
+NO MATCH
+
+============================================================
+6. FINAL STATUS
+============================================================
+## sprint-06b-ar-find-point-navigation...origin/sprint-06b-ar-find-point-navigation
+?? ar-target-memory-audit-report.txt
+?? make-ar-target-audit.cjs
