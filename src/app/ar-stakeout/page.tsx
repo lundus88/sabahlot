@@ -237,6 +237,22 @@ function cameraMessage(errorName: string, fallback: string) {
   return fallback;
 }
 
+const AR_FOUND_POINTS_STORAGE_KEY = "sabahlot:ar-stakeout:found-points:v1";
+
+function readStoredArFoundPoints(): FoundPoint[] {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const raw = window.localStorage.getItem(AR_FOUND_POINTS_STORAGE_KEY);
+    if (!raw) return [];
+
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as FoundPoint[]) : [];
+  } catch {
+    return [];
+  }
+}
+
 export default function ArStakeoutPage() {
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -263,7 +279,9 @@ export default function ArStakeoutPage() {
 
   const [arActive, setArActive] = useState(false);
   const [fieldMessage, setFieldMessage] = useState("");
-  const [savedPoints, setSavedPoints] = useState<FoundPoint[]>([]);
+  const [savedPoints, setSavedPoints] = useState<FoundPoint[]>(() =>
+    readStoredArFoundPoints(),
+  );
 
   const secureContext =
     typeof window !== "undefined" && window.isSecureContext ? "yes" : "no";
@@ -681,6 +699,19 @@ export default function ArStakeoutPage() {
     setNote("");
     setFieldMessage("Found point saved locally as preliminary record.");
   }
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    try {
+      window.localStorage.setItem(
+        AR_FOUND_POINTS_STORAGE_KEY,
+        JSON.stringify(savedPoints),
+      );
+    } catch {
+      // Found points remain available for this session even if persistence fails.
+    }
+  }, [savedPoints]);
 
   useEffect(() => {
     return () => {

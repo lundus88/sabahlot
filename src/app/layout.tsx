@@ -7,9 +7,17 @@ import type {
   ReactNode,
 } from "react";
 
+import { Inter } from "next/font/google";
+
 import PWARegister from "@/components/PWARegister";
 
 import "./globals.css";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title:
@@ -83,7 +91,7 @@ export default function RootLayout({
   children,
 }: RootLayoutProps) {
   return (
-    <html lang="en">
+    <html lang="en" className={inter.variable}>
       <body>
         {children}
         <PWARegister />

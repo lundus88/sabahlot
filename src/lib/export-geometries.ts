@@ -2,9 +2,9 @@ import type {
   Coordinate,
   PolygonResult,
 } from "@/app/components/Map";
+import { SABAHLOT_OFFICIAL_DISCLAIMER } from "./legal-disclaimer";
 
-export const PRELIMINARY_EXPORT_DISCLAIMER =
-  "Preliminary Field Assist output is for field reference only. Measurements are user-created estimates and should be checked with the appropriate professional or authority before formal use.";
+export const PRELIMINARY_EXPORT_DISCLAIMER = SABAHLOT_OFFICIAL_DISCLAIMER;
 
 export interface PreliminaryExportMetadata {
   recordTitle: string;

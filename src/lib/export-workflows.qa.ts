@@ -101,6 +101,6 @@ assert(dxf.content.includes("8\nLOT_BOUNDARY\n90\n3\n70\n1"), "DXF polygon is no
 assert(dxf.content.includes("8\nPROPOSED_BOUNDARY"), "DXF dashed layer missing");
 assert(occurrences(dxf.content, "0\nPOINT\n8\nPOINT\n") === 2, "DXF point count mismatch");
 assert(dxf.content.includes(DXF_CRS_NOTICE), "DXF CRS notice missing");
-assert(dxf.content.includes("Preliminary Field Assist output only"), "DXF preliminary note missing");
+assert(dxf.content.includes("SabahLot output is for preliminary reference only"), "DXF preliminary note missing");
 
 console.log("Export workflow QA: PASS");

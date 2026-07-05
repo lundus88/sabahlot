@@ -27,6 +27,7 @@ import {
   buildPreliminaryKml,
   buildPreliminaryPrintHtml,
 } from "@/lib/export-geometries";
+import { SABAHLOT_OFFICIAL_DISCLAIMER } from "@/lib/legal-disclaimer";
 
 import {
   deleteLocalLot,
@@ -40,6 +41,7 @@ import {
   markLocalLotSynced,
   normalizeLandRecordDetails,
   saveLocalLot,
+  LocalLotsStorageError,
 } from "@/lib/local-lots";
 import {
   createImportedDrawingObject,
@@ -165,8 +167,7 @@ type PreviousPdfIdentityFields =
 const STORAGE_KEY =
   "sabahlot-alpha-record";
 
-const PRELIMINARY_DISCLAIMER =
-  "Preliminary Field Assist output is for field reference only. Measurements are user-created estimates and should be checked with the appropriate professional or authority before formal use.";
+const PRELIMINARY_DISCLAIMER = SABAHLOT_OFFICIAL_DISCLAIMER;
 
 const IMPORT_DISCLAIMER =
   "Imported files are used for preliminary reference only. Coordinates, boundaries and areas must be verified by the relevant authority, licensed surveyor or professional adviser before any official use.";
@@ -326,6 +327,9 @@ const PAGE_TEXT = {
 
     saveFailed:
       "Failed to save lot.",
+
+    saveFailedStorageFull:
+      "Device storage is full. Delete or export old records, then try saving again.",
 
     savedLots:
       "Saved Lots",
@@ -490,6 +494,9 @@ const PAGE_TEXT = {
 
     saveFailed:
       "Gagal menyimpan lot.",
+
+    saveFailedStorageFull:
+      "Storan peranti penuh. Padam atau eksport rekod lama, kemudian cuba simpan semula.",
 
     savedLots:
       "Saved Lots",
@@ -1537,9 +1544,12 @@ export default function HomePage() {
           );
           setLocalLots(getLocalLots());
           setHasUnsavedChanges(false);
-        } catch {
+        } catch (error) {
           setSaveMessage(
-            text.saveFailed,
+            error instanceof LocalLotsStorageError &&
+              error.code === "quota_exceeded"
+              ? text.saveFailedStorageFull
+              : text.saveFailed,
           );
           setIsSaving(false);
           return;

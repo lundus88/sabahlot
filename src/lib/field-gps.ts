@@ -15,6 +15,7 @@ import type {
 import {
   getGpsQualityGrade,
 } from "./gps-quality";
+import { SABAHLOT_OFFICIAL_DISCLAIMER } from "./legal-disclaimer";
 
 const EARTH_RADIUS_METERS = 6378137;
 const SQM_TO_SQFT = 10.7639104167;
@@ -23,11 +24,9 @@ const METERS_PER_FOOT = 0.3048;
 const METERS_PER_LINK = 0.201168;
 const METERS_PER_CHAIN = 20.1168;
 
-export const FIELD_GPS_DISCLAIMER =
-  "Preliminary Field Assist: phone GPS positions are approximate and for field reference only.";
+export const FIELD_GPS_DISCLAIMER = `${SABAHLOT_OFFICIAL_DISCLAIMER} Phone GPS positions are approximate.`;
 
-export const KEYED_COORDINATE_DISCLAIMER =
-  "Preliminary Field Assist: keyed coordinates are user-entered and for field reference only.";
+export const KEYED_COORDINATE_DISCLAIMER = `${SABAHLOT_OFFICIAL_DISCLAIMER} Keyed coordinates are user-entered.`;
 
 export const GEOLOCATION_OPTIONS: PositionOptions = {
   enableHighAccuracy: true,

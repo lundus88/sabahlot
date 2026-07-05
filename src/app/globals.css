@@ -11,6 +11,11 @@
   --sl-muted: #64748b;
   --sl-border: rgba(148, 163, 184, 0.34);
 
+  --sl-radius-panel: 12px;
+  --font-sans:
+    var(--font-inter), Inter, ui-sans-serif, system-ui,
+    -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
   --sl-glass: rgba(255, 255, 255, 0.95);
   --sl-dark-glass: rgba(15, 23, 42, 0.92);
 
@@ -42,14 +47,7 @@ body {
 body {
   color: var(--sl-text);
   background: #dbe5ee;
-  font-family:
-    Inter,
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -169,7 +167,7 @@ select:focus-visible {
 .sl-field-gps-stack {
   position: absolute;
   right: 12px;
-  bottom: 82px;
+  bottom: 96px;
   z-index: 1130;
   display: grid;
   gap: 8px;
@@ -957,6 +955,13 @@ select:focus-visible {
   font-weight: 700;
 }
 
+.sl-preliminary-tag {
+  margin-top: 1px;
+  color: #b45309 !important;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
 .sl-language-switch {
   display: flex;
   gap: 3px;
@@ -1402,14 +1407,14 @@ select:focus-visible {
   min-height: 36px;
   padding: 6px 12px;
 
-  color: #ffffff;
-  background: var(--sl-dark-glass);
+  color: #333333;
+  background: rgba(255, 255, 255, 0.94);
 
-  border: 1px solid rgba(51, 65, 85, 0.82);
+  border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 999px;
 
   box-shadow:
-    0 14px 36px rgba(15, 23, 42, 0.28);
+    0 10px 28px rgba(15, 23, 42, 0.14);
 
   font-size: 10px;
 
@@ -1454,13 +1459,13 @@ select:focus-visible {
 
 .sl-status-message {
   max-width: 260px;
-  color: #e2e8f0;
+  color: #333333;
   font-size: 10px;
 }
 
 .sl-location-status {
   max-width: 170px;
-  color: #94a3b8;
+  color: #6b7280;
   font-size: 10px;
 }
 
@@ -1470,13 +1475,13 @@ select:focus-visible {
   width: 1px;
   height: 14px;
 
-  background: #475569;
+  background: rgba(15, 23, 42, 0.12);
 }
 
 .sl-location-accuracy {
   flex: 0 0 auto;
 
-  color: #93c5fd;
+  color: #2563eb;
 
   font-size: 10px;
 }
@@ -3909,13 +3914,13 @@ select:focus-visible {
   left: 16px;
   z-index: 1095;
   display: grid;
-  gap: 8px;
-  width: 84px;
-  padding: 8px;
+  gap: 6px;
+  width: 72px;
+  padding: 6px;
   background: rgba(255, 255, 255, 0.9);
   border: 1px solid rgba(255, 255, 255, 0.78);
-  border-radius: 18px;
-  box-shadow: 0 18px 46px rgba(15, 23, 42, 0.18);
+  border-radius: 16px;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.16);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
 }
@@ -3926,7 +3931,7 @@ select:focus-visible {
   color: #334155;
   background: rgba(248, 250, 252, 0.86);
   border: 1px solid rgba(226, 232, 240, 0.9);
-  border-radius: 14px;
+  border-radius: 12px;
   cursor: pointer;
   transition:
     transform 0.16s ease,
@@ -3938,18 +3943,18 @@ select:focus-visible {
 
 .sl-dock-button {
   display: grid;
-  min-height: 58px;
-  padding: 8px 4px;
+  min-height: 50px;
+  padding: 6px 4px;
   place-items: center;
-  gap: 5px;
-  font-size: 10px;
+  gap: 4px;
+  font-size: 9px;
   font-weight: 850;
   letter-spacing: 0;
 }
 
 .sl-dock-button svg {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
 .sl-dock-button:hover,
@@ -6135,7 +6140,7 @@ select:focus-visible {
     display: block;
     flex: 1 1 auto;
     width: auto !important;
-    min-width: 0;
+    min-width: 64px;
     min-height: 40px !important;
     height: 40px;
     max-height: 40px;
@@ -6341,4 +6346,352 @@ select:focus-visible {
     width: 16px !important;
     height: 16px !important;
   }
+}
+
+/* =====================================================
+   MODERN UI REFRESH: 44x44 minimum touch targets (mobile)
+   Added per UI/UX upgrade request. Overrides earlier
+   compact-mobile shrink rules for accessibility; desktop
+   sizes above are untouched.
+   ===================================================== */
+@media (max-width: 768px) {
+  .sl-icon-button,
+  .sl-map-navigation button,
+  .sl-search button,
+  .sl-object-list-heading button {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+
+  .sl-field-gps-toggle,
+  .sl-mobile-top-control-stack .sl-object-list-tab,
+  .sl-mobile-top-control-stack .sl-field-gps-toggle {
+    min-height: 44px !important;
+    height: 44px !important;
+    max-height: 44px !important;
+  }
+
+  .sl-mobile-top-control-stack .sl-object-list-tab {
+    line-height: 44px !important;
+  }
+
+  .sl-dock-button {
+    min-height: 44px !important;
+  }
+}
+
+/* =====================================================
+   MODERN UI REFRESH: Draw/Edit/Export as a bottom sheet
+   on mobile. Position/size already handled by earlier
+   mobile rules above (kept as-is to avoid re-introducing
+   the dock/GPS overlap issue) — this only restyles the
+   corners and adds a drag-handle affordance shadow so it
+   reads as a sheet rather than a floating card.
+   ===================================================== */
+@media (max-width: 768px) {
+  .sl-tool-flyout {
+    border-radius: 20px 20px 12px 12px !important;
+    box-shadow: 0 -8px 30px rgba(15, 23, 42, 0.18) !important;
+  }
+}
+
+/* =====================================================
+   MODERN UI REFRESH: Google-Maps-style search bar.
+   Hamburger stays far left, settings stays far right
+   (margin-left: auto below), search bar is a clean pill
+   with a leading search icon; centered on desktop,
+   width-capped so it never gets edge-to-edge on mobile.
+   ===================================================== */
+.sl-topbar-actions {
+  margin-left: auto !important;
+}
+
+.sl-preliminary-tag {
+  display: block !important;
+}
+
+.sl-search {
+  display: flex !important;
+  grid-template-columns: none !important;
+  align-items: center !important;
+  gap: 8px !important;
+  height: 44px !important;
+  padding: 0 16px !important;
+  background: #ffffff !important;
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  border-radius: 999px !important;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.06),
+    0 6px 18px rgba(15, 23, 42, 0.12) !important;
+}
+
+.sl-search > svg:first-child {
+  flex: 0 0 auto;
+  width: 18px !important;
+  height: 18px !important;
+  color: #5f6368 !important;
+}
+
+.sl-search input {
+  flex: 1 1 auto !important;
+  width: auto !important;
+  min-width: 0 !important;
+  height: 100% !important;
+  padding: 0 !important;
+  color: #333333 !important;
+  font-size: 14px !important;
+}
+
+.sl-search input::placeholder {
+  color: #80868b !important;
+}
+
+.sl-search > button[type="submit"] {
+  flex: 0 0 auto;
+  display: grid !important;
+  place-items: center;
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  min-height: 36px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  color: #5f6368 !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+}
+
+.sl-search > button[type="submit"] svg {
+  width: 18px !important;
+  height: 18px !important;
+}
+
+@media (max-width: 768px) {
+  .sl-search > button[type="submit"] {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+}
+
+.sl-search > button[type="submit"]:hover:not(:disabled) {
+  background: rgba(15, 23, 42, 0.06) !important;
+}
+
+.sl-search-message {
+  border-radius: 14px !important;
+}
+
+@media (max-width: 768px) {
+  .sl-search {
+    flex: 1 1 auto !important;
+    width: auto !important;
+    max-width: 420px !important;
+    min-width: 0 !important;
+    height: 44px !important;
+  }
+}
+
+@media (min-width: 769px) {
+  .sl-topbar {
+    justify-content: flex-start;
+  }
+
+  .sl-search {
+    position: absolute !important;
+    left: 50% !important;
+    top: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    width: min(560px, 42vw) !important;
+    max-width: none !important;
+  }
+}
+
+/* =====================================================
+   MODERN UI REFRESH: connected vertical tool dock.
+   Draw/Edit/Save/Export now render as one segmented
+   button group (shared outer rounded corners via
+   overflow: hidden, thin divider lines between items)
+   instead of separate floating boxes. Hover is now a
+   subtle tint distinct from the solid "selected" colour.
+   ===================================================== */
+.sl-tool-dock {
+  gap: 0 !important;
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.sl-dock-button {
+  border-radius: 0 !important;
+  border-left: 0 !important;
+  border-right: 0 !important;
+  border-top: 0 !important;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08) !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.sl-dock-button:last-child {
+  border-bottom: 0 !important;
+}
+
+.sl-dock-button:hover:not(.is-active):not(.is-unsaved):not(:disabled) {
+  color: #1d4ed8 !important;
+  background: rgba(37, 99, 235, 0.08) !important;
+}
+
+.sl-dock-button.is-unsaved:hover {
+  background: rgba(220, 38, 38, 0.92) !important;
+}
+
+/* =====================================================
+   MODERN UI REFRESH: redesigned lot summary card.
+   Area / Vertices / Perimeter now share one balanced
+   grid with clear dividers, plus a minimise toggle so
+   the map stays uncluttered when the user wants it.
+   ===================================================== */
+.sl-floating-summary-card {
+  grid-template-columns: auto 1fr !important;
+  align-items: center !important;
+  gap: 4px !important;
+  padding: 6px !important;
+  pointer-events: auto !important;
+}
+
+.sl-summary-toggle {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  color: #6b7280;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.sl-summary-toggle:hover {
+  color: #1d4ed8;
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.sl-summary-toggle svg {
+  width: 15px;
+  height: 15px;
+}
+
+.sl-summary-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(72px, 1fr)) !important;
+}
+
+.sl-summary-cell {
+  display: flex !important;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 10px;
+  border-left: 1px solid rgba(15, 23, 42, 0.08);
+  text-align: center;
+}
+
+.sl-summary-cell:first-child {
+  border-left: 0;
+}
+
+.sl-summary-cell small {
+  color: #6b7280 !important;
+  font-size: 9px !important;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.sl-summary-cell strong {
+  color: #333333 !important;
+  font-size: 14px !important;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.sl-summary-unit {
+  margin-left: 2px;
+  color: #6b7280 !important;
+  font-size: 10px !important;
+  font-weight: 700;
+}
+
+.sl-summary-sub {
+  color: #9aa1ac !important;
+  font-size: 9px !important;
+  white-space: nowrap;
+}
+
+.sl-floating-summary-card.is-collapsed {
+  gap: 6px;
+  padding: 4px 6px 4px 10px !important;
+  width: auto !important;
+}
+
+.sl-summary-collapsed-label {
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+/* =====================================================
+   MODERN UI REFRESH: Handheld GPS status grid consistency.
+   Same colour/typography language as the lot summary
+   card. The panel already collapses to a small pill via
+   the existing "Close" / toggle button, so no extra JS
+   state is added here â this is a visual pass only.
+   ===================================================== */
+.sl-field-gps-grid {
+  background: #ffffff !important;
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  border-radius: 12px !important;
+  row-gap: 0 !important;
+  padding: 4px 10px !important;
+}
+
+.sl-field-gps-grid span,
+.sl-field-gps-grid strong {
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.sl-field-gps-grid span:last-of-type,
+.sl-field-gps-grid strong:last-of-type {
+  border-bottom: 0;
+}
+
+.sl-field-gps-grid span {
+  color: #6b7280 !important;
+}
+
+.sl-field-gps-grid strong {
+  color: #333333 !important;
+  text-align: right;
+}
+
+.sl-field-gps-heading span {
+  color: #333333;
+}
+
+.sl-field-gps-close {
+  color: #6b7280;
+  background: transparent;
+  border-radius: 999px;
+}
+
+.sl-field-gps-close:hover {
+  color: #1d4ed8;
+  background: rgba(37, 99, 235, 0.08);
 }

@@ -2723,6 +2723,12 @@ export default function Map({
     useState(false);
 
   const [
+    isSummaryCollapsed,
+    setIsSummaryCollapsed,
+  ] =
+    useState(false);
+
+  const [
     activePanel,
     setActivePanel,
   ] = useState<MobilePanel>(
@@ -9475,6 +9481,9 @@ export default function Map({
           <span>
             <strong>SabahLot</strong>
             <small>powered by Myukur</small>
+            <small className="sl-preliminary-tag">
+              Preliminary
+            </small>
           </span>
         </div>
 
@@ -9482,6 +9491,11 @@ export default function Map({
           className="sl-search"
           onSubmit={performSearch}
         >
+          <Icon>
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.7-3.7" />
+          </Icon>
+
           <input
             type="text"
             value={searchValue}
@@ -9670,7 +9684,16 @@ export default function Map({
             event.stopPropagation()
           }
         >
-          <strong>Draw</strong>
+          <div className="sl-object-list-heading">
+            <strong>Draw</strong>
+            <button
+              type="button"
+              onClick={() => closeMapPanels()}
+              aria-label="Close Draw menu"
+            >
+              ×
+            </button>
+          </div>
           <button type="button" onClick={startDrawing}>
             Draw Polygon
           </button>
@@ -9696,7 +9719,16 @@ export default function Map({
             event.stopPropagation()
           }
         >
-          <strong>Edit</strong>
+          <div className="sl-object-list-heading">
+            <strong>Edit</strong>
+            <button
+              type="button"
+              onClick={() => closeMapPanels()}
+              aria-label="Close Edit menu"
+            >
+              ×
+            </button>
+          </div>
           <button
             type="button"
             onClick={toggleEditing}
@@ -9741,7 +9773,16 @@ export default function Map({
             event.stopPropagation()
           }
         >
-          <strong>Export</strong>
+          <div className="sl-object-list-heading">
+            <strong>Export</strong>
+            <button
+              type="button"
+              onClick={() => closeMapPanels()}
+              aria-label="Close Export menu"
+            >
+              ×
+            </button>
+          </div>
           <button
             type="button"
             onClick={onExportPdf}
@@ -10072,9 +10113,20 @@ export default function Map({
 
           {selectedManualPoint && (
             <div className="sl-field-point-editor">
-              <strong>
-                {selectedManualPoint.pointCode}
-              </strong>
+              <div className="sl-object-list-heading">
+                <strong>
+                  {selectedManualPoint.pointCode}
+                </strong>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSelectedManualPointId(null)
+                  }
+                  aria-label="Back to point list"
+                >
+                  ×
+                </button>
+              </div>
 
               <label>
                 <span>
@@ -10186,61 +10238,97 @@ export default function Map({
 
       {buildOneSummary && (
         <section
-          className="sl-floating-summary-card"
+          className={`sl-floating-summary-card ${isSummaryCollapsed ? "is-collapsed" : ""}`}
           aria-label="Lot summary"
         >
-          <div>
-            <small>Area</small>
-            <strong>
-              {formatNumber(
-                buildOneSummary.areaM2,
-                2,
-                language,
-              )}{" "}
-              sqm
-            </strong>
-            <span>
-              {formatNumber(
-                buildOneSummary.areaHa,
-                4,
-                language,
-              )}{" "}
-              ha
-            </span>
-            <span>
-              {formatNumber(
-                buildOneSummary.areaAcre,
-                4,
-                language,
-              )}{" "}
-              ac
-            </span>
-          </div>
+          <button
+            type="button"
+            className="sl-summary-toggle"
+            onClick={() =>
+              setIsSummaryCollapsed(
+                (value) => !value,
+              )
+            }
+            aria-expanded={!isSummaryCollapsed}
+            aria-label={
+              isSummaryCollapsed
+                ? "Expand lot summary"
+                : "Minimise lot summary"
+            }
+            title={
+              isSummaryCollapsed
+                ? "Expand summary"
+                : "Minimise summary"
+            }
+          >
+            <Icon>
+              {isSummaryCollapsed ? (
+                <path d="m6 15 6-6 6 6" />
+              ) : (
+                <path d="m6 9 6 6 6-6" />
+              )}
+            </Icon>
+          </button>
 
-          <div>
-            <small>Vertices</small>
-            <strong>{summaryPointCount}</strong>
-          </div>
-
-          <div>
-            <small>Perimeter</small>
-            <strong>
-              {formatNumber(
-                summaryPerimeterM,
-                2,
-                language,
-              )}{" "}
-              m
-            </strong>
-            <span>
-              {formatNumber(
-                summaryPerimeterM / 1000,
-                3,
-                language,
-              )}{" "}
-              km
+          {isSummaryCollapsed ? (
+            <span className="sl-summary-collapsed-label">
+              Summary
             </span>
-          </div>
+          ) : (
+            <div className="sl-summary-grid">
+              <div className="sl-summary-cell">
+                <small>Area</small>
+                <strong>
+                  {formatNumber(
+                    buildOneSummary.areaM2,
+                    2,
+                    language,
+                  )}
+                  <span className="sl-summary-unit">sqm</span>
+                </strong>
+                <span className="sl-summary-sub">
+                  {formatNumber(
+                    buildOneSummary.areaHa,
+                    4,
+                    language,
+                  )}{" "}
+                  ha ·{" "}
+                  {formatNumber(
+                    buildOneSummary.areaAcre,
+                    4,
+                    language,
+                  )}{" "}
+                  ac
+                </span>
+              </div>
+
+              <div className="sl-summary-cell">
+                <small>Vertices</small>
+                <strong>{summaryPointCount}</strong>
+                <span className="sl-summary-sub">points</span>
+              </div>
+
+              <div className="sl-summary-cell">
+                <small>Perimeter</small>
+                <strong>
+                  {formatNumber(
+                    summaryPerimeterM,
+                    2,
+                    language,
+                  )}
+                  <span className="sl-summary-unit">m</span>
+                </strong>
+                <span className="sl-summary-sub">
+                  {formatNumber(
+                    summaryPerimeterM / 1000,
+                    3,
+                    language,
+                  )}{" "}
+                  km
+                </span>
+              </div>
+            </div>
+          )}
         </section>
       )}
 

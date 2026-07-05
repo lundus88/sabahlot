@@ -1,4 +1,5 @@
 import type { DrawingObject } from "./drawing-types";
+import { SABAHLOT_OFFICIAL_DISCLAIMER } from "./legal-disclaimer";
 
 export interface ExportPoint {
   id: string;
@@ -12,8 +13,7 @@ export interface ExportPoint {
 export const DXF_CRS_NOTICE =
   "DXF Alpha output uses WGS84 longitude/latitude coordinates. Metric projected coordinate export will be handled in a later CRS enhancement phase.";
 
-const PRELIMINARY_NOTICE =
-  "Preliminary Field Assist output only. Measurements are user-created estimates for field reference and should be checked through the proper Sabah land and survey procedures before formal use.";
+const PRELIMINARY_NOTICE = SABAHLOT_OFFICIAL_DISCLAIMER;
 
 const xmlEscape = (value: string) =>
   value.replace(/[&<>"']/g, (character) =>

@@ -16,6 +16,16 @@ export const LOCAL_LOTS_STORAGE_KEY =
 
 export const LOCAL_LOT_SCHEMA_VERSION = 3;
 
+export class LocalLotsStorageError extends Error {
+  code: "quota_exceeded" | "unknown";
+
+  constructor(code: "quota_exceeded" | "unknown", message: string) {
+    super(message);
+    this.name = "LocalLotsStorageError";
+    this.code = code;
+  }
+}
+
 export type LandCaseType =
   | "land_application"
   | "inheritance_land"
@@ -829,10 +839,29 @@ export function getLocalLots(): LocalLotRecord[] {
 function writeLocalLots(
   records: LocalLotRecord[],
 ): void {
-  getStorage().setItem(
-    LOCAL_LOTS_STORAGE_KEY,
-    JSON.stringify(records),
-  );
+  try {
+    getStorage().setItem(
+      LOCAL_LOTS_STORAGE_KEY,
+      JSON.stringify(records),
+    );
+  } catch (error) {
+    const isQuotaError =
+      error instanceof DOMException &&
+      (error.name === "QuotaExceededError" ||
+        error.name === "NS_ERROR_DOM_QUOTA_REACHED");
+
+    if (isQuotaError) {
+      throw new LocalLotsStorageError(
+        "quota_exceeded",
+        "Device storage is full. Delete or export old records before saving a new one.",
+      );
+    }
+
+    throw new LocalLotsStorageError(
+      "unknown",
+      "Could not save the record to this device.",
+    );
+  }
 }
 
 export function saveLocalLot(
