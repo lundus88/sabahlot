@@ -1,4 +1,5 @@
 ﻿"use client";
+import Link from "next/link";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import styles from "./ar-stakeout.module.css";
@@ -593,9 +594,9 @@ export default function ArStakeoutPage() {
             sempadan kadaster rasmi.
           </p>
         </div>
-        <a className={styles.backLink} href="/">
+        <Link className={styles.backLink} href="/">
           ← Back to Map
-        </a>
+        </Link>
       </section>
 
       <section className={styles.grid}>
