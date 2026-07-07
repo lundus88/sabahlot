@@ -5,10 +5,14 @@ type SabahLotManifest = MetadataRoute.Manifest & {
 };
 
 export default function manifest(): SabahLotManifest {
+  const isGpsDeployment = process.env.NEXT_PUBLIC_DEPLOYMENT_TARGET === "gps";
+
   return {
-    name: "SabahLot",
-    short_name: "SabahLot",
-    description: "Preliminary land workflow platform for Sabah",
+    name: isGpsDeployment ? "SabahLot GPS" : "SabahLot",
+    short_name: isGpsDeployment ? "GPS" : "SabahLot",
+    description: isGpsDeployment
+      ? "SabahLot Preliminary Field Assist"
+      : "Preliminary land workflow platform for Sabah",
     start_url: "/",
     scope: "/",
     display: "standalone",

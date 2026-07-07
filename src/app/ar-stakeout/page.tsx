@@ -3,6 +3,8 @@ import Link from "next/link";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import styles from "./ar-stakeout.module.css";
+import { getGpsAccuracyStatus } from "@/lib/gps-quality";
+import { exportPreliminaryFieldAssistPdf } from "@/lib/field-gps-export";
 
 type GpsFix = {
   latitude: number;
@@ -379,6 +381,7 @@ export default function ArStakeoutPage() {
   }, [gps, activeTarget]);
 
   const signal = getGpsSignal(gps, gpsError);
+  const accuracyStatus = getGpsAccuracyStatus(gps?.accuracy ?? null);
 
   const relativeBearing = useMemo(() => {
     if (!metrics || heading === null) return null;
@@ -696,12 +699,12 @@ export default function ArStakeoutPage() {
       setCameraStatus("Starting");
 
       if (secureContext !== "yes") {
-        throw new Error("Camera requires HTTPS. Please open https://beta.sabahlot.com");
+        throw new Error("Camera requires HTTPS. Please open this page over a secure (https://) connection.");
       }
 
       if (getUserMediaSupport !== "yes") {
         const error = new Error(
-          "Camera is not supported in this browser. Open beta.sabahlot.com in Chrome Android or Safari iPhone."
+          "Camera is not supported in this browser. Open this page in Chrome Android or Safari iPhone."
         );
         error.name = "NotSupportedError";
         throw error;
@@ -1127,6 +1130,28 @@ export default function ArStakeoutPage() {
             Save Found Point
           </button>
 
+          <button
+            type="button"
+            onClick={() =>
+              void exportPreliminaryFieldAssistPdf({
+                activeTarget: activeTarget
+                  ? { name: activeTarget.name, lat: activeTarget.lat, lng: activeTarget.lng }
+                  : null,
+                currentLocation: gps
+                  ? {
+                      latitude: gps.latitude,
+                      longitude: gps.longitude,
+                      accuracy: gps.accuracy,
+                      timestamp: new Date(gps.timestamp).toLocaleString("en-MY"),
+                    }
+                  : null,
+                savedTargets,
+              })
+            }
+          >
+            Export A3 PDF Report
+          </button>
+
           {fieldMessage && <p className={styles.fieldMessage}>{fieldMessage}</p>}
         </div>
 
@@ -1137,6 +1162,12 @@ export default function ArStakeoutPage() {
             <span>{signal.label}</span>
             <strong>{signal.detail}</strong>
           </div>
+
+          {accuracyStatus === "Poor" && (
+            <p className={styles.fieldMessage}>
+              GPS accuracy rendah. Gunakan sebagai panduan awal sahaja.
+            </p>
+          )}
 
           <div className={styles.buttonRow}>
             <button type="button" className={styles.primaryButton} onClick={startGps}>
@@ -1171,7 +1202,7 @@ export default function ArStakeoutPage() {
             </div>
             <div>
               <dt>Accuracy</dt>
-              <dd>{formatAccuracy(gps?.accuracy)}</dd>
+              <dd>{formatAccuracy(gps?.accuracy)} ({accuracyStatus})</dd>
             </div>
             <div>
               <dt>Bearing</dt>

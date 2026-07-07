@@ -29,6 +29,20 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
+## Deploying gps.sabahlot.com (SabahLot GPS — Preliminary Field Assist)
+
+This repo also serves the dedicated Handheld GPS / Preliminary Field Assist deployment at
+`gps.sabahlot.com`. It is the same codebase as `sabahlot.com` / `alpha.sabahlot.com` /
+`beta.sabahlot.com` — branding is switched at build/runtime via one environment variable, so
+other domains are unaffected:
+
+```
+NEXT_PUBLIC_DEPLOYMENT_TARGET=gps
+```
+
+Set this only on the Vercel project/environment mapped to `gps.sabahlot.com`. When unset (or
+any other value), the app renders the default SabahLot branding used by the other domains.
+
 ## Deploy on Vercel
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.

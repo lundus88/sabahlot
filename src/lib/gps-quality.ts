@@ -41,3 +41,30 @@ export function getGpsQualityLabel(
       return "Weak accuracy";
   }
 }
+
+export type GpsAccuracyStatus =
+  | "Good"
+  | "Moderate"
+  | "Poor"
+  | "No Fix";
+
+export function getGpsAccuracyStatus(
+  accuracyMeters?: number | null,
+): GpsAccuracyStatus {
+  if (
+    typeof accuracyMeters !== "number" ||
+    !Number.isFinite(accuracyMeters)
+  ) {
+    return "No Fix";
+  }
+
+  if (accuracyMeters <= 5) {
+    return "Good";
+  }
+
+  if (accuracyMeters <= 15) {
+    return "Moderate";
+  }
+
+  return "Poor";
+}

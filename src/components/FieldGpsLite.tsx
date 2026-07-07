@@ -33,6 +33,7 @@ import {
 
 import {
   buildFieldGpsCsv,
+  buildFieldGpsGeoJson,
   buildFieldGpsKml,
   downloadTextFile,
   exportFieldGpsPdf,
@@ -52,8 +53,19 @@ import FieldGpsAccuracyPanel from "./FieldGpsAccuracyPanel";
 
 
 
-function openArStakeoutPage() {
+function openArStakeoutPage(target?: FieldGpsTarget | null) {
   if (typeof window === "undefined") return;
+
+  if (target) {
+    const params = new URLSearchParams({
+      lat: `${target.latitude}`,
+      lng: `${target.longitude}`,
+      name: target.label,
+    });
+    window.location.href = `/ar-stakeout?${params.toString()}`;
+    return;
+  }
+
   window.location.href = "/ar-stakeout";
 }
 
@@ -1476,7 +1488,7 @@ export default function FieldGpsLite({
           );
           clearCameraErrorDetails();
           setArMessage(
-            "Camera requires HTTPS. Please open https://beta.sabahlot.com",
+            "Camera requires HTTPS. Please open this page over a secure (https://) connection.",
           );
           return;
         }
@@ -1492,7 +1504,7 @@ export default function FieldGpsLite({
           );
           clearCameraErrorDetails();
           setArMessage(
-            "Camera is not supported in this browser. Open beta.sabahlot.com in Chrome Android or Safari iPhone.",
+            "Camera is not supported in this browser. Open this page in Chrome Android or Safari iPhone.",
           );
           return;
         }
@@ -1985,7 +1997,7 @@ export default function FieldGpsLite({
           <div className="sl-field-gps-actions">
             <button
               type="button"
-              onClick={openArStakeoutPage}
+              onClick={() => openArStakeoutPage(targetPoint)}
               className="sl-field-gps-action-primary"
             >
               AR Guide
@@ -2719,6 +2731,24 @@ export default function FieldGpsLite({
                 }
               >
                 Export CSV
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  downloadTextFile(
+                    buildFieldGpsGeoJson(
+                      allRecordedPoints,
+                    ),
+                    `${safeFileName}.geojson`,
+                    "application/geo+json",
+                  )
+                }
+                disabled={
+                  allRecordedPoints.length ===
+                  0
+                }
+              >
+                Export GeoJSON
               </button>
             </div>
 

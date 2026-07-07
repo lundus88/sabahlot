@@ -11,15 +11,26 @@ import PWARegister from "@/components/PWARegister";
 
 import "./globals.css";
 
+const isGpsDeployment =
+  process.env.NEXT_PUBLIC_DEPLOYMENT_TARGET === "gps";
+
+const appTitle = isGpsDeployment
+  ? "SabahLot GPS — Preliminary Field Assist"
+  : "SabahLot powered by Myukur";
+
 export const metadata: Metadata = {
   title:
-    "SabahLot powered by Myukur",
+    appTitle,
 
   description:
-    "Preliminary Sabah land workflow tool for planning and reference only.",
+    isGpsDeployment
+      ? "SabahLot Preliminary Field Assist — handheld GPS, Find Point, Stakeout, and AR Guide for preliminary field reference only. Not a cadastral survey or JTU Sabah system."
+      : "Preliminary Sabah land workflow tool for planning and reference only.",
 
   applicationName:
-    "SabahLot powered by Myukur",
+    isGpsDeployment
+      ? "SabahLot GPS"
+      : "SabahLot powered by Myukur",
 
   manifest:
     "/manifest.webmanifest",
@@ -51,7 +62,9 @@ export const metadata: Metadata = {
     capable:
       true,
     title:
-      "SabahLot powered by Myukur",
+      isGpsDeployment
+        ? "SabahLot GPS"
+        : "SabahLot powered by Myukur",
     statusBarStyle:
       "black-translucent",
   },
