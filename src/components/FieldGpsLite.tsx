@@ -3,6 +3,7 @@
 
 
 import {
+  type ChangeEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -25,11 +26,19 @@ import {
   calculateFieldGpsDistanceMeters,
   createFieldGpsId,
   createFieldGpsPoint,
+  createKeyedCoordinatePoint,
   createPreliminaryPolygonResult,
   FIELD_GPS_DISCLAIMER,
   GEOLOCATION_OPTIONS,
   readingFromPosition,
 } from "@/lib/field-gps";
+
+import {
+  parseFieldTargetFile,
+} from "@/lib/field-target-import";
+import type {
+  ImportedTargetPoint,
+} from "@/lib/field-target-import";
 
 import {
   buildFieldGpsCsv,
@@ -91,7 +100,8 @@ type CaptureMode =
 type TargetSource =
   | "current-position"
   | "manual"
-  | "saved-point";
+  | "saved-point"
+  | "imported";
 
 type FoundPointMode =
   | "Phone GPS"
@@ -494,6 +504,26 @@ export default function FieldGpsLite({
     setTargetValidationError,
   ] = useState("");
   const [
+    importedFileName,
+    setImportedFileName,
+  ] = useState("");
+  const [
+    importedPoints,
+    setImportedPoints,
+  ] = useState<ImportedTargetPoint[]>([]);
+  const [
+    importedCount,
+    setImportedCount,
+  ] = useState(0);
+  const [
+    importedSkippedCount,
+    setImportedSkippedCount,
+  ] = useState(0);
+  const [
+    importWarning,
+    setImportWarning,
+  ] = useState("");
+  const [
     tracking,
     setTracking,
   ] = useState(false);
@@ -590,6 +620,10 @@ export default function FieldGpsLite({
     );
   const cameraStreamRef =
     useRef<MediaStream | null>(
+      null,
+    );
+  const importFileInputRef =
+    useRef<HTMLInputElement | null>(
       null,
     );
 
@@ -1348,6 +1382,91 @@ export default function FieldGpsLite({
       description:
         point.note,
     });
+  };
+
+  const setTargetFromImportedPoint = (
+    point: ImportedTargetPoint,
+  ) => {
+    setTarget({
+      id:
+        point.id,
+      label:
+        point.name,
+      latitude:
+        point.latitude,
+      longitude:
+        point.longitude,
+      source:
+        "imported",
+      description:
+        "Imported target point.",
+    });
+  };
+
+  const saveImportedPointAsSavedPoint = (
+    point: ImportedTargetPoint,
+  ) => {
+    savePoint(
+      createKeyedCoordinatePoint(
+        point.latitude,
+        point.longitude,
+        point.name,
+        "Imported point saved to Saved Points.",
+      ),
+    );
+    setCaptureMessage(
+      `${point.name} saved to Saved Points.`,
+    );
+  };
+
+  const clearImportedFile = () => {
+    setImportedFileName("");
+    setImportedPoints([]);
+    setImportedCount(0);
+    setImportedSkippedCount(0);
+    setImportWarning("");
+  };
+
+  const handleImportFileSelected = async (
+    event: ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    try {
+      const text = await file.text();
+      const result = parseFieldTargetFile(
+        file.name,
+        text,
+      );
+
+      setImportedFileName(file.name);
+      setImportedPoints(result.points);
+      setImportedCount(result.importedCount);
+      setImportedSkippedCount(result.skippedCount);
+      setImportWarning(result.warning ?? "");
+      setCaptureMessage(
+        `${file.name}: ${result.importedCount} point(s) imported, ${result.skippedCount} skipped.`,
+      );
+
+      if (result.points.length === 1) {
+        setTargetFromImportedPoint(
+          result.points[0],
+        );
+      }
+    } catch {
+      setImportedFileName(file.name);
+      setImportedPoints([]);
+      setImportedCount(0);
+      setImportedSkippedCount(0);
+      setImportWarning(
+        "Unable to read the selected file.",
+      );
+    }
   };
 
   const startNavigation = () => {
@@ -2278,6 +2397,103 @@ export default function FieldGpsLite({
                 )}
               </select>
             </label>
+
+            <div className="sl-field-gps-heading">
+              <span>Import Target File</span>
+              <strong>
+                {importedFileName || "No file imported"}
+              </strong>
+            </div>
+
+            <input
+              ref={importFileInputRef}
+              type="file"
+              accept=".csv,.kml,.dxf"
+              onChange={(event) =>
+                void handleImportFileSelected(
+                  event,
+                )
+              }
+              style={{ display: "none" }}
+            />
+
+            <div className="sl-field-gps-actions">
+              <button
+                type="button"
+                onClick={() =>
+                  importFileInputRef.current?.click()
+                }
+              >
+                Import File
+              </button>
+              <button
+                type="button"
+                onClick={clearImportedFile}
+                disabled={!importedFileName}
+              >
+                Clear Imported File
+              </button>
+            </div>
+
+            {importWarning && (
+              <p className="sl-field-gps-warning">
+                {importWarning}
+              </p>
+            )}
+
+            {importedFileName && (
+              <p className="sl-field-gps-note">
+                Imported {importedCount} point(s), skipped {importedSkippedCount}.
+              </p>
+            )}
+
+            {importedPoints.length > 0 && (
+              <div className="sl-field-gps-point-list">
+                {importedPoints.map(
+                  (point) => (
+                    <article
+                      key={point.id}
+                      className="sl-field-gps-point"
+                    >
+                      <div>
+                        <strong>
+                          {point.name}
+                        </strong>
+                        <span>
+                          {formatCoordinate(
+                            point.latitude,
+                          )}, {formatCoordinate(
+                            point.longitude,
+                          )}
+                        </span>
+                      </div>
+                      <div className="sl-field-gps-point-actions">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setTargetFromImportedPoint(
+                              point,
+                            )
+                          }
+                        >
+                          Use as Target
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            saveImportedPointAsSavedPoint(
+                              point,
+                            )
+                          }
+                        >
+                          Save Point
+                        </button>
+                      </div>
+                    </article>
+                  ),
+                )}
+              </div>
+            )}
 
             <div className="sl-field-gps-actions">
               <button
