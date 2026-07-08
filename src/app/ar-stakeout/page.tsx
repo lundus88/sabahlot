@@ -5,6 +5,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import styles from "./ar-stakeout.module.css";
 import { getGpsAccuracyStatus } from "@/lib/gps-quality";
 import { exportPreliminaryFieldAssistPdf } from "@/lib/field-gps-export";
+import {
+  readFieldAssistActiveTarget,
+  writeFieldAssistActiveTarget,
+  type FieldAssistActiveTarget,
+} from "@/lib/field-assist-active-target";
 
 type GpsFix = {
   latitude: number;
@@ -66,7 +71,6 @@ type WebkitOrientationEvent = DeviceOrientationEvent & {
   webkitCompassHeading?: number;
 };
 
-const ACTIVE_TARGET_STORAGE_KEY = "sabahlot.arStakeout.activeTarget";
 const SAVED_TARGETS_STORAGE_KEY = "sabahlot.arStakeout.savedTargets";
 const AR_FOV_DEG = 60;
 const AR_MARKER_EDGE_OFFSET_PERCENT = 45;
@@ -175,6 +179,28 @@ function activeTargetFromText(
 
 function createTargetId() {
   return `target-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function toSharedFieldAssistTarget(target: ActiveTarget): FieldAssistActiveTarget {
+  return {
+    id: target.id,
+    label: target.name,
+    latitude: target.lat,
+    longitude: target.lng,
+    createdAt: target.createdAt,
+    updatedAt: target.updatedAt,
+  };
+}
+
+function fromSharedFieldAssistTarget(shared: FieldAssistActiveTarget): ActiveTarget {
+  return {
+    id: shared.id,
+    name: shared.label,
+    lat: shared.latitude,
+    lng: shared.longitude,
+    createdAt: shared.createdAt,
+    updatedAt: shared.updatedAt,
+  };
 }
 
 function targetFromDraft(draft: TargetDraft, existingTarget?: ActiveTarget | null): ActiveTarget {
@@ -406,11 +432,7 @@ export default function ArStakeoutPage() {
   }, [activeTarget, gps, metrics, heading, relativeBearing]);
 
   const persistActiveTarget = useCallback((nextTarget: ActiveTarget) => {
-    try {
-      localStorage.setItem(ACTIVE_TARGET_STORAGE_KEY, JSON.stringify(nextTarget));
-    } catch {
-      // Active target still works for this page if storage is blocked.
-    }
+    writeFieldAssistActiveTarget(toSharedFieldAssistTarget(nextTarget));
   }, []);
 
   const persistSavedTargets = useCallback((targets: SavedStakeOutTarget[]) => {
@@ -436,8 +458,10 @@ export default function ArStakeoutPage() {
     let restoreTimer: number | null = null;
     let libraryTimer: number | null = null;
     const params = new URLSearchParams(window.location.search);
-    const queryLat = Number(params.get("lat"));
-    const queryLng = Number(params.get("lng"));
+    const rawQueryLat = params.get("lat");
+    const rawQueryLng = params.get("lng");
+    const queryLat = rawQueryLat !== null ? Number(rawQueryLat) : NaN;
+    const queryLng = rawQueryLng !== null ? Number(rawQueryLng) : NaN;
 
     if (Number.isFinite(queryLat) && Number.isFinite(queryLng)) {
       const queryDraft = activeTargetFromText(
@@ -452,15 +476,10 @@ export default function ArStakeoutPage() {
     }
 
     if (!restoredTarget) {
-      try {
-        const storedTarget = localStorage.getItem(ACTIVE_TARGET_STORAGE_KEY);
-        const parsedTarget = storedTarget ? JSON.parse(storedTarget) : null;
+      const storedTarget = readFieldAssistActiveTarget();
 
-        if (isValidActiveTarget(parsedTarget)) {
-          restoredTarget = parsedTarget;
-        }
-      } catch {
-        localStorage.removeItem(ACTIVE_TARGET_STORAGE_KEY);
+      if (storedTarget) {
+        restoredTarget = fromSharedFieldAssistTarget(storedTarget);
       }
     }
 

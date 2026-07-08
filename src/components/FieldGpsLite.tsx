@@ -49,6 +49,12 @@ import {
   getGpsQualityGrade,
 } from "@/lib/gps-quality";
 
+import {
+  clearFieldAssistActiveTarget,
+  readFieldAssistActiveTarget,
+  writeFieldAssistActiveTarget,
+} from "@/lib/field-assist-active-target";
+
 import FieldGpsAccuracyPanel from "./FieldGpsAccuracyPanel";
 
 
@@ -980,6 +986,59 @@ export default function FieldGpsLite({
     };
   }, []);
 
+  useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
+    const stored = readFieldAssistActiveTarget();
+
+    if (!stored) {
+      return;
+    }
+
+    const restoredTarget: FieldGpsTarget = {
+      id: stored.id,
+      label: stored.label,
+      latitude: stored.latitude,
+      longitude: stored.longitude,
+      source: "manual",
+      description: stored.description,
+    };
+
+    const restoreTimer = window.setTimeout(() => {
+      setTargetPoint(restoredTarget);
+      setTargetLabelInput(restoredTarget.label);
+      setTargetLatitudeInput(
+        formatCoordinate(restoredTarget.latitude),
+      );
+      setTargetLongitudeInput(
+        formatCoordinate(restoredTarget.longitude),
+      );
+      setTargetDescriptionInput(
+        restoredTarget.description ?? "",
+      );
+
+      window.dispatchEvent(
+        new CustomEvent(
+          "sabahlot:find-coordinate",
+          {
+            detail: {
+              latitude: restoredTarget.latitude,
+              longitude: restoredTarget.longitude,
+              label: restoredTarget.label,
+              note: restoredTarget.description,
+            },
+          },
+        ),
+      );
+    }, 0);
+
+    return () => {
+      window.clearTimeout(restoreTimer);
+    };
+  }, [enabled]);
+
   if (!enabled) {
     return null;
   }
@@ -1138,6 +1197,18 @@ export default function FieldGpsLite({
       target.description ?? "",
     );
     setTargetValidationError("");
+
+    const now = new Date().toISOString();
+    writeFieldAssistActiveTarget({
+      id: target.id,
+      label: target.label,
+      latitude: target.latitude,
+      longitude: target.longitude,
+      description: target.description,
+      createdAt: now,
+      updatedAt: now,
+    });
+
     window.dispatchEvent(
       new CustomEvent(
         "sabahlot:find-coordinate",
@@ -2221,6 +2292,7 @@ export default function FieldGpsLite({
                 onClick={() => {
                   setTargetPoint(null);
                   setTargetValidationError("");
+                  clearFieldAssistActiveTarget();
                   window.dispatchEvent(
                     new CustomEvent(
                       "sabahlot:clear-coordinate-marker",
