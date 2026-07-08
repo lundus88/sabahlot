@@ -8,6 +8,41 @@ import {
   KEYED_COORDINATE_DISCLAIMER,
 } from "./field-gps";
 
+import {
+  getGpsAccuracyStatus,
+} from "./gps-quality";
+
+export const PRELIMINARY_FIELD_ASSIST_DISCLAIMER =
+  "This report is for preliminary field assistance only and is not a cadastral survey, not a legal boundary determination, and not a replacement for licensed survey work or JTU Sabah approval.";
+
+export interface ArStakeoutTargetSummary {
+  name: string;
+  lat: number;
+  lng: number;
+}
+
+export interface ArStakeoutCurrentLocation {
+  latitude: number;
+  longitude: number;
+  accuracy: number | null;
+  timestamp: string;
+}
+
+export interface ArStakeoutSavedTarget {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+  createdAt: string;
+  lastUsedAt?: string;
+}
+
+export interface ArStakeoutPdfInput {
+  activeTarget: ArStakeoutTargetSummary | null;
+  currentLocation: ArStakeoutCurrentLocation | null;
+  savedTargets: ArStakeoutSavedTarget[];
+}
+
 export interface FieldGpsExportInput {
   recordName?: string;
   points: FieldGpsPoint[];
@@ -442,6 +477,31 @@ export function buildFieldGpsKml(
 </kml>`;
 }
 
+export function buildFieldGpsGeoJson(
+  points: FieldGpsPoint[],
+): string {
+  const featureCollection = {
+    type: "FeatureCollection",
+    features: points.map((point) => ({
+      type: "Feature",
+      geometry: {
+        type: "Point",
+        coordinates: [point.longitude, point.latitude],
+      },
+      properties: {
+        id: point.id,
+        name: point.label,
+        coordinateSystem: "WGS84",
+        source: point.source,
+        notes: point.note ?? "",
+        createdAt: point.timestamp,
+      },
+    })),
+  };
+
+  return JSON.stringify(featureCollection, null, 2);
+}
+
 export async function exportFieldGpsPdf(
   input: FieldGpsExportInput,
 ): Promise<void> {
@@ -778,6 +838,117 @@ export async function exportFieldGpsPdf(
   write(KEYED_COORDINATE_DISCLAIMER, 8);
 
   pdf.save("preliminary-field-gps-capture.pdf");
+}
+
+export async function exportPreliminaryFieldAssistPdf(
+  input: ArStakeoutPdfInput,
+): Promise<void> {
+  const { jsPDF } = await import("jspdf");
+  const pdf = new jsPDF({
+    format: "a3",
+    orientation: "portrait",
+    unit: "mm",
+  });
+  const margin = 14;
+  let y = margin;
+  const lineHeight = 6;
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const contentWidth = pageWidth - margin * 2;
+  const generatedAt = new Date().toLocaleString("en-MY");
+
+  const write = (text: string, size = 10) => {
+    pdf.setFontSize(size);
+    const lines = pdf.splitTextToSize(text, contentWidth);
+    pdf.text(lines, margin, y);
+    y += lines.length * lineHeight;
+  };
+
+  const heading = (text: string) => {
+    y += 2;
+    pdf.setFont("helvetica", "bold");
+    write(text, 12);
+    pdf.setFont("helvetica", "normal");
+  };
+
+  pdf.setFont("helvetica", "bold");
+  write("SabahLot Preliminary Field Assist Report", 18);
+  pdf.setFont("helvetica", "normal");
+  write(`Generated: ${generatedAt}`, 9);
+
+  heading("Active Target Point");
+  if (input.activeTarget) {
+    write(
+      [
+        `Name: ${input.activeTarget.name}`,
+        `Latitude: ${input.activeTarget.lat.toFixed(7)}`,
+        `Longitude: ${input.activeTarget.lng.toFixed(7)}`,
+      ].join("   "),
+    );
+  } else {
+    write("No active target point set.");
+  }
+
+  heading("Current Location");
+  if (input.currentLocation) {
+    const accuracyStatus = getGpsAccuracyStatus(
+      input.currentLocation.accuracy,
+    );
+    write(
+      [
+        `Latitude: ${input.currentLocation.latitude.toFixed(7)}`,
+        `Longitude: ${input.currentLocation.longitude.toFixed(7)}`,
+        `Accuracy: ${
+          input.currentLocation.accuracy !== null
+            ? `+/- ${input.currentLocation.accuracy.toFixed(1)} m`
+            : "unknown"
+        } (${accuracyStatus})`,
+        `Timestamp: ${input.currentLocation.timestamp}`,
+      ].join("   "),
+    );
+
+    if (accuracyStatus === "Poor" || accuracyStatus === "No Fix") {
+      write("GPS accuracy rendah. Gunakan sebagai panduan awal sahaja.", 9);
+    }
+  } else {
+    write("No current location captured.");
+  }
+
+  heading(`Saved Points (${input.savedTargets.length})`);
+  if (input.savedTargets.length === 0) {
+    write("No saved points.");
+  } else {
+    input.savedTargets.forEach((point) => {
+      if (y > pageHeight - margin - 35) {
+        pdf.addPage();
+        y = margin;
+      }
+
+      write(
+        [
+          point.name,
+          `Lat ${point.lat.toFixed(7)}`,
+          `Lng ${point.lng.toFixed(7)}`,
+          `Created ${point.createdAt}`,
+          point.lastUsedAt ? `Last used ${point.lastUsedAt}` : "",
+        ]
+          .filter(Boolean)
+          .join(" | "),
+        9,
+      );
+    });
+  }
+
+  heading("GPS Accuracy Note");
+  write(
+    "Phone GPS accuracy is approximate. Good: <=5 m, Moderate: 5-15 m, Poor: >15 m. Never treat phone GPS as centimetre-level accuracy.",
+    9,
+  );
+
+  heading("Disclaimer");
+  write(PRELIMINARY_FIELD_ASSIST_DISCLAIMER, 9);
+
+  pdf.save("sabahlot-preliminary-field-assist-report.pdf");
 }
 
 export function downloadTextFile(

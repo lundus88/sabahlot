@@ -33,6 +33,7 @@ import {
 
 import {
   buildFieldGpsCsv,
+  buildFieldGpsGeoJson,
   buildFieldGpsKml,
   downloadTextFile,
   exportFieldGpsPdf,
@@ -48,12 +49,29 @@ import {
   getGpsQualityGrade,
 } from "@/lib/gps-quality";
 
+import {
+  clearFieldAssistActiveTarget,
+  readFieldAssistActiveTarget,
+  writeFieldAssistActiveTarget,
+} from "@/lib/field-assist-active-target";
+
 import FieldGpsAccuracyPanel from "./FieldGpsAccuracyPanel";
 
 
 
-function openArStakeoutPage() {
+function openArStakeoutPage(target?: FieldGpsTarget | null) {
   if (typeof window === "undefined") return;
+
+  if (target) {
+    const params = new URLSearchParams({
+      lat: `${target.latitude}`,
+      lng: `${target.longitude}`,
+      name: target.label,
+    });
+    window.location.href = `/ar-stakeout?${params.toString()}`;
+    return;
+  }
+
   window.location.href = "/ar-stakeout";
 }
 
@@ -968,6 +986,59 @@ export default function FieldGpsLite({
     };
   }, []);
 
+  useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
+    const stored = readFieldAssistActiveTarget();
+
+    if (!stored) {
+      return;
+    }
+
+    const restoredTarget: FieldGpsTarget = {
+      id: stored.id,
+      label: stored.label,
+      latitude: stored.latitude,
+      longitude: stored.longitude,
+      source: "manual",
+      description: stored.description,
+    };
+
+    const restoreTimer = window.setTimeout(() => {
+      setTargetPoint(restoredTarget);
+      setTargetLabelInput(restoredTarget.label);
+      setTargetLatitudeInput(
+        formatCoordinate(restoredTarget.latitude),
+      );
+      setTargetLongitudeInput(
+        formatCoordinate(restoredTarget.longitude),
+      );
+      setTargetDescriptionInput(
+        restoredTarget.description ?? "",
+      );
+
+      window.dispatchEvent(
+        new CustomEvent(
+          "sabahlot:find-coordinate",
+          {
+            detail: {
+              latitude: restoredTarget.latitude,
+              longitude: restoredTarget.longitude,
+              label: restoredTarget.label,
+              note: restoredTarget.description,
+            },
+          },
+        ),
+      );
+    }, 0);
+
+    return () => {
+      window.clearTimeout(restoreTimer);
+    };
+  }, [enabled]);
+
   if (!enabled) {
     return null;
   }
@@ -1126,6 +1197,18 @@ export default function FieldGpsLite({
       target.description ?? "",
     );
     setTargetValidationError("");
+
+    const now = new Date().toISOString();
+    writeFieldAssistActiveTarget({
+      id: target.id,
+      label: target.label,
+      latitude: target.latitude,
+      longitude: target.longitude,
+      description: target.description,
+      createdAt: now,
+      updatedAt: now,
+    });
+
     window.dispatchEvent(
       new CustomEvent(
         "sabahlot:find-coordinate",
@@ -1476,7 +1559,7 @@ export default function FieldGpsLite({
           );
           clearCameraErrorDetails();
           setArMessage(
-            "Camera requires HTTPS. Please open https://beta.sabahlot.com",
+            "Camera requires HTTPS. Please open this page over a secure (https://) connection.",
           );
           return;
         }
@@ -1492,7 +1575,7 @@ export default function FieldGpsLite({
           );
           clearCameraErrorDetails();
           setArMessage(
-            "Camera is not supported in this browser. Open beta.sabahlot.com in Chrome Android or Safari iPhone.",
+            "Camera is not supported in this browser. Open this page in Chrome Android or Safari iPhone.",
           );
           return;
         }
@@ -1944,6 +2027,12 @@ export default function FieldGpsLite({
           </div>
 
           <p className="sl-field-gps-note">
+            {targetPoint
+              ? `Active Target: ${targetPoint.label}`
+              : "Target: Not set"}
+          </p>
+
+          <p className="sl-field-gps-note">
             Internal founder field test only.
           </p>
 
@@ -1985,7 +2074,7 @@ export default function FieldGpsLite({
           <div className="sl-field-gps-actions">
             <button
               type="button"
-              onClick={openArStakeoutPage}
+              onClick={() => openArStakeoutPage(targetPoint)}
               className="sl-field-gps-action-primary"
             >
               AR Guide
@@ -2209,6 +2298,7 @@ export default function FieldGpsLite({
                 onClick={() => {
                   setTargetPoint(null);
                   setTargetValidationError("");
+                  clearFieldAssistActiveTarget();
                   window.dispatchEvent(
                     new CustomEvent(
                       "sabahlot:clear-coordinate-marker",
@@ -2719,6 +2809,24 @@ export default function FieldGpsLite({
                 }
               >
                 Export CSV
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  downloadTextFile(
+                    buildFieldGpsGeoJson(
+                      allRecordedPoints,
+                    ),
+                    `${safeFileName}.geojson`,
+                    "application/geo+json",
+                  )
+                }
+                disabled={
+                  allRecordedPoints.length ===
+                  0
+                }
+              >
+                Export GeoJSON
               </button>
             </div>
 

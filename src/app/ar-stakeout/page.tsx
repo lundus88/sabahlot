@@ -3,6 +3,13 @@ import Link from "next/link";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import styles from "./ar-stakeout.module.css";
+import { getGpsAccuracyStatus } from "@/lib/gps-quality";
+import { exportPreliminaryFieldAssistPdf } from "@/lib/field-gps-export";
+import {
+  readFieldAssistActiveTarget,
+  writeFieldAssistActiveTarget,
+  type FieldAssistActiveTarget,
+} from "@/lib/field-assist-active-target";
 
 type GpsFix = {
   latitude: number;
@@ -64,7 +71,6 @@ type WebkitOrientationEvent = DeviceOrientationEvent & {
   webkitCompassHeading?: number;
 };
 
-const ACTIVE_TARGET_STORAGE_KEY = "sabahlot.arStakeout.activeTarget";
 const SAVED_TARGETS_STORAGE_KEY = "sabahlot.arStakeout.savedTargets";
 const AR_FOV_DEG = 60;
 const AR_MARKER_EDGE_OFFSET_PERCENT = 45;
@@ -173,6 +179,28 @@ function activeTargetFromText(
 
 function createTargetId() {
   return `target-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function toSharedFieldAssistTarget(target: ActiveTarget): FieldAssistActiveTarget {
+  return {
+    id: target.id,
+    label: target.name,
+    latitude: target.lat,
+    longitude: target.lng,
+    createdAt: target.createdAt,
+    updatedAt: target.updatedAt,
+  };
+}
+
+function fromSharedFieldAssistTarget(shared: FieldAssistActiveTarget): ActiveTarget {
+  return {
+    id: shared.id,
+    name: shared.label,
+    lat: shared.latitude,
+    lng: shared.longitude,
+    createdAt: shared.createdAt,
+    updatedAt: shared.updatedAt,
+  };
 }
 
 function targetFromDraft(draft: TargetDraft, existingTarget?: ActiveTarget | null): ActiveTarget {
@@ -379,6 +407,7 @@ export default function ArStakeoutPage() {
   }, [gps, activeTarget]);
 
   const signal = getGpsSignal(gps, gpsError);
+  const accuracyStatus = getGpsAccuracyStatus(gps?.accuracy ?? null);
 
   const relativeBearing = useMemo(() => {
     if (!metrics || heading === null) return null;
@@ -403,11 +432,7 @@ export default function ArStakeoutPage() {
   }, [activeTarget, gps, metrics, heading, relativeBearing]);
 
   const persistActiveTarget = useCallback((nextTarget: ActiveTarget) => {
-    try {
-      localStorage.setItem(ACTIVE_TARGET_STORAGE_KEY, JSON.stringify(nextTarget));
-    } catch {
-      // Active target still works for this page if storage is blocked.
-    }
+    writeFieldAssistActiveTarget(toSharedFieldAssistTarget(nextTarget));
   }, []);
 
   const persistSavedTargets = useCallback((targets: SavedStakeOutTarget[]) => {
@@ -433,8 +458,10 @@ export default function ArStakeoutPage() {
     let restoreTimer: number | null = null;
     let libraryTimer: number | null = null;
     const params = new URLSearchParams(window.location.search);
-    const queryLat = Number(params.get("lat"));
-    const queryLng = Number(params.get("lng"));
+    const rawQueryLat = params.get("lat");
+    const rawQueryLng = params.get("lng");
+    const queryLat = rawQueryLat !== null ? Number(rawQueryLat) : NaN;
+    const queryLng = rawQueryLng !== null ? Number(rawQueryLng) : NaN;
 
     if (Number.isFinite(queryLat) && Number.isFinite(queryLng)) {
       const queryDraft = activeTargetFromText(
@@ -449,15 +476,10 @@ export default function ArStakeoutPage() {
     }
 
     if (!restoredTarget) {
-      try {
-        const storedTarget = localStorage.getItem(ACTIVE_TARGET_STORAGE_KEY);
-        const parsedTarget = storedTarget ? JSON.parse(storedTarget) : null;
+      const storedTarget = readFieldAssistActiveTarget();
 
-        if (isValidActiveTarget(parsedTarget)) {
-          restoredTarget = parsedTarget;
-        }
-      } catch {
-        localStorage.removeItem(ACTIVE_TARGET_STORAGE_KEY);
+      if (storedTarget) {
+        restoredTarget = fromSharedFieldAssistTarget(storedTarget);
       }
     }
 
@@ -696,12 +718,12 @@ export default function ArStakeoutPage() {
       setCameraStatus("Starting");
 
       if (secureContext !== "yes") {
-        throw new Error("Camera requires HTTPS. Please open https://beta.sabahlot.com");
+        throw new Error("Camera requires HTTPS. Please open this page over a secure (https://) connection.");
       }
 
       if (getUserMediaSupport !== "yes") {
         const error = new Error(
-          "Camera is not supported in this browser. Open beta.sabahlot.com in Chrome Android or Safari iPhone."
+          "Camera is not supported in this browser. Open this page in Chrome Android or Safari iPhone."
         );
         error.name = "NotSupportedError";
         throw error;
@@ -1127,6 +1149,28 @@ export default function ArStakeoutPage() {
             Save Found Point
           </button>
 
+          <button
+            type="button"
+            onClick={() =>
+              void exportPreliminaryFieldAssistPdf({
+                activeTarget: activeTarget
+                  ? { name: activeTarget.name, lat: activeTarget.lat, lng: activeTarget.lng }
+                  : null,
+                currentLocation: gps
+                  ? {
+                      latitude: gps.latitude,
+                      longitude: gps.longitude,
+                      accuracy: gps.accuracy,
+                      timestamp: new Date(gps.timestamp).toLocaleString("en-MY"),
+                    }
+                  : null,
+                savedTargets,
+              })
+            }
+          >
+            Export A3 PDF Report
+          </button>
+
           {fieldMessage && <p className={styles.fieldMessage}>{fieldMessage}</p>}
         </div>
 
@@ -1137,6 +1181,12 @@ export default function ArStakeoutPage() {
             <span>{signal.label}</span>
             <strong>{signal.detail}</strong>
           </div>
+
+          {accuracyStatus === "Poor" && (
+            <p className={styles.fieldMessage}>
+              GPS accuracy rendah. Gunakan sebagai panduan awal sahaja.
+            </p>
+          )}
 
           <div className={styles.buttonRow}>
             <button type="button" className={styles.primaryButton} onClick={startGps}>
@@ -1171,7 +1221,7 @@ export default function ArStakeoutPage() {
             </div>
             <div>
               <dt>Accuracy</dt>
-              <dd>{formatAccuracy(gps?.accuracy)}</dd>
+              <dd>{formatAccuracy(gps?.accuracy)} ({accuracyStatus})</dd>
             </div>
             <div>
               <dt>Bearing</dt>

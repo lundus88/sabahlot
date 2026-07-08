@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  getGpsAccuracyStatus,
   getGpsQualityLabel,
 } from "@/lib/gps-quality";
 
@@ -54,6 +55,10 @@ export default function FieldGpsAccuracyPanel({
               gateMeters)),
     );
 
+  const accuracyStatus = getGpsAccuracyStatus(
+    reading?.accuracyMeters ?? null,
+  );
+
   return (
     <section className="sl-field-gps-section">
       <div className="sl-field-gps-status-row">
@@ -61,6 +66,9 @@ export default function FieldGpsAccuracyPanel({
         <span className="sl-field-gps-status-badges">
           <span className={gpsSignalClassName}>
             {gpsSignalLabel}
+          </span>
+          <span className={`sl-gps-accuracy-status is-${accuracyStatus.toLowerCase().replace(" ", "-")}`}>
+            {accuracyStatus}
           </span>
           <span className={`sl-gps-grade is-${qualityGrade.toLowerCase()}`}>
             {qualityGrade}
@@ -71,6 +79,12 @@ export default function FieldGpsAccuracyPanel({
       <p className="sl-field-gps-quality">
         {getGpsQualityLabel(qualityGrade)}
       </p>
+
+      {accuracyStatus === "Poor" && (
+        <p className="sl-field-gps-warning">
+          GPS accuracy rendah. Gunakan sebagai panduan awal sahaja.
+        </p>
+      )}
 
       {accuracyWeak && (
         <p className="sl-field-gps-warning">
