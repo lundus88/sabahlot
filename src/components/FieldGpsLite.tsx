@@ -2027,6 +2027,12 @@ export default function FieldGpsLite({
           </div>
 
           <p className="sl-field-gps-note">
+            {targetPoint
+              ? `Active Target: ${targetPoint.label}`
+              : "Target: Not set"}
+          </p>
+
+          <p className="sl-field-gps-note">
             Internal founder field test only.
           </p>
 

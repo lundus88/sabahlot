@@ -22,6 +22,10 @@ import type {
   OfflineMapView,
 } from "@/lib/offline-map-cache";
 
+import {
+  readFieldAssistActiveTarget,
+} from "@/lib/field-assist-active-target";
+
 import type {
   Layer,
   LayerGroup,
@@ -6743,6 +6747,29 @@ export default function Map({
           "sabahlot:clear-coordinate-marker",
           handleClearCoordinateMarker,
         );
+
+        const storedActiveTarget =
+          readFieldAssistActiveTarget();
+
+        if (storedActiveTarget) {
+          handleFindCoordinate(
+            new CustomEvent(
+              "sabahlot:find-coordinate",
+              {
+                detail: {
+                  latitude:
+                    storedActiveTarget.latitude,
+                  longitude:
+                    storedActiveTarget.longitude,
+                  label:
+                    storedActiveTarget.label,
+                  note:
+                    storedActiveTarget.description,
+                },
+              },
+            ),
+          );
+        }
 
         const handleClick = (
           event:
