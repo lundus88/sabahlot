@@ -14,6 +14,9 @@ import Map, {
 
 import FieldGpsLite from "@/components/FieldGpsLite";
 
+import BetaNoticeModal from "@/components/beta/BetaNoticeModal";
+import PublicBetaLabel from "@/components/beta/PublicBetaLabel";
+
 import {
   createClient,
 } from "@/lib/supabase/client";
@@ -6470,6 +6473,10 @@ export default function HomePage() {
           setMapView
         }
       />
+
+      <BetaNoticeModal />
+
+      <PublicBetaLabel />
 
       <div className="sl-field-gps-stack">
         <FieldGpsLite
