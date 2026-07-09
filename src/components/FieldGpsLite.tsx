@@ -20,6 +20,12 @@ import type {
   PolygonResult,
 } from "@/app/components/Map";
 
+import Link from "next/link";
+
+import FeedbackForm from "@/components/feedback/FeedbackForm";
+import BugReportButton from "@/components/feedback/BugReportButton";
+import FeedbackExportButton from "@/components/feedback/FeedbackExportButton";
+
 import {
   averageReadings,
   bearingToDms,
@@ -4003,6 +4009,21 @@ export default function FieldGpsLite({
           <p className="sl-field-gps-disclaimer">
             {FIELD_GPS_DISCLAIMER}
           </p>
+
+          <section className="sl-field-gps-section sl-beta-help-section">
+            <div className="sl-field-gps-heading">
+              <span>Bantuan &amp; Maklum Balas Beta</span>
+            </div>
+
+            <div className="sl-field-gps-target-grid">
+              <FeedbackForm />
+              <BugReportButton />
+              <FeedbackExportButton />
+              <Link href="/manual-beta" className="sl-beta-action-button">
+                Manual Pengguna Beta
+              </Link>
+            </div>
+          </section>
         </div>
       )}
     </section>
