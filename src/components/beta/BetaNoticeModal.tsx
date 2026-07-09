@@ -50,10 +50,12 @@ export default function BetaNoticeModal() {
         <ul>
           <li>Ia bukan pengukuran kadaster.</li>
           <li>Ia bukan penentuan sempadan sah.</li>
-          <li>Ia bukan sistem rasmi JTU Sabah.</li>
           <li>
-            Ia bukan pengganti juruukur berlesen, peguam, proses pejabat
-            tanah, PBT, atau kelulusan JTU Sabah.
+            Ia bukan sistem rasmi Jabatan Tanah dan Ukur Sabah (JTU Sabah).
+          </li>
+          <li>
+            Ia bukan pengganti juruukur berlesen, peguam, proses Pejabat
+            Tanah, Pihak Berkuasa Tempatan (PBT), atau kelulusan JTU Sabah.
           </li>
         </ul>
 
