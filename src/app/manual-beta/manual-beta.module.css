@@ -1,0 +1,96 @@
+.page {
+  min-height: 100vh;
+  padding: 24px 16px 60px;
+  overflow-y: auto;
+  background: #dbe5ee;
+  color: #0f172a;
+}
+
+.card {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px;
+  background: #ffffff;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  border-radius: 16px;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.14);
+}
+
+.backLink {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: var(--sl-primary, #2563eb);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.backLink:hover {
+  text-decoration: underline;
+}
+
+.badge {
+  display: inline-block;
+  margin-bottom: 10px;
+  padding: 4px 10px;
+  color: #7c2d12;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.card h1 {
+  margin: 0 0 6px;
+  font-size: 22px;
+}
+
+.card h2 {
+  margin: 20px 0 8px;
+  font-size: 16px;
+}
+
+.card p,
+.card li {
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.card ol,
+.card ul {
+  padding-left: 20px;
+  margin: 0;
+}
+
+.card ol li,
+.card ul li {
+  margin-bottom: 6px;
+}
+
+.docPath {
+  display: block;
+  margin-top: 4px;
+  padding: 8px 10px;
+  overflow-wrap: anywhere;
+  color: #334155;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
+
+.disclaimer {
+  margin-top: 24px;
+  padding: 12px;
+  color: #7c2d12;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+}

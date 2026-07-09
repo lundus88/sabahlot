@@ -5962,3 +5962,340 @@ select:focus-visible {
   font-size: 12px;
   font-weight: 700;
 }
+
+/* =====================================================
+   PUBLIC BETA LABEL (Sprint 07A)
+   ===================================================== */
+
+.sl-public-beta-label {
+  position: fixed;
+  top: 60px;
+  left: 50%;
+  z-index: 1078;
+
+  max-width: min(150px, calc(100vw - 220px));
+  padding: 4px 8px;
+
+  overflow: hidden;
+
+  color: #7c2d12;
+  background: rgba(255, 247, 237, 0.92);
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  border: 1px solid #fed7aa;
+  border-radius: 999px;
+
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+
+  pointer-events: none;
+
+  transform: translateX(-50%);
+  backdrop-filter: blur(8px);
+}
+
+@media (max-width: 340px) {
+  .sl-public-beta-label {
+    display: none;
+  }
+}
+
+/* =====================================================
+   BETA HELP / FEEDBACK SECTION (inside Handheld GPS panel)
+   ===================================================== */
+
+.sl-beta-help-section .sl-field-gps-heading span {
+  color: #7c2d12;
+}
+
+.sl-beta-action-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  min-height: 34px;
+  padding: 0 8px;
+
+  overflow-wrap: anywhere;
+
+  color: #0f172a;
+  background: #ffffff;
+  text-align: center;
+  text-decoration: none;
+
+  border: 1px solid rgba(148, 163, 184, 0.38);
+  border-radius: 8px;
+
+  font-size: 12px;
+  font-weight: 800;
+
+  cursor: pointer;
+}
+
+.sl-beta-action-button:hover {
+  background: #f8fafc;
+}
+
+.sl-beta-action-button:disabled {
+  color: #94a3b8;
+  background: #f1f5f9;
+  cursor: not-allowed;
+}
+
+/* =====================================================
+   BETA NOTICE MODAL (Sprint 07A)
+   ===================================================== */
+
+.sl-beta-notice-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+
+  display: grid;
+  place-items: center;
+  padding: 16px;
+
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(3px);
+}
+
+.sl-beta-notice-modal {
+  display: grid;
+  gap: 12px;
+
+  width: min(480px, 100%);
+  max-height: min(88dvh, 720px);
+  padding: 20px;
+
+  overflow-y: auto;
+
+  color: #0f172a;
+  background: #ffffff;
+
+  border-radius: 16px;
+  box-shadow: var(--sl-shadow);
+}
+
+.sl-beta-notice-modal h2 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.sl-beta-notice-modal p,
+.sl-beta-notice-modal li {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.sl-beta-notice-modal ul {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+}
+
+.sl-beta-notice-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+
+  padding: 10px;
+
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sl-beta-notice-checkbox input {
+  flex: 0 0 auto;
+  width: 16px;
+  min-height: 16px;
+  margin-top: 1px;
+  accent-color: var(--sl-primary);
+}
+
+.sl-beta-notice-continue {
+  min-height: 44px;
+
+  color: #ffffff;
+  background: var(--sl-primary);
+
+  border: 0;
+  border-radius: 10px;
+
+  font-size: 14px;
+  font-weight: 800;
+
+  cursor: pointer;
+}
+
+.sl-beta-notice-continue:hover:not(:disabled) {
+  background: var(--sl-primary-dark);
+}
+
+.sl-beta-notice-continue:disabled {
+  background: #cbd5e1;
+  cursor: not-allowed;
+}
+
+/* =====================================================
+   FEEDBACK MODAL (Sprint 07A)
+   ===================================================== */
+
+.sl-feedback-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+
+  display: grid;
+  place-items: center;
+  padding: 16px;
+
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(3px);
+}
+
+.sl-feedback-modal {
+  display: grid;
+  gap: 12px;
+
+  width: min(480px, 100%);
+  max-height: min(88dvh, 760px);
+  padding: 18px;
+
+  overflow-y: auto;
+
+  color: #0f172a;
+  background: #ffffff;
+
+  border-radius: 16px;
+  box-shadow: var(--sl-shadow);
+}
+
+.sl-feedback-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.sl-feedback-header h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.sl-feedback-close {
+  display: grid;
+  place-items: center;
+
+  width: 30px;
+  height: 30px;
+  padding: 0;
+
+  color: #64748b;
+  background: #f1f5f9;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.sl-feedback-form {
+  display: grid;
+  gap: 10px;
+}
+
+.sl-feedback-form label {
+  display: grid;
+  gap: 4px;
+}
+
+.sl-feedback-form label > span {
+  color: #475569;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+.sl-feedback-form input,
+.sl-feedback-form select,
+.sl-feedback-form textarea {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+
+  color: #0f172a;
+  background: #ffffff;
+
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+
+  font-size: 13px;
+}
+
+.sl-feedback-form textarea {
+  min-height: 70px;
+  resize: vertical;
+}
+
+.sl-feedback-note {
+  margin: 0;
+  color: #64748b;
+  font-size: 10px;
+}
+
+.sl-feedback-submit {
+  min-height: 42px;
+
+  color: #ffffff;
+  background: var(--sl-primary);
+
+  border: 0;
+  border-radius: 10px;
+
+  font-size: 13px;
+  font-weight: 800;
+
+  cursor: pointer;
+}
+
+.sl-feedback-submit:hover {
+  background: var(--sl-primary-dark);
+}
+
+.sl-feedback-success {
+  display: grid;
+  gap: 12px;
+  text-align: center;
+}
+
+.sl-feedback-success p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.sl-feedback-success button {
+  min-height: 40px;
+
+  color: #ffffff;
+  background: var(--sl-primary);
+
+  border: 0;
+  border-radius: 10px;
+
+  font-size: 13px;
+  font-weight: 800;
+
+  cursor: pointer;
+}
