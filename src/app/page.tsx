@@ -7038,7 +7038,7 @@ export default function HomePage() {
         }
         fieldGpsControl={
           <FieldGpsLite
-            enabled={appMode === "advanced"}
+            enabled
             recordName={
               formData.lotNumber
             }
