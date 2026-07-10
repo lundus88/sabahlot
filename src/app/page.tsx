@@ -902,6 +902,11 @@ export default function HomePage() {
   ] = useState(false);
 
   const [
+    mapToolsRevealed,
+    setMapToolsRevealed,
+  ] = useState(false);
+
+  const [
     ncrScreenOpen,
     setNcrScreenOpen,
   ] = useState(false);
@@ -1593,6 +1598,7 @@ export default function HomePage() {
         break;
 
       case "map_drawing":
+        setMapToolsRevealed(true);
         break;
 
       case "field_work":
@@ -7053,6 +7059,7 @@ export default function HomePage() {
         appMode={appMode}
         region={region}
         onRegionChange={setRegion}
+        mapToolsRevealed={mapToolsRevealed}
       />
 
       <CategoryDrawer

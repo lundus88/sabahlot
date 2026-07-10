@@ -138,6 +138,7 @@ interface MapProps {
   appMode: AppMode;
   region?: RegionId;
   onRegionChange?: (region: RegionId) => void;
+  mapToolsRevealed?: boolean;
 }
 
 type CoordinatePair = [number, number];
@@ -2547,7 +2548,10 @@ export default function Map({
   appMode,
   region,
   onRegionChange,
+  mapToolsRevealed = false,
 }: MapProps) {
+  const isMapToolDockVisible =
+    appMode === "advanced" || mapToolsRevealed;
   const mapContainerRef =
     useRef<HTMLDivElement | null>(
       null,
@@ -9811,7 +9815,7 @@ export default function Map({
         </div>
       </header>
 
-      {isDrawing || isAddPointMode ? (
+      {isMapToolDockVisible && (isDrawing || isAddPointMode ? (
         <nav
           className="sl-context-toolbar"
           aria-label="Drawing actions"
@@ -9909,9 +9913,9 @@ export default function Map({
             <span>Export</span>
           </button>
         </nav>
-      )}
+      ))}
 
-      {activePanel === "draw" && !isDrawing && !isAddPointMode && (
+      {isMapToolDockVisible && activePanel === "draw" && !isDrawing && !isAddPointMode && (
         <aside
           className="sl-progressive-menu sl-tool-flyout sl-draw-menu"
           onClick={(event) =>
@@ -9937,7 +9941,7 @@ export default function Map({
         </aside>
       )}
 
-      {activePanel === "edit" && !isDrawing && !isAddPointMode && (
+      {isMapToolDockVisible && activePanel === "edit" && !isDrawing && !isAddPointMode && (
         <aside
           className="sl-progressive-menu sl-tool-flyout sl-edit-menu"
           onClick={(event) =>
@@ -9982,7 +9986,7 @@ export default function Map({
         </aside>
       )}
 
-      {activePanel === "export" && !isDrawing && !isAddPointMode && (
+      {isMapToolDockVisible && activePanel === "export" && !isDrawing && !isAddPointMode && (
         <aside
           className="sl-progressive-menu sl-tool-flyout sl-export-menu"
           onClick={(event) =>
@@ -10014,7 +10018,7 @@ export default function Map({
         </aside>
       )}
 
-      {activePanel === "objects" && (
+      {appMode === "advanced" && activePanel === "objects" && (
       <aside
         className="sl-object-list"
         onClick={(event) =>
@@ -10220,26 +10224,28 @@ export default function Map({
       )}
 
       <div className="sl-mobile-top-control-stack">
-        <button
-          type="button"
-          className={`sl-object-list-tab ${
-            activePanel === "objects"
-              ? "is-active"
-              : ""
-          }`}
-          onClick={() =>
-            toggleMapPanel("objects")
-          }
-          aria-label={
-            activePanel === "objects"
-              ? "Close Objects"
-              : "Open Objects"
-          }
-        >
-          Objects ({drawingObjects.length})
-        </button>
+        {appMode === "advanced" && (
+          <button
+            type="button"
+            className={`sl-object-list-tab ${
+              activePanel === "objects"
+                ? "is-active"
+                : ""
+            }`}
+            onClick={() =>
+              toggleMapPanel("objects")
+            }
+            aria-label={
+              activePanel === "objects"
+                ? "Close Objects"
+                : "Open Objects"
+            }
+          >
+            Objects ({drawingObjects.length})
+          </button>
+        )}
 
-      {fieldGpsControl ? (
+      {fieldGpsControl && appMode === "advanced" ? (
         <div className="sl-field-gps-stack">
           {fieldGpsControl}
         </div>
