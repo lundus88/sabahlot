@@ -1,3 +1,5 @@
+import type { RegionId } from "@/lib/region/regionStorage";
+
 export const FEEDBACK_STORAGE_KEY = "sabahlot_beta_feedback";
 
 export type FeedbackIssueType = "Critical" | "Major" | "Minor" | "Suggestion";
@@ -15,6 +17,10 @@ export interface FeedbackEntry {
   penerangan: string;
   cadangan: string;
   screenshotNote: string;
+  region?: RegionId;
+  state?: string;
+  district?: string;
+  module?: string;
 }
 
 export type FeedbackEntryInput = Omit<FeedbackEntry, "id" | "submittedAt">;

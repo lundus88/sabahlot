@@ -34,7 +34,12 @@ import type {
   TileLayerOptions,
 } from "leaflet";
 
-export type AppLanguage = "en" | "ms";
+import type { AppLanguage } from "@/lib/i18n/appLanguageStorage";
+export type { AppLanguage } from "@/lib/i18n/appLanguageStorage";
+import type { AppMode } from "@/lib/appMode/appModeStorage";
+import type { RegionId } from "@/lib/region/regionStorage";
+import RegionIndicator from "@/components/shell/RegionIndicator";
+import LanguageSwitcher from "@/components/shell/LanguageSwitcher";
 export type DistanceUnit = "m" | "ft" | "link" | "chain";
 export type AreaUnit = "m2" | "ft2" | "ha" | "acre";
 
@@ -126,10 +131,13 @@ interface MapProps {
   isSavingLot?: boolean;
   isExportingPdf?: boolean;
   hasUnsavedChanges?: boolean;
-  onOpenLotPanel?: () => void;
+  onOpenCategoryDrawer?: () => void;
   onLanguageChange?: (language: AppLanguage) => void;
   onAreaUnitChange?: (areaUnit: AreaUnit) => void;
   onMapViewChange?: (view: OfflineMapView) => void;
+  appMode: AppMode;
+  region?: RegionId;
+  onRegionChange?: (region: RegionId) => void;
 }
 
 type CoordinatePair = [number, number];
@@ -689,6 +697,9 @@ const MAP_TEXT = {
     openLot:
       "Lot information",
 
+    openMenu:
+      "Open menu",
+
     fitPolygon:
       "Fit polygon",
 
@@ -880,6 +891,9 @@ const MAP_TEXT = {
     openLot:
       "Maklumat lot",
 
+    openMenu:
+      "Buka menu",
+
     fitPolygon:
       "Muatkan polygon",
 
@@ -936,6 +950,200 @@ const MAP_TEXT = {
 
     station:
       "Stesen",
+  },
+
+  zh: {
+    mapReady:
+      "地图就绪。按开始绘制以开始。",
+
+    drawingActive:
+      "绘制中。点击每个地块角点。",
+
+    pointsRecorded: (
+      count: number,
+    ) =>
+      `已记录 ${count} 个点。` +
+      "继续或完成多边形。",
+
+    pointTooClose:
+      "新的点与上一个点太接近。",
+
+    allPointsRemoved:
+      "所有点已被移除。",
+
+    lastPointRemoved: (
+      count: number,
+    ) =>
+      `已移除最后一个点。` +
+      `剩余 ${count} 个点。`,
+
+    polygonMinimum:
+      "至少需要三个不同的点。",
+
+    polygonCompleted:
+      "多边形已完成。",
+
+    polygonDeleted:
+      "多边形已删除。准备好后开始新的绘制。",
+
+    startDrawing:
+      "开始绘制",
+
+    undoPoint:
+      "撤销点",
+
+    completePolygon:
+      "完成多边形",
+
+    saveLot:
+      "Save Lot",
+
+    saveRequiresPolygon:
+      "Complete the polygon first.",
+
+    exportPdf:
+      "导出PDF图纸",
+
+    editPolygon:
+      "编辑多边形",
+
+    finishEditing:
+      "完成编辑",
+
+    delete:
+      "删除多边形",
+
+    trackLocation:
+      "追踪我的位置",
+
+    stopTracking:
+      "停止追踪",
+
+    points:
+      "点",
+
+    settings:
+      "地图设置",
+
+    mapDisplay:
+      "地图与图纸显示",
+
+    settingsDescription:
+      "选择底图和显示单位。",
+
+    baseMap:
+      "底图",
+
+    distanceUnit:
+      "距离单位",
+
+    areaUnit:
+      "地块面积单位",
+
+    meter:
+      "米",
+
+    feet:
+      "英尺",
+
+    link:
+      "Link",
+
+    chain:
+      "Chain",
+
+    squareMetres:
+      "平方米",
+
+    squareFeet:
+      "平方英尺",
+
+    hectares:
+      "公顷",
+
+    acres:
+      "英亩",
+
+    searchPlaceholder:
+      "Find address or place",
+
+    search:
+      "搜索",
+
+    searchEmpty:
+      "请输入位置或坐标。",
+
+    searchNotFound:
+      "找不到该位置。",
+
+    searchFailed:
+      "搜索无法完成。",
+
+    searching:
+      "正在搜索位置...",
+
+    openLot:
+      "地块信息",
+
+    openMenu:
+      "打开菜单",
+
+    fitPolygon:
+      "缩放至多边形",
+
+    resetSabah:
+      "重置到沙巴",
+
+    zoomIn:
+      "放大",
+
+    zoomOut:
+      "缩小",
+
+    locationNotTracked:
+      "尚未追踪位置",
+
+    locating:
+      "正在查找当前位置...",
+
+    trackingStopped:
+      "位置追踪已停止",
+
+    locationSuccess: (
+      accuracy: number,
+    ) =>
+      `位置已追踪 · ` +
+      `±${accuracy.toFixed(1)} 米`,
+
+    locationUnsupported:
+      "不支持定位服务。",
+
+    locationDenied:
+      "位置权限被拒绝。",
+
+    locationUnavailable:
+      "当前位置不可用。",
+
+    locationTimeout:
+      "位置请求超时。",
+
+    currentLocation:
+      "当前位置",
+
+    latitude:
+      "纬度",
+
+    longitude:
+      "经度",
+
+    accuracy:
+      "精度",
+
+    defaultLot:
+      "LOT",
+
+    station:
+      "测站",
   },
 } as const;
 
@@ -2285,7 +2493,7 @@ function locationErrorMessage(
   return text.locationUnavailable;
 }
 
-function Icon({
+export function Icon({
   children,
 }: {
   children:
@@ -2323,10 +2531,13 @@ export default function Map({
   isSavingLot = false,
   isExportingPdf = false,
   hasUnsavedChanges = false,
-  onOpenLotPanel,
+  onOpenCategoryDrawer,
   onLanguageChange,
   onAreaUnitChange,
   onMapViewChange,
+  appMode,
+  region,
+  onRegionChange,
 }: MapProps) {
   const mapContainerRef =
     useRef<HTMLDivElement | null>(
@@ -2480,6 +2691,11 @@ export default function Map({
   const languageRef =
     useRef(
       language,
+    );
+
+  const appModeRef =
+    useRef<AppMode>(
+      appMode,
     );
 
   const lotNameRef =
@@ -3976,16 +4192,18 @@ export default function Map({
           );
             };
 
-          renderSingleDashedLabel(
-            bearing,
-            "sl-survey-bearing",
-            -1,
-          );
-          renderSingleDashedLabel(
-            `${distanceText} ${unitText}`,
-            "sl-survey-distance",
-            1,
-          );
+          if (appModeRef.current === "advanced") {
+            renderSingleDashedLabel(
+              bearing,
+              "sl-survey-bearing",
+              -1,
+            );
+            renderSingleDashedLabel(
+              `${distanceText} ${unitText}`,
+              "sl-survey-distance",
+              1,
+            );
+          }
         }
       };
 
@@ -4669,18 +4887,20 @@ export default function Map({
           );
             };
 
-          renderSingleSegmentLabel(
-            bearing,
-            "sl-survey-bearing",
-            -1,
-          );
-
-          if (showDistance) {
+          if (appModeRef.current === "advanced") {
             renderSingleSegmentLabel(
-              `${distanceText} ${unitText}`,
-              "sl-survey-distance",
-              1,
+              bearing,
+              "sl-survey-bearing",
+              -1,
             );
+
+            if (showDistance) {
+              renderSingleSegmentLabel(
+                `${distanceText} ${unitText}`,
+                "sl-survey-distance",
+                1,
+              );
+            }
           }
         }
       };
@@ -5768,17 +5988,19 @@ export default function Map({
         );
           };
 
-        renderActiveSegmentLabel(
-          bearing,
-          "sl-survey-bearing",
-          -1,
-        );
+        if (appModeRef.current === "advanced") {
+          renderActiveSegmentLabel(
+            bearing,
+            "sl-survey-bearing",
+            -1,
+          );
 
-        renderActiveSegmentLabel(
-          `${distanceText} ${unitText}`,
-          "sl-survey-distance",
-          1,
-        );
+          renderActiveSegmentLabel(
+            `${distanceText} ${unitText}`,
+            "sl-survey-distance",
+            1,
+          );
+        }
       }
 
       const showStations =
@@ -6279,6 +6501,19 @@ export default function Map({
     },
     [
       language,
+    ],
+  );
+
+  useEffect(
+    () => {
+      appModeRef.current =
+        appMode;
+
+      redrawPolygon();
+      redrawDashedLines();
+    },
+    [
+      appMode,
     ],
   );
 
@@ -9242,9 +9477,9 @@ export default function Map({
         <button
           type="button"
           className="sl-icon-button sl-menu-button"
-          onClick={onOpenLotPanel}
-          title={text.openLot}
-          aria-label={text.openLot}
+          onClick={onOpenCategoryDrawer}
+          title={text.openMenu}
+          aria-label={text.openMenu}
         >
           <Icon>
             <path d="M4 7h16M4 12h16M4 17h16" />
@@ -9256,10 +9491,18 @@ export default function Map({
             SL
           </span>
           <span>
-            <strong>SabahLot</strong>
+            <strong>SabahLot Beta</strong>
             <small>powered by Myukur</small>
           </span>
         </div>
+
+        {region && (
+          <RegionIndicator
+            region={region}
+            language={language}
+            onRegionChange={onRegionChange}
+          />
+        )}
 
         <form
           className="sl-search"
@@ -9315,6 +9558,11 @@ export default function Map({
         </form>
 
         <div className="sl-topbar-actions">
+          <LanguageSwitcher
+            language={language}
+            onLanguageChange={changeLanguage}
+          />
+
           <button
             type="button"
             className={

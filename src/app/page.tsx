@@ -62,6 +62,27 @@ import type {
   DrawingObject,
 } from "@/lib/drawing-types";
 
+import {
+  getStoredLanguage,
+  setStoredLanguage,
+} from "@/lib/i18n/appLanguageStorage";
+import {
+  type AppMode,
+  getStoredAppMode,
+  setStoredAppMode,
+} from "@/lib/appMode/appModeStorage";
+import {
+  type RegionId,
+  getStoredRegion,
+  setStoredRegion,
+} from "@/lib/region/regionStorage";
+import { getAppText, type ModuleId } from "@/lib/i18n/appText";
+
+import CategoryDrawer from "@/components/shell/CategoryDrawer";
+import NcrScreen from "@/components/ncr/NcrScreen";
+import ServiceRequestScreen from "@/components/serviceRequest/ServiceRequestScreen";
+import FeedbackModal from "@/components/feedback/FeedbackModal";
+
 import type {
   OfflineMapView,
 } from "@/lib/offline-map-cache";
@@ -588,6 +609,170 @@ const PAGE_TEXT = {
     confirmClear:
       "Padam maklumat lot yang disimpan dalam peranti ini?",
   },
+
+  zh: {
+    panelTitle:
+      "地块信息",
+
+    panelDescription:
+      "创建初步用户记录,仅供规划与参考之用。",
+
+    ownerName:
+      "业主姓名",
+
+    lotNumber:
+      "地块编号",
+
+    village:
+      "村庄",
+
+    district:
+      "县/区",
+
+    ownerPlaceholder:
+      "例如: Ali bin Baba",
+
+    lotPlaceholder:
+      "例如: Lot 69467",
+
+    villagePlaceholder:
+      "例如: Kg. Kinabalu",
+
+    districtPlaceholder:
+      "例如: Kota Marudu",
+
+    save:
+      "Save Lot",
+
+    saving:
+      "保存中...",
+
+    saved:
+      "地块已成功保存到此设备。",
+
+    savedSuccessfully:
+      "Lot saved locally and synced to cloud.",
+
+    cloudSyncFailed:
+      "Lot saved locally. Cloud sync is currently unavailable.",
+
+    savedLocalSignIn:
+      "Project saved locally.",
+
+    polygonRequired:
+      "保存此初步记录前,请先绘制土地范围。",
+
+    titleRequired:
+      "保存此初步记录前,请输入记录名称或地块编号。",
+
+    areaRequired:
+      "保存此初步记录前,请绘制有效的土地范围。",
+
+    confirmUpdateExisting:
+      "更新已载入的初步记录?选择取消将另存为新记录。",
+
+    savedAsNew:
+      "已另存为新的初步记录。",
+
+    saveFailed:
+      "保存地块失败。",
+
+    savedLots:
+      "Saved Lots",
+
+    loadLots:
+      "载入已保存的地块",
+
+    loadingLots:
+      "正在载入地块...",
+
+    noSavedLots:
+      "尚无已保存的地块。",
+
+    loadFailed:
+      "载入地块失败。",
+
+    load:
+      "Load",
+
+    delete:
+      "Delete",
+
+    deleteFailed:
+      "无法删除已保存的地块。",
+
+    deleted:
+      "本地记录已删除。",
+
+    loaded:
+      "地块已成功载入。",
+
+    confirmDelete:
+      "删除此本地记录?",
+
+    local:
+      "Local",
+
+    synced:
+      "Synced",
+
+    storedOnDevice:
+      "已保存在此设备",
+
+    restored:
+      "先前的地块信息已还原。",
+
+    close:
+      "关闭地块信息",
+
+    summary:
+      "绘制摘要",
+
+    points:
+      "点数",
+
+    area:
+      "估计面积",
+
+    perimeter:
+      "周长",
+
+    noPolygon:
+      "尚未完成任何多边形。",
+
+    exportPdf:
+      "导出PDF图纸",
+
+    exportingPdf:
+      "正在生成PDF...",
+
+    exportPdfFailed:
+      "无法生成PDF图纸。",
+
+    exportPdfSuccess:
+      "PDF已成功生成。",
+
+    outputOptions:
+      "输出选项",
+
+    outputLanguage:
+      "报告语言",
+
+    outputFormat:
+      "输出格式",
+
+    exportOutput:
+      "生成输出",
+
+    exportOutputSuccess:
+      "输出已成功生成。",
+
+    clearRecord:
+      "清除已保存记录",
+
+    confirmClear:
+      "清除此设备上保存的地块信息?",
+  },
 } as const;
 
 function formatNumber(
@@ -691,7 +876,85 @@ export default function HomePage() {
   const [
     language,
     setLanguage,
-  ] = useState<AppLanguage>("en");
+  ] = useState<AppLanguage>(
+    "en",
+  );
+
+  const [
+    appMode,
+    setAppMode,
+  ] = useState<AppMode>(
+    "public",
+  );
+
+  const [
+    region,
+    setRegion,
+  ] = useState<RegionId>(
+    "sabah",
+  );
+
+  const [
+    categoryDrawerOpen,
+    setCategoryDrawerOpen,
+  ] = useState(false);
+
+  const [
+    ncrScreenOpen,
+    setNcrScreenOpen,
+  ] = useState(false);
+
+  const [
+    serviceRequestOpen,
+    setServiceRequestOpen,
+  ] = useState(false);
+
+  const [
+    feedbackModalOpen,
+    setFeedbackModalOpen,
+  ] = useState(false);
+
+  const [
+    feedbackModalModule,
+    setFeedbackModalModule,
+  ] = useState("");
+
+  const [
+    shellNotice,
+    setShellNotice,
+  ] = useState("");
+
+  useEffect(() => {
+    if (!shellNotice) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setShellNotice("");
+    }, 3200);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [shellNotice]);
+
+  useEffect(() => {
+    setLanguage(getStoredLanguage());
+    setAppMode(getStoredAppMode());
+    setRegion(getStoredRegion());
+  }, []);
+
+  useEffect(() => {
+    setStoredLanguage(language);
+  }, [language]);
+
+  useEffect(() => {
+    setStoredAppMode(appMode);
+  }, [appMode]);
+
+  useEffect(() => {
+    setStoredRegion(region);
+  }, [region]);
 
   const [
     lotPanelOpen,
@@ -1281,6 +1544,72 @@ export default function HomePage() {
     () => {
       setLotPanelOpen(false);
     };
+
+  const openCategoryDrawer =
+    () => {
+      setCategoryDrawerOpen(true);
+    };
+
+  const closeCategoryDrawer =
+    () => {
+      setCategoryDrawerOpen(false);
+    };
+
+  const openFeedback =
+    (moduleId: string) => {
+      setFeedbackModalModule(moduleId);
+      setFeedbackModalOpen(true);
+    };
+
+  const closeFeedback =
+    () => {
+      setFeedbackModalOpen(false);
+    };
+
+  const handleSelectCategory = (
+    categoryId: ModuleId,
+  ) => {
+    closeCategoryDrawer();
+
+    switch (categoryId) {
+      case "ncr":
+        setNcrScreenOpen(true);
+        break;
+
+      case "land_management":
+      case "plans_export":
+        openLotPanel();
+        break;
+
+      case "map_drawing":
+        break;
+
+      case "field_work":
+        if (appMode !== "advanced") {
+          setShellNotice(
+            getAppText(language).fieldWorkPublicNudge,
+          );
+        }
+        break;
+
+      case "service_request":
+        setServiceRequestOpen(true);
+        break;
+
+      case "help_guide":
+        if (typeof window !== "undefined") {
+          window.location.assign("/manual-beta");
+        }
+        break;
+
+      case "feedback":
+        openFeedback(getAppText(language).modules.feedback.label);
+        break;
+
+      default:
+        break;
+    }
+  };
 
   const handleDrawingObjectsChange = (
     objects: DrawingObject[],
@@ -6462,7 +6791,7 @@ export default function HomePage() {
         isExportingPdf={
           isExportingPdf
         }
-        onOpenLotPanel={openLotPanel}
+        onOpenCategoryDrawer={openCategoryDrawer}
         onLanguageChange={
           setLanguage
         }
@@ -6472,7 +6801,81 @@ export default function HomePage() {
         onMapViewChange={
           setMapView
         }
+        appMode={appMode}
+        region={region}
+        onRegionChange={setRegion}
       />
+
+      <CategoryDrawer
+        open={categoryDrawerOpen}
+        onOpen={openCategoryDrawer}
+        onClose={closeCategoryDrawer}
+        language={language}
+        appMode={appMode}
+        onModeChange={setAppMode}
+        onSelectCategory={handleSelectCategory}
+      />
+
+      <NcrScreen
+        open={ncrScreenOpen}
+        onClose={() => setNcrScreenOpen(false)}
+        language={language}
+        polygon={polygon}
+        landHistoryNotes={formData.landRecord.landHistoryNotes}
+        onLandHistoryNotesChange={(value) =>
+          updateLandRecordField("landHistoryNotes", value)
+        }
+        recordsAvailableCount={
+          formData.landRecord.recordsAvailable.filter(
+            (item) => item !== "no_record",
+          ).length
+        }
+        onStartRecord={() => {
+          updateLandRecordField("landCaseType", "family_customary_land");
+          if (!formData.landRecord.issueTags.includes("customary_land_ncr")) {
+            toggleIssueTag("customary_land_ncr");
+          }
+          setNcrScreenOpen(false);
+          openLotPanel();
+        }}
+        onOpenPlansExport={() => {
+          setNcrScreenOpen(false);
+          openLotPanel();
+        }}
+        onOpenSupportingEvidence={() => {
+          setNcrScreenOpen(false);
+          openLotPanel();
+        }}
+        onRequestReview={() => {
+          setNcrScreenOpen(false);
+          openFeedback(getAppText(language).modules.ncr.label);
+        }}
+      />
+
+      <ServiceRequestScreen
+        open={serviceRequestOpen}
+        onClose={() => setServiceRequestOpen(false)}
+        language={language}
+        onSendFeedback={() => {
+          setServiceRequestOpen(false);
+          openFeedback(getAppText(language).modules.service_request.label);
+        }}
+      />
+
+      <FeedbackModal
+        open={feedbackModalOpen}
+        onClose={closeFeedback}
+        initialValues={{
+          fungsiDiuji: feedbackModalModule,
+          region,
+        }}
+      />
+
+      {shellNotice && (
+        <div className="sl-shell-toast" role="status">
+          {shellNotice}
+        </div>
+      )}
 
       <BetaNoticeModal />
 
@@ -6480,7 +6883,7 @@ export default function HomePage() {
 
       <div className="sl-field-gps-stack">
         <FieldGpsLite
-          enabled
+          enabled={appMode === "advanced"}
           recordName={
             formData.lotNumber
           }
