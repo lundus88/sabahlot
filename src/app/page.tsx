@@ -902,9 +902,9 @@ export default function HomePage() {
   ] = useState(false);
 
   const [
-    mapToolsRevealed,
-    setMapToolsRevealed,
-  ] = useState(false);
+    mapToolsRevealToken,
+    setMapToolsRevealToken,
+  ] = useState(0);
 
   const [
     ncrScreenOpen,
@@ -1598,7 +1598,7 @@ export default function HomePage() {
         break;
 
       case "map_drawing":
-        setMapToolsRevealed(true);
+        setMapToolsRevealToken((token) => token + 1);
         break;
 
       case "field_work":
@@ -7059,7 +7059,7 @@ export default function HomePage() {
         appMode={appMode}
         region={region}
         onRegionChange={setRegion}
-        mapToolsRevealed={mapToolsRevealed}
+        mapToolsRevealToken={mapToolsRevealToken}
       />
 
       <CategoryDrawer
