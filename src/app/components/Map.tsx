@@ -138,7 +138,7 @@ interface MapProps {
   appMode: AppMode;
   region?: RegionId;
   onRegionChange?: (region: RegionId) => void;
-  mapToolsRevealed?: boolean;
+  mapToolsRevealToken?: number;
 }
 
 type CoordinatePair = [number, number];
@@ -155,6 +155,8 @@ type MobilePanel =
   | "draw"
   | "edit"
   | "export"
+  | "map_tools"
+  | "area"
   | null;
 type DashedLineCategory =
   | "proposed_boundary"
@@ -2548,10 +2550,8 @@ export default function Map({
   appMode,
   region,
   onRegionChange,
-  mapToolsRevealed = false,
+  mapToolsRevealToken = 0,
 }: MapProps) {
-  const isMapToolDockVisible =
-    appMode === "advanced" || mapToolsRevealed;
   const mapContainerRef =
     useRef<HTMLDivElement | null>(
       null,
@@ -2993,6 +2993,13 @@ export default function Map({
 
     openMapPanel(panel);
   };
+
+  useEffect(() => {
+    if (mapToolsRevealToken > 0) {
+      openMapPanel("map_tools");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapToolsRevealToken]);
 
   useEffect(() => {
     const handleGpsPanelOpened = () => {
@@ -9692,6 +9699,11 @@ export default function Map({
         ref={mapContainerRef}
         className="sl-map-canvas"
         aria-label="SabahLot powered by Myukur interactive preliminary map"
+        onClick={() => {
+          if (activePanel === "map_tools") {
+            closeMapPanels();
+          }
+        }}
       />
 
       <header className="sl-topbar">
@@ -9815,7 +9827,7 @@ export default function Map({
         </div>
       </header>
 
-      {isMapToolDockVisible && (isDrawing || isAddPointMode ? (
+      {isDrawing || isAddPointMode ? (
         <nav
           className="sl-context-toolbar"
           aria-label="Drawing actions"
@@ -9841,81 +9853,131 @@ export default function Map({
             onClick={handleComplete}
             disabled={!canComplete}
           >
-            Done
+            Finish
           </button>
         </nav>
       ) : (
-        <nav
-          className="sl-tool-dock"
-          aria-label="Drawing tools"
+        activePanel === "map_tools" && (
+          <aside
+            className="sl-progressive-menu sl-map-tools-panel"
+            onClick={(event) =>
+              event.stopPropagation()
+            }
+          >
+            <div className="sl-map-tools-panel-header">
+              <strong>Map Tools</strong>
+              <button
+                type="button"
+                className="sl-icon-button"
+                onClick={closeMapPanels}
+                aria-label="Close"
+              >
+                <Icon>
+                  <path d="M6 6l12 12M18 6 6 18" />
+                </Icon>
+              </button>
+            </div>
+
+            <div className="sl-map-tools-panel-actions">
+              <button
+                type="button"
+                className="sl-tool-button"
+                onClick={() => openMapPanel("draw")}
+                disabled={!mapReady}
+              >
+                <Icon>
+                  <path d="M4 20h4l10.8-10.8a2.8 2.8 0 0 0-4-4L4 16v4Z" />
+                  <path d="m13.5 6.5 4 4" />
+                </Icon>
+                <span>Draw</span>
+              </button>
+
+              <button
+                type="button"
+                className="sl-tool-button"
+                onClick={() => openMapPanel("edit")}
+                disabled={!activeObjectId}
+              >
+                <Icon>
+                  <circle cx="6" cy="18" r="1.5" />
+                  <circle cx="18" cy="6" r="1.5" />
+                  <path d="m7.2 16.8 8.1-8.1" />
+                  <path d="M13 18h5M18 13v5" />
+                </Icon>
+                <span>Edit</span>
+              </button>
+
+              <button
+                type="button"
+                className="sl-tool-button"
+                onClick={() => openMapPanel("area")}
+                disabled={!buildOneSummary || buildOneSummary.areaM2 <= 0}
+              >
+                <Icon>
+                  <path d="M4 4h16v16H4z" />
+                  <path d="M8 16 16 8M8 8h.01M16 16h.01" />
+                </Icon>
+                <span>Measure / Area</span>
+              </button>
+
+              <button
+                type="button"
+                className="sl-tool-button"
+                onClick={() => openMapPanel("settings")}
+              >
+                <Icon>
+                  <path d="M3 6h18M3 12h18M3 18h18" />
+                </Icon>
+                <span>Map Layers</span>
+              </button>
+            </div>
+          </aside>
+        )
+      )}
+
+      {activePanel === "area" && buildOneSummary && buildOneSummary.areaM2 > 0 && (
+        <aside
+          className="sl-progressive-menu sl-area-card"
           onClick={(event) =>
             event.stopPropagation()
           }
         >
-          <button
-            type="button"
-            className={`sl-dock-button sl-tool-button ${activePanel === "draw" ? "is-active" : ""}`}
-            onClick={() => {
-              toggleMapPanel("draw");
-            }}
-            disabled={!mapReady}
-          >
-            <Icon>
-              <path d="M4 20h4l10.8-10.8a2.8 2.8 0 0 0-4-4L4 16v4Z" />
-              <path d="m13.5 6.5 4 4" />
-            </Icon>
-            <span>Draw</span>
-          </button>
+          <div className="sl-area-card-header">
+            <strong>Area</strong>
+            <button
+              type="button"
+              className="sl-icon-button"
+              onClick={closeMapPanels}
+              aria-label="Close"
+            >
+              <Icon>
+                <path d="M6 6l12 12M18 6 6 18" />
+              </Icon>
+            </button>
+          </div>
+          <div className="sl-area-card-value">
+            {
+              formatAreaDisplay(
+                buildOneSummary.areaM2,
+                areaUnit,
+                language,
+              ).text
+            }{" "}
+            {
+              formatAreaDisplay(
+                buildOneSummary.areaM2,
+                areaUnit,
+                language,
+              ).symbol
+            }
+          </div>
+          <div className="sl-area-card-meta">
+            {summaryPointCount} {text.points}
+          </div>
+        </aside>
+      )}
 
-          <button
-            type="button"
-            className={`sl-dock-button sl-tool-button ${activePanel === "edit" ? "is-active" : ""}`}
-            onClick={() => {
-              toggleMapPanel("edit");
-            }}
-            disabled={!activeObjectId}
-          >
-            <Icon>
-              <circle cx="6" cy="18" r="1.5" />
-              <circle cx="18" cy="6" r="1.5" />
-              <path d="m7.2 16.8 8.1-8.1" />
-              <path d="M13 18h5M18 13v5" />
-            </Icon>
-            <span>Edit</span>
-          </button>
-
-          <button
-            type="button"
-            className={`sl-dock-button sl-tool-button is-save ${hasUnsavedChanges ? "is-unsaved" : ""}`}
-            onClick={onSaveLot}
-            disabled={isSavingLot}
-          >
-            <Icon>
-              <path d="M5 4h12l2 2v14H5V4Z" />
-              <path d="M8 4v6h8V4M8 20v-6h8v6" />
-            </Icon>
-            <span>Save</span>
-          </button>
-
-          <button
-            type="button"
-            className={`sl-dock-button sl-tool-button ${activePanel === "export" ? "is-active" : ""}`}
-            onClick={() => {
-              toggleMapPanel("export");
-            }}
-            disabled={!mapReady}
-          >
-            <Icon>
-              <path d="M7 3h7l4 4v14H7V3Z" />
-              <path d="M14 3v5h5" />
-              <path d="M9 13h6M9 17h4" />
-            </Icon>
-            <span>Export</span>
-          </button>
-        </nav>
-      ))}
-
-      {isMapToolDockVisible && activePanel === "draw" && !isDrawing && !isAddPointMode && (
+      {activePanel === "draw" && !isDrawing && !isAddPointMode && (
         <aside
           className="sl-progressive-menu sl-tool-flyout sl-draw-menu"
           onClick={(event) =>
@@ -9941,7 +10003,7 @@ export default function Map({
         </aside>
       )}
 
-      {isMapToolDockVisible && activePanel === "edit" && !isDrawing && !isAddPointMode && (
+      {activePanel === "edit" && !isDrawing && !isAddPointMode && (
         <aside
           className="sl-progressive-menu sl-tool-flyout sl-edit-menu"
           onClick={(event) =>
@@ -9986,7 +10048,7 @@ export default function Map({
         </aside>
       )}
 
-      {isMapToolDockVisible && activePanel === "export" && !isDrawing && !isAddPointMode && (
+      {activePanel === "export" && !isDrawing && !isAddPointMode && (
         <aside
           className="sl-progressive-menu sl-tool-flyout sl-export-menu"
           onClick={(event) =>
@@ -10018,7 +10080,7 @@ export default function Map({
         </aside>
       )}
 
-      {appMode === "advanced" && activePanel === "objects" && (
+      {drawingObjects.length > 0 && activePanel === "objects" && (
       <aside
         className="sl-object-list"
         onClick={(event) =>
@@ -10224,7 +10286,7 @@ export default function Map({
       )}
 
       <div className="sl-mobile-top-control-stack">
-        {appMode === "advanced" && (
+        {drawingObjects.length > 0 && (
           <button
             type="button"
             className={`sl-object-list-tab ${

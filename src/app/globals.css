@@ -7259,6 +7259,73 @@ select:focus-visible {
   white-space: nowrap;
 }
 
+/* =====================================================
+   HOTFIX: CONTEXTUAL MAP TOOLS PANEL / AREA CARD
+   ===================================================== */
+
+.sl-map-tools-panel-header,
+.sl-area-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: -2px -2px 4px;
+}
+
+.sl-map-tools-panel-header .sl-icon-button,
+.sl-area-card-header .sl-icon-button {
+  width: 28px;
+  height: 28px;
+}
+
+.sl-map-tools-panel-header .sl-icon-button svg,
+.sl-area-card-header .sl-icon-button svg {
+  width: 13px;
+  height: 13px;
+}
+
+.sl-map-tools-panel-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.sl-map-tools-panel-actions .sl-tool-button {
+  display: grid;
+  place-items: center;
+  gap: 5px;
+
+  min-height: 64px;
+  padding: 10px 6px;
+
+  font-size: 10px;
+  font-weight: 850;
+  text-align: center;
+}
+
+.sl-map-tools-panel-actions .sl-tool-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.sl-area-card {
+  width: 180px;
+}
+
+.sl-area-card-value {
+  color: #0f172a;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.sl-area-card-meta {
+  margin-top: 2px;
+
+  color: #64748b;
+
+  font-size: 11px;
+}
+
 @media (max-width: 768px) {
   .sl-category-drawer {
     width: min(300px, 90vw);
