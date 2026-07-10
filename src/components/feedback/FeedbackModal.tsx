@@ -7,6 +7,11 @@ import {
   type FeedbackEntryInput,
   type FeedbackIssueType,
 } from "@/lib/feedback/feedbackStorage";
+import {
+  REGION_DEFINITIONS,
+  REGION_ORDER,
+} from "@/lib/region/regionStorage";
+import { MODULE_ORDER } from "@/lib/i18n/appText";
 
 const ISSUE_TYPES: FeedbackIssueType[] = [
   "Critical",
@@ -26,6 +31,10 @@ const EMPTY_FORM: FeedbackEntryInput = {
   penerangan: "",
   cadangan: "",
   screenshotNote: "",
+  region: "sabah",
+  state: "",
+  district: "",
+  module: "",
 };
 
 export interface FeedbackModalProps {
@@ -144,6 +153,61 @@ export default function FeedbackModal({
                   updateField("lokasiUjian", event.target.value)
                 }
               />
+            </label>
+
+            <label>
+              <span>Wilayah / Region</span>
+              <select
+                value={form.region ?? "sabah"}
+                onChange={(event) =>
+                  updateField("region", event.target.value)
+                }
+              >
+                {REGION_ORDER.map((id) => (
+                  <option key={id} value={id}>
+                    {REGION_DEFINITIONS[id].label.en}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              <span>Negeri / State</span>
+              <input
+                type="text"
+                value={form.state ?? ""}
+                onChange={(event) =>
+                  updateField("state", event.target.value)
+                }
+              />
+            </label>
+
+            <label>
+              <span>Daerah / District</span>
+              <input
+                type="text"
+                value={form.district ?? ""}
+                onChange={(event) =>
+                  updateField("district", event.target.value)
+                }
+              />
+            </label>
+
+            <label>
+              <span>Modul / Module</span>
+              <select
+                value={form.module ?? ""}
+                onChange={(event) =>
+                  updateField("module", event.target.value)
+                }
+              >
+                <option value="">—</option>
+                {MODULE_ORDER.map((id) => (
+                  <option key={id} value={id}>
+                    {id}
+                  </option>
+                ))}
+              </select>
             </label>
 
             <label>
