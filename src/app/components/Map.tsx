@@ -2996,9 +2996,10 @@ export default function Map({
 
   useEffect(() => {
     if (mapToolsRevealToken > 0) {
-      openMapPanel("map_tools");
+      queueMicrotask(() => {
+        openMapPanel("map_tools");
+      });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapToolsRevealToken]);
 
   useEffect(() => {

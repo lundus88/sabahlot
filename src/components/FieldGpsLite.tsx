@@ -1698,6 +1698,50 @@ export default function FieldGpsLite({
     restoreTargetToFieldGps,
   ]);
 
+  const stopArGuide = () => {
+    stopCameraStream();
+    setArActive(false);
+    setCameraTestActive(false);
+    setArMessage("AR Guide stopped.");
+  };
+
+  const closeFieldGpsPanel =
+    useCallback(() => {
+      if (arActive) {
+        stopArGuide();
+      }
+
+      setOpen(false);
+    }, [
+      arActive,
+    ]);
+
+  useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
+    const handleClosePanel =
+      () => {
+        closeFieldGpsPanel();
+      };
+
+    window.addEventListener(
+      "sabahlot:close-field-gps-panel",
+      handleClosePanel,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "sabahlot:close-field-gps-panel",
+        handleClosePanel,
+      );
+    };
+  }, [
+    closeFieldGpsPanel,
+    enabled,
+  ]);
+
   if (!enabled) {
     return null;
   }
@@ -2445,13 +2489,6 @@ export default function FieldGpsLite({
         }
       };
 
-  const stopArGuide = () => {
-    stopCameraStream();
-    setArActive(false);
-    setCameraTestActive(false);
-    setArMessage("AR Guide stopped.");
-  };
-
   const startArGuide = async () => {
     const arTarget =
       getArTargetFromInputsOrState();
@@ -2826,43 +2863,6 @@ export default function FieldGpsLite({
           targetPoint.longitude,
         )
       : "";
-
-  const closeFieldGpsPanel =
-    useCallback(() => {
-      if (arActive) {
-        stopArGuide();
-      }
-
-      setOpen(false);
-    }, [
-      arActive,
-    ]);
-
-  useEffect(() => {
-    if (!enabled) {
-      return;
-    }
-
-    const handleClosePanel =
-      () => {
-        closeFieldGpsPanel();
-      };
-
-    window.addEventListener(
-      "sabahlot:close-field-gps-panel",
-      handleClosePanel,
-    );
-
-    return () => {
-      window.removeEventListener(
-        "sabahlot:close-field-gps-panel",
-        handleClosePanel,
-      );
-    };
-  }, [
-    closeFieldGpsPanel,
-    enabled,
-  ]);
 
   const safeFileName =
     (recordName?.trim() ||
