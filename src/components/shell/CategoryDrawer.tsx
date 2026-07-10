@@ -172,7 +172,7 @@ export default function CategoryDrawer({
 
         <nav className="sl-category-list">
           {MODULE_ORDER.map((id) => {
-            const module = text.modules[id];
+            const navModule = text.modules[id];
 
             if (id === "advanced_mode") {
               return (
@@ -185,10 +185,10 @@ export default function CategoryDrawer({
                   </div>
                   <div className="sl-category-item-copy">
                     <span className="sl-category-item-label">
-                      {module.label}
+                      {navModule.label}
                     </span>
                     <span className="sl-category-item-description">
-                      {module.description}
+                      {navModule.description}
                     </span>
                   </div>
                   <ModeToggle
@@ -214,10 +214,10 @@ export default function CategoryDrawer({
                 </div>
                 <div className="sl-category-item-copy">
                   <span className="sl-category-item-label">
-                    {module.label}
+                    {navModule.label}
                   </span>
                   <span className="sl-category-item-description">
-                    {module.description}
+                    {navModule.description}
                   </span>
                 </div>
               </button>

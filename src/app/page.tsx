@@ -946,9 +946,24 @@ export default function HomePage() {
   }, [shellNotice]);
 
   useEffect(() => {
-    setLanguage(getStoredLanguage());
-    setAppMode(getStoredAppMode());
-    setRegion(getStoredRegion());
+    queueMicrotask(() => {
+      const storedLanguage = getStoredLanguage();
+      const storedAppMode = getStoredAppMode();
+      const storedRegion = getStoredRegion();
+
+      if (storedLanguage !== language) {
+        setLanguage(storedLanguage);
+      }
+
+      if (storedAppMode !== appMode) {
+        setAppMode(storedAppMode);
+      }
+
+      if (storedRegion !== region) {
+        setRegion(storedRegion);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
