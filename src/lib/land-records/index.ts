@@ -21,7 +21,9 @@ export * from "./types";
 export * from "./mapper";
 export * from "./cloud-repository";
 export * from "./local-cache";
-export { isCloudReadEnabled } from "./feature-gate";
+export * from "./validation";
+export * from "./write-coordinator";
+export { isCloudReadEnabled, isCloudWriteEnabled } from "./feature-gate";
 
 /**
  * Implements the authenticated read flow described in Sprint 02B

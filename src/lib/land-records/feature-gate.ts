@@ -1,4 +1,4 @@
-// Sprint 02B: gates cloud read to Dev only.
+// Sprint 02B/02C: gates cloud read and cloud write to Dev only.
 //
 // No existing feature-flag mechanism or env-based Dev/Beta/Prod switch
 // exists elsewhere in this repo (checked: no NODE_ENV/isDev checks
@@ -10,8 +10,18 @@
 // code path is ever exposed to Beta/Production.
 const CLOUD_READ_ENABLED_CONSTANT = true;
 
+// Sprint 02C: deliberately a SEPARATE constant from the read gate
+// above, so read and write can be enabled/disabled independently.
+const CLOUD_WRITE_ENABLED_CONSTANT = true;
+
 export function isCloudReadEnabled(): boolean {
   return (
     CLOUD_READ_ENABLED_CONSTANT && process.env.NODE_ENV !== "production"
+  );
+}
+
+export function isCloudWriteEnabled(): boolean {
+  return (
+    CLOUD_WRITE_ENABLED_CONSTANT && process.env.NODE_ENV !== "production"
   );
 }
