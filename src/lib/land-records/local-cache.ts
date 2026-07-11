@@ -89,3 +89,28 @@ export function writeCloudCache(
 export function readCloudCacheLastSyncedAt(userId: string): string | null {
   return readCloudCache(userId)?.syncedAt ?? null;
 }
+
+/**
+ * Sprint 02C: merges one successfully created/updated record into the
+ * existing cache for that user, replacing it by id if already present
+ * or appending it otherwise. Every other cached record is left
+ * untouched. Callers (write-coordinator.ts) must only invoke this
+ * after a confirmed successful cloud write -- this function itself
+ * does not check that.
+ */
+export function upsertCloudCacheRecord(
+  userId: string,
+  record: CloudLandRecord,
+  syncedAt: string,
+): void {
+  const existing = readCloudCache(userId);
+  const records = existing?.records ?? [];
+  const index = records.findIndex((candidate) => candidate.id === record.id);
+
+  const nextRecords =
+    index >= 0
+      ? records.map((candidate, i) => (i === index ? record : candidate))
+      : [...records, record];
+
+  writeCloudCache(userId, nextRecords, syncedAt);
+}

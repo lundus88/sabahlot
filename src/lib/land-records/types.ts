@@ -203,6 +203,88 @@ export interface CloudReadResult {
 }
 
 // ---------------------------------------------------------------------
+// Sprint 02C: cloud write (create/update) types.
+//
+// `LandRecordSyncState` above (from Sprint 02B, read-only) is untouched
+// for backward compatibility. Write flows use the separate
+// `WriteSyncState` below instead of reusing its generic "synced",
+// because a plain "synced" would wrongly imply the whole record
+// (including geometry/points/parties, none of which this sprint
+// writes) is fully saved. Mapping between the two, where relevant:
+//   WriteSyncState "record_synced"     ~ read-flow "synced" (main row only)
+//   WriteSyncState "local_detail_only" ~ no read-flow equivalent (new concept)
+//   WriteSyncState "saving"            ~ no read-flow equivalent (new concept)
+//   WriteSyncState "offline"/"failed"/"conflict"/"idle" ~ same meaning as read-flow
+// ---------------------------------------------------------------------
+export type WriteSyncState =
+  | "idle"
+  | "saving"
+  | "record_synced"
+  | "local_detail_only"
+  | "offline"
+  | "failed"
+  | "conflict";
+
+export type WriteErrorCode =
+  | "unauthenticated"
+  | "invalid_record_id"
+  | "legacy_id_requires_migration_mapping"
+  | "validation_failed"
+  | "forbidden"
+  | "not_found"
+  | "duplicate_conflict"
+  | "stale_conflict"
+  | "network_error"
+  | "database_error";
+
+// Fields an owner may set on create/update. Deliberately excludes id,
+// owner_id, status, created_at, updated_at -- see cloud-repository.ts
+// and write-coordinator.ts for where each of those is actually
+// controlled instead.
+export interface LandRecordWritableFields {
+  recordName: string;
+  lotNumber?: string | null;
+  village?: string | null;
+  district?: string | null;
+  region?: "sabah" | "sarawak" | "peninsular";
+  landCaseType?: LandCaseType | null;
+  applicationAge?: ApplicationAge | null;
+  recordsAvailable?: AvailableRecord[];
+  issueTags?: LandIssueTag[];
+  heirsCanIdentifyLocation?: HeirLocationKnowledge | null;
+  landHistoryNotes?: string | null;
+}
+
+export interface CreateLandRecordInput extends LandRecordWritableFields {
+  // The stable local id to reuse as the cloud primary key (see
+  // isStableCloudId below). Required -- Sprint 02C never generates an
+  // id on the caller's behalf.
+  id: string;
+}
+
+export type UpdateLandRecordInput = Partial<LandRecordWritableFields>;
+
+export interface WriteSuccess {
+  ok: true;
+  state: WriteSyncState;
+  record: CloudLandRecord;
+}
+
+export interface WriteFailure {
+  ok: false;
+  state: WriteSyncState;
+  code: WriteErrorCode;
+  message: string;
+  // Populated only for code === 'stale_conflict': the current
+  // server-side record, for a future conflict-resolution UI (e.g.
+  // "reload to see the newer version"). Sprint 02C does not build
+  // that UI; this is data plumbing only.
+  serverRecord?: CloudLandRecord;
+}
+
+export type WriteResult = WriteSuccess | WriteFailure;
+
+// ---------------------------------------------------------------------
 // Idempotency invariant for Sprint 02C (save/insert), documented now so
 // the write path is designed against it from the start:
 //
