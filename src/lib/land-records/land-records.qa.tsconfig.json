@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "baseUrl": "../../..",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "jsx": "react-jsx"
+  },
+  "files": [
+    "types.ts",
+    "mapper.ts",
+    "cloud-repository.ts",
+    "local-cache.ts",
+    "feature-gate.ts",
+    "index.ts",
+    "land-records.qa.ts"
+  ]
+}
