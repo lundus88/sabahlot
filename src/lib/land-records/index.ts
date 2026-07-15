@@ -23,6 +23,11 @@ export * from "./cloud-repository";
 export * from "./local-cache";
 export * from "./validation";
 export * from "./write-coordinator";
+export * from "./child-types";
+export * from "./geometry-validation";
+export * from "./geometry-repository";
+export * from "./geometry-cache";
+export * from "./geometry-write-coordinator";
 export { isCloudReadEnabled, isCloudWriteEnabled } from "./feature-gate";
 
 /**
