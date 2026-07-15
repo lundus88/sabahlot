@@ -27,7 +27,11 @@ function isFiniteNumber(value: unknown): value is number {
 // an unexpected value now fails loudly via MapperError instead of
 // silently flowing through as a value TypeScript claims is valid but
 // isn't actually a member of the union at runtime.
-const DRAWING_OBJECT_CATEGORY_VALUES = [
+// Exported (Sprint 02D-1A) so geometry-validation.ts can validate
+// write-direction category/line_style against the exact same list,
+// instead of duplicating it and risking drift between read and write
+// validation.
+export const DRAWING_OBJECT_CATEGORY_VALUES = [
   "parent_lot",
   "proposed_lot",
   "standard_line",
@@ -38,7 +42,7 @@ const DRAWING_OBJECT_CATEGORY_VALUES = [
   "reference_line",
 ] as const;
 
-const DRAWING_LINE_STYLE_VALUES = ["solid", "dashed", "dotted"] as const;
+export const DRAWING_LINE_STYLE_VALUES = ["solid", "dashed", "dotted"] as const;
 
 function assertValidCategory(
   value: unknown,
