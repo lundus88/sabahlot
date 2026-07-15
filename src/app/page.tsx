@@ -7059,7 +7059,7 @@ export default function HomePage() {
         }
         fieldGpsControl={
           <FieldGpsLite
-            enabled
+            enabled={appMode === "advanced"}
             recordName={
               formData.lotNumber
             }
