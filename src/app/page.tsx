@@ -51,6 +51,11 @@ import {
   type ImportFileStatus,
 } from "@/lib/import-geometries";
 
+import {
+  syncParentLandRecordToCloud,
+  type ParentSyncResult,
+} from "@/lib/land-records";
+
 import type {
   AppLanguage,
   AreaUnit,
@@ -333,6 +338,33 @@ const PAGE_TEXT = {
     savedLocalSignIn:
       "Project saved locally.",
 
+    parentCloudSyncSaving:
+      "Syncing record to cloud...",
+
+    parentCloudSyncSynced:
+      "Land record details synced to cloud (boundary, points and parties are separate).",
+
+    parentCloudSyncLocalOnlyGateDisabled:
+      "Saved locally only. Cloud sync is off in this environment.",
+
+    parentCloudSyncLocalOnlyLegacyId:
+      "Saved locally only. This record predates cloud sync and cannot be uploaded automatically.",
+
+    parentCloudSyncNoSession:
+      "Saved locally. Sign in to sync this record to the cloud.",
+
+    parentCloudSyncInvalidInput:
+      "Cloud sync skipped: some fields are not valid for cloud sync.",
+
+    parentCloudSyncDuplicateConflict:
+      "Cloud sync skipped: a different cloud record already exists with this id.",
+
+    parentCloudSyncStaleConflict:
+      "This record changed elsewhere. Reload it before saving again to avoid overwriting newer cloud data.",
+
+    parentCloudSyncFailed:
+      "Cloud sync failed. Your local copy is safe and will retry on the next save.",
+
     polygonRequired:
       "Please draw a land area before saving this preliminary record.",
 
@@ -497,6 +529,33 @@ const PAGE_TEXT = {
     savedLocalSignIn:
       "Project saved locally.",
 
+    parentCloudSyncSaving:
+      "Menyegerakkan rekod ke awan...",
+
+    parentCloudSyncSynced:
+      "Butiran rekod tanah disegerakkan ke awan (sempadan, titik dan pihak berkaitan adalah berasingan).",
+
+    parentCloudSyncLocalOnlyGateDisabled:
+      "Hanya disimpan pada peranti ini. Penyegerakan awan dimatikan dalam persekitaran ini.",
+
+    parentCloudSyncLocalOnlyLegacyId:
+      "Hanya disimpan pada peranti ini. Rekod ini dicipta sebelum penyegerakan awan wujud dan tidak boleh dimuat naik secara automatik.",
+
+    parentCloudSyncNoSession:
+      "Disimpan pada peranti ini. Log masuk untuk menyegerakkan rekod ini ke awan.",
+
+    parentCloudSyncInvalidInput:
+      "Penyegerakan awan dilangkau: sebahagian medan tidak sah untuk penyegerakan awan.",
+
+    parentCloudSyncDuplicateConflict:
+      "Penyegerakan awan dilangkau: rekod awan lain dengan id ini sudah wujud.",
+
+    parentCloudSyncStaleConflict:
+      "Rekod ini telah berubah di tempat lain. Muat semula sebelum menyimpan lagi supaya data awan terkini tidak tertindih.",
+
+    parentCloudSyncFailed:
+      "Penyegerakan awan gagal. Salinan pada peranti ini selamat dan akan dicuba semula pada simpanan seterusnya.",
+
     polygonRequired:
       "Sila lukis kawasan tanah sebelum menyimpan rekod awal ini.",
 
@@ -660,6 +719,33 @@ const PAGE_TEXT = {
 
     savedLocalSignIn:
       "Project saved locally.",
+
+    parentCloudSyncSaving:
+      "正在同步记录到云端...",
+
+    parentCloudSyncSynced:
+      "土地记录详情已同步到云端(边界、点位与相关人士为另外的部分)。",
+
+    parentCloudSyncLocalOnlyGateDisabled:
+      "仅保存在本设备。此环境已关闭云端同步。",
+
+    parentCloudSyncLocalOnlyLegacyId:
+      "仅保存在本设备。此记录早于云端同步功能,无法自动上传。",
+
+    parentCloudSyncNoSession:
+      "已保存在本设备。请登录以将此记录同步到云端。",
+
+    parentCloudSyncInvalidInput:
+      "已跳过云端同步:部分字段对云端同步无效。",
+
+    parentCloudSyncDuplicateConflict:
+      "已跳过云端同步:已存在具有相同 id 的其他云端记录。",
+
+    parentCloudSyncStaleConflict:
+      "此记录已在别处更改。请先重新载入,再保存,以免覆盖较新的云端数据。",
+
+    parentCloudSyncFailed:
+      "云端同步失败。本设备副本安全,将在下次保存时重试。",
 
     polygonRequired:
       "保存此初步记录前,请先绘制土地范围。",
@@ -1031,6 +1117,13 @@ export default function HomePage() {
     isSaving,
     setIsSaving,
   ] = useState(false);
+
+  const [
+    parentCloudSync,
+    setParentCloudSync,
+  ] = useState<
+    { status: "idle" } | { status: "saving" } | ParentSyncResult
+  >({ status: "idle" });
 
   const [
     isExportingPdf,
@@ -1896,6 +1989,65 @@ export default function HomePage() {
           );
           setIsSaving(false);
           return;
+        }
+
+        // Sprint 02C-2: a single "Save" action now runs TWO independent
+        // cloud steps back to back -- this one (land_records parent,
+        // Sprint 02C) and the pre-existing legacy `lots`-table dual
+        // write immediately below (untouched, out of this sprint's
+        // scope). They intentionally do not share state: parentCloudSync
+        // reports on the land_records parent ONLY (never geometry,
+        // points, parties, documents, or the legacy `lots` row), and
+        // saveMessage below continues to report on the legacy `lots`
+        // write exactly as before. If this step succeeds and the legacy
+        // step then fails, parentCloudSync legitimately stays
+        // "core_record_synced" while saveMessage separately shows the
+        // legacy failure -- that is not a false "whole record synced"
+        // claim, since parentCloudSyncSynced's copy is scoped explicitly
+        // to "land record details" (see PAGE_TEXT), not the legacy lot
+        // entry or any child table.
+        setParentCloudSync({ status: "saving" });
+
+        try {
+          const parentSyncResult =
+            await syncParentLandRecordToCloud(
+              createClient(),
+              {
+                localId: localRecord.id,
+                recordName: lotName,
+                lotNumber:
+                  formData.lotNumber.trim() || null,
+                village:
+                  formData.village.trim() || null,
+                district:
+                  formData.district.trim() || null,
+                region,
+                landCaseType:
+                  formData.landRecord.landCaseType || null,
+                applicationAge:
+                  formData.landRecord.applicationAge || null,
+                recordsAvailable:
+                  formData.landRecord.recordsAvailable,
+                issueTags:
+                  formData.landRecord.issueTags,
+                heirsCanIdentifyLocation:
+                  formData.landRecord.heirsCanIdentifyLocation ||
+                  null,
+                landHistoryNotes:
+                  formData.landRecord.landHistoryNotes.trim() ||
+                  null,
+              },
+            );
+
+          setParentCloudSync(parentSyncResult);
+        } catch (error) {
+          setParentCloudSync({
+            status: "network_error",
+            message:
+              error instanceof Error
+                ? error.message
+                : "Unknown cloud sync error.",
+          });
         }
 
         try {
@@ -7003,6 +7155,34 @@ export default function HomePage() {
     );
   };
 
+  const parentCloudSyncMessage = (): string | null => {
+    switch (parentCloudSync.status) {
+      case "idle":
+        return null;
+      case "saving":
+        return text.parentCloudSyncSaving;
+      case "core_record_synced":
+        return text.parentCloudSyncSynced;
+      case "no_session":
+        return text.parentCloudSyncNoSession;
+      case "invalid_input":
+        return text.parentCloudSyncInvalidInput;
+      case "duplicate_conflict":
+        return text.parentCloudSyncDuplicateConflict;
+      case "stale_conflict":
+        return text.parentCloudSyncStaleConflict;
+      case "failed":
+      case "network_error":
+        return text.parentCloudSyncFailed;
+      case "local_only":
+        return parentCloudSync.localOnlyReason === "legacy_id"
+          ? text.parentCloudSyncLocalOnlyLegacyId
+          : text.parentCloudSyncLocalOnlyGateDisabled;
+      default:
+        return null;
+    }
+  };
+
   return (
     <main className="sl-app-shell">
       <Map
@@ -7533,6 +7713,15 @@ export default function HomePage() {
             {saveMessage && (
               <p className="sl-save-message">
                 {saveMessage}
+              </p>
+            )}
+
+            {parentCloudSyncMessage() && (
+              <p
+                className={`sl-parent-cloud-sync-message sl-parent-cloud-sync-message--${parentCloudSync.status}`}
+                role="status"
+              >
+                {parentCloudSyncMessage()}
               </p>
             )}
           </form>

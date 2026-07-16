@@ -28,7 +28,12 @@ export * from "./geometry-validation";
 export * from "./geometry-repository";
 export * from "./geometry-cache";
 export * from "./geometry-write-coordinator";
-export { isCloudReadEnabled, isCloudWriteEnabled } from "./feature-gate";
+export * from "./parent-ui-sync";
+export {
+  isCloudReadEnabled,
+  isCloudWriteEnabled,
+  isTargetingSabahlotDevProject,
+} from "./feature-gate";
 
 /**
  * Implements the authenticated read flow described in Sprint 02B

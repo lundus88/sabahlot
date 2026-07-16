@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "baseUrl": "../../..",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "jsx": "react-jsx"
+  },
+  "files": [
+    "types.ts",
+    "mapper.ts",
+    "cloud-repository.ts",
+    "local-cache.ts",
+    "feature-gate.ts",
+    "validation.ts",
+    "write-coordinator.ts",
+    "parent-ui-sync.ts",
+    "index.ts",
+    "parent-ui-sync-integration.qa.ts"
+  ]
+}
