@@ -1,6 +1,6 @@
 # SabahLot — Project State
 
-_Last updated: 2026-07-12 (Sprint AI-F0). Update this file at the end of every merged sprint — it is the single source of truth for "what is actually true right now," not the sprint reports themselves._
+_Last updated: 2026-07-17 (post Sprint 02C-2 QA regression fix). Update this file at the end of every merged sprint — it is the single source of truth for "what is actually true right now," not the sprint reports themselves._
 
 ## Vision
 
@@ -10,8 +10,8 @@ SabahLot is a preliminary land-record and field-survey assistance tool for Sabah
 
 | Dimension | Status |
 |---|---|
-| Cloud writes | `land_records` only (create + update). Geometry/points/parties writes are implemented on an unmerged branch (see below) but not yet merged to `main`. |
-| Production UI cloud activation | **Disabled.** No cloud read/write path is wired into `src/app/page.tsx` or any user-facing screen. |
+| Cloud writes | `land_records` (create + update) and `land_record_geometries` (create + update) are both merged to `main`. Parent `land_records` UI wiring (`syncParentLandRecordToCloud`, `src/app/page.tsx` save flow) exists on unmerged branch `sprint-02c2-parent-cloud-ui-wiring` — see Branches below. Points/parties/documents writes not started. |
+| Production UI cloud activation | **Disabled.** On `main`, no cloud read/write path is wired into `src/app/page.tsx` or any user-facing screen. On the unmerged `sprint-02c2-parent-cloud-ui-wiring` branch, the parent `land_records` save flow is wired to the UI but stays fail-closed outside Dev (`isCloudWriteEnabled()` requires both `NODE_ENV !== "production"` and the configured Supabase URL to resolve to the `sabahlot-dev` project). |
 | Legacy local workflow | Fully preserved. `src/lib/local-lots.ts` (`sabahlot_local_lots_v1`) remains the primary, unmodified local save/load/delete path. |
 | Point conflict control | Not possible without a migration — `land_points` has no `updated_at` column. Point cloud writes are scoped to **create-only**. |
 
@@ -34,8 +34,8 @@ SabahLot is a preliminary land-record and field-survey assistance tool for Sabah
 
 ### Partial (backend exists, not wired to Production UI)
 - **Land Record cloud read** — `src/lib/land-records/index.ts` (`loadCloudLandRecords`). Merged to `main`. Dev-gated, no UI.
-- **Land Record cloud create/update** — `src/lib/land-records/write-coordinator.ts`. Merged to `main` (PR #14). Dev-gated, no UI.
-- **Geometry cloud create/update** — implemented, QA-passed, **not yet merged** (see Branches below).
+- **Land Record cloud create/update** — `src/lib/land-records/write-coordinator.ts`. Merged to `main` (PR #14). Dev-gated. UI wiring (`src/lib/land-records/parent-ui-sync.ts`, `src/app/page.tsx`) exists on unmerged branch `sprint-02c2-parent-cloud-ui-wiring` — not yet on `main`.
+- **Geometry cloud create/update** — `src/lib/land-records/geometry-write-coordinator.ts`. Merged to `main` (PR #16). Dev-gated, no UI.
 
 ### Not started
 - Points cloud write (create-only, scoped Sprint 02D — see Architecture Decisions)
@@ -50,17 +50,17 @@ See `docs/ai/MODULE_STATUS.md` for the full per-module table.
 
 | Branch | Contents | State |
 |---|---|---|
-| `main` | Everything through PR #14 (land_records cloud read + create/update) | Merged, deployed to Dev via CLI (not via UI) |
-| `sprint-02d1a-geometry-cloud-write` | Geometry cloud create/update (child-types, geometry-repository, geometry-validation, geometry-write-coordinator, geometry-cache, QA) | **Uncommitted working tree**, PASS on independent review, not yet committed/pushed/PR'd — do not touch from any other worktree |
+| `main` | Everything through PR #17 (land_records cloud read + create/update, geometry cloud create/update, FieldGpsLite Advanced-mode gating fix) | Merged, deployed to Dev via CLI (not via UI) |
+| `sprint-02c2-parent-cloud-ui-wiring` | Parent `land_records` UI wiring (`parent-ui-sync.ts`, `src/app/page.tsx` save-flow wiring, fail-closed dev-project gate, QA) plus a 2026-07-17 fix to two pre-existing QA scripts (`land-records-write.qa.ts`, `geometry-write.qa.ts`) that had regressed against the new gate | Committed and pushed to `origin`, **not yet merged to `main`** — awaiting independent review and owner merge approval |
 | `sprint-ai-f0-development-foundation` | This governance/tooling foundation | In progress |
 
 ## Latest merged sprint
 
-**Sprint 02C-1 (+ Patch 1)** — safe cloud create/update for `land_records`, merged via PR #14 → `main@37e717f74fd54f65f0312a289f7de87345f76527`.
+**PR #17** — restored Advanced-mode gating for `FieldGpsLite` (`778b3b8`), merged to `main` 2026-07-16. Preceded by **PR #16** — safe cloud create/update for `land_record_geometries` (`b6d0a25`), merged to `main` 2026-07-15.
 
 ## Current approved next sprint
 
-**Sprint 02D-1A (Geometry)** is designed, implemented, and independently reviewed (PASS) but **awaiting commit/push/PR approval** — it exists only as an uncommitted working tree on `sprint-02d1a-geometry-cloud-write` in the original workspace. The next action on that branch is an explicit owner instruction to commit it.
+**Sprint 02C-2 (Parent land_records UI wiring)** is implemented and its own QA (30 executed test cases across `feature-gate.qa.ts`, `parent-ui-sync.qa.ts`, `parent-ui-sync-integration.qa.ts`) passes. On 2026-07-17 two **pre-existing** regression QA scripts (`land-records-write.qa.ts` from Sprint 02C, `geometry-write.qa.ts` from the geometry sprint) were found failing against the sprint's new fail-closed gate and were fixed (see `docs/ai/RELEASE_CHECKLIST.md`); all QA, `npx tsc --noEmit`, `npx eslint .`, and `npm run build` now pass on this branch. It exists on `sprint-02c2-parent-cloud-ui-wiring`, committed and pushed, but **awaiting independent review and explicit owner approval to merge to `main`.**
 
 Sprint 02D-0A also approved (GO) the design for **Points (create-only)** and **Parties (create+update)** — implementation for those has not started.
 

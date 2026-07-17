@@ -21,6 +21,21 @@ import {
   type CreateGeometryInput,
 } from "./index";
 
+// Sprint 02C-2 QA regression fix: isCloudWriteEnabled() now also
+// requires NEXT_PUBLIC_SUPABASE_URL to resolve to the sabahlot-dev
+// project (see feature-gate.ts / feature-gate.qa.ts for the dedicated
+// test of that check in isolation). This script predates that change
+// and never set the var, so every create/update below was silently
+// short-circuited to "gate disabled" before ever reaching the fake
+// Supabase client -- this sets it for this QA process only, exactly
+// like parent-ui-sync.qa.ts already does. Never written to any .env
+// file and never read by production code paths.
+const DEV_SUPABASE_URL = "https://xsflrehitrmobiyfbfhk.supabase.co";
+Object.assign(process.env, {
+  NODE_ENV: "development",
+  NEXT_PUBLIC_SUPABASE_URL: DEV_SUPABASE_URL,
+});
+
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) {
     throw new Error(`FAIL: ${message}`);
