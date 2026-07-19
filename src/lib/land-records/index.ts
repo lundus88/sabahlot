@@ -29,6 +29,10 @@ export * from "./geometry-repository";
 export * from "./geometry-cache";
 export * from "./geometry-write-coordinator";
 export * from "./parent-ui-sync";
+export * from "./points-validation";
+export * from "./points-repository";
+export * from "./points-cache";
+export * from "./points-write-coordinator";
 export {
   isCloudReadEnabled,
   isCloudWriteEnabled,
