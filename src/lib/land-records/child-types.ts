@@ -11,6 +11,7 @@ import type {
   DrawingGeometryType,
   DrawingLineStyle,
 } from "@/lib/drawing-types";
+import type { CloudPointType } from "./types";
 
 export type ChildErrorCode =
   | "unauthenticated"
@@ -98,3 +99,45 @@ export interface CreateGeometryInput extends GeometryWritableFields {
 }
 
 export type UpdateGeometryInput = Partial<GeometryWritableFields>;
+
+// ---------------------------------------------------------------------
+// Sprint 02D-1B: point-specific writable fields. CREATE-ONLY (ADR-011)
+// -- land_points has no updated_at column, so there is deliberately no
+// UpdatePointInput here, and none should be added without a new ADR +
+// a migration adding that column. Delete is separately deferred by
+// ADR-013.
+// ---------------------------------------------------------------------
+export interface PointWritableFields {
+  pointType: CloudPointType;
+  label?: string | null;
+  latitude: number;
+  longitude: number;
+  altitude?: number | null;
+  accuracyM?: number | null;
+  altitudeAccuracyM?: number | null;
+  heading?: number | null;
+  speed?: number | null;
+  qualityGrade?: "A" | "B" | "C" | "D" | null;
+  captureMethod?: "single" | "averaged" | "best-fix" | "manual-key-in" | null;
+  source?: "phone-gps" | "keyed-coordinate" | null;
+  sampleCount?: number | null;
+  occupationSeconds?: number | null;
+  distanceDifferenceM?: number | null;
+  bearingDegrees?: number | null;
+  note?: string | null;
+  // ISO 8601 string. Optional -- the captured_at column defaults to
+  // now() at the database level if this is omitted.
+  capturedAt?: string;
+}
+
+export interface CreatePointInput extends PointWritableFields {
+  // Stable child UUID, reused from the local point's id -- never
+  // regenerated per save/retry (ADR-001).
+  id: string;
+  // Parent land_records.id. Nullable BY DESIGN, unlike geometry: a
+  // point may be captured before being attached to any saved
+  // land_record (see the land_points migration's "two-branch
+  // ownership" comment). null means an unlinked point, owned via
+  // captured_by instead of via the parent.
+  landRecordId?: string | null;
+}

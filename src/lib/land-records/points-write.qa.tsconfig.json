@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "baseUrl": "../../..",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "jsx": "react-jsx"
+  },
+  "files": [
+    "types.ts",
+    "mapper.ts",
+    "cloud-repository.ts",
+    "local-cache.ts",
+    "feature-gate.ts",
+    "validation.ts",
+    "write-coordinator.ts",
+    "child-types.ts",
+    "geometry-validation.ts",
+    "geometry-repository.ts",
+    "geometry-cache.ts",
+    "geometry-write-coordinator.ts",
+    "points-validation.ts",
+    "points-repository.ts",
+    "points-cache.ts",
+    "points-write-coordinator.ts",
+    "index.ts",
+    "points-write.qa.ts"
+  ]
+}
