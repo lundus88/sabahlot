@@ -54,16 +54,15 @@ export function isTargetingSabahlotDevProject(): boolean {
 
 export function isCloudReadEnabled(): boolean {
   return (
-    CLOUD_READ_ENABLED_CONSTANT && process.env.NODE_ENV !== "production"
+    CLOUD_READ_ENABLED_CONSTANT &&
+    process.env.NODE_ENV !== "production" &&
+    isTargetingSabahlotDevProject()
   );
 }
 
-// Sprint 02C-2: now also requires isTargetingSabahlotDevProject() --
-// see that function's comment. Deliberately not applied to
-// isCloudReadEnabled() above; that gate's env-only weakness is the same
-// but is out of this sprint's stated scope (parent land_records write
-// UI wiring only) and is flagged separately in the Sprint 02C-2 report
-// instead of being changed here.
+// Both read and write gates require the exact sabahlot-dev project. Keeping
+// their enable constants separate still allows either capability to be
+// disabled independently without weakening the environment boundary.
 export function isCloudWriteEnabled(): boolean {
   return (
     CLOUD_WRITE_ENABLED_CONSTANT &&

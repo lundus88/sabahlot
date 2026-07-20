@@ -7,6 +7,14 @@
 // like the rest of the .qa.ts scripts in this repo -- no test
 // framework dependency added.
 
+// The read gate fails closed unless the QA process explicitly targets the
+// approved sabahlot-dev project. This value is public project metadata, not a
+// credential, and the fake client below ensures no network request is made.
+Object.assign(process.env, {
+  NODE_ENV: "development",
+  NEXT_PUBLIC_SUPABASE_URL: "https://xsflrehitrmobiyfbfhk.supabase.co",
+});
+
 import {
   getCloudCacheKey,
   isStableCloudId,
