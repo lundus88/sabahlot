@@ -52,7 +52,9 @@ import {
 } from "@/lib/import-geometries";
 
 import {
+  syncParentGeometryToCloud,
   syncParentLandRecordToCloud,
+  type GeometryUiSyncResult,
   type ParentSyncResult,
 } from "@/lib/land-records";
 
@@ -365,6 +367,27 @@ const PAGE_TEXT = {
     parentCloudSyncFailed:
       "Cloud sync failed. Your local copy is safe and will retry on the next save.",
 
+    geometryCloudSyncSaving:
+      "Syncing the parent boundary to cloud...",
+
+    geometryCloudSyncSynced:
+      "Parent boundary synced to cloud.",
+
+    geometryCloudSyncParentNotSynced:
+      "Boundary kept locally because the parent land record was not synced.",
+
+    geometryCloudSyncNoParentGeometry:
+      "No parent boundary was selected for cloud sync.",
+
+    geometryCloudSyncInvalidInput:
+      "Boundary cloud sync skipped because the active geometry is not valid for this record.",
+
+    geometryCloudSyncConflict:
+      "The boundary changed elsewhere. Reload it before saving again.",
+
+    geometryCloudSyncFailed:
+      "Boundary cloud sync failed. Your local boundary is safe.",
+
     polygonRequired:
       "Please draw a land area before saving this preliminary record.",
 
@@ -556,6 +579,27 @@ const PAGE_TEXT = {
     parentCloudSyncFailed:
       "Penyegerakan awan gagal. Salinan pada peranti ini selamat dan akan dicuba semula pada simpanan seterusnya.",
 
+    geometryCloudSyncSaving:
+      "Menyegerakkan sempadan induk ke awan...",
+
+    geometryCloudSyncSynced:
+      "Sempadan induk disegerakkan ke awan.",
+
+    geometryCloudSyncParentNotSynced:
+      "Sempadan kekal pada peranti kerana rekod tanah induk belum disegerakkan.",
+
+    geometryCloudSyncNoParentGeometry:
+      "Tiada sempadan induk dipilih untuk penyegerakan awan.",
+
+    geometryCloudSyncInvalidInput:
+      "Penyegerakan sempadan dilangkau kerana geometri aktif tidak sah untuk rekod ini.",
+
+    geometryCloudSyncConflict:
+      "Sempadan telah berubah di tempat lain. Muat semula sebelum menyimpan lagi.",
+
+    geometryCloudSyncFailed:
+      "Penyegerakan sempadan gagal. Sempadan pada peranti ini selamat.",
+
     polygonRequired:
       "Sila lukis kawasan tanah sebelum menyimpan rekod awal ini.",
 
@@ -746,6 +790,27 @@ const PAGE_TEXT = {
 
     parentCloudSyncFailed:
       "云端同步失败。本设备副本安全,将在下次保存时重试。",
+
+    geometryCloudSyncSaving:
+      "正在同步主地块边界到云端...",
+
+    geometryCloudSyncSynced:
+      "主地块边界已同步到云端。",
+
+    geometryCloudSyncParentNotSynced:
+      "由于土地记录尚未同步,边界仅保存在本设备。",
+
+    geometryCloudSyncNoParentGeometry:
+      "没有选择用于云端同步的主地块边界。",
+
+    geometryCloudSyncInvalidInput:
+      "当前几何不适用于此记录,已跳过边界云端同步。",
+
+    geometryCloudSyncConflict:
+      "边界已在其他位置更改。请重新加载后再保存。",
+
+    geometryCloudSyncFailed:
+      "边界云端同步失败。本设备上的边界数据安全。",
 
     polygonRequired:
       "保存此初步记录前,请先绘制土地范围。",
@@ -1123,6 +1188,13 @@ export default function HomePage() {
     setParentCloudSync,
   ] = useState<
     { status: "idle" } | { status: "saving" } | ParentSyncResult
+  >({ status: "idle" });
+
+  const [
+    geometryCloudSync,
+    setGeometryCloudSync,
+  ] = useState<
+    { status: "idle" } | { status: "saving" } | GeometryUiSyncResult
   >({ status: "idle" });
 
   const [
@@ -1991,28 +2063,18 @@ export default function HomePage() {
           return;
         }
 
-        // Sprint 02C-2: a single "Save" action now runs TWO independent
-        // cloud steps back to back -- this one (land_records parent,
-        // Sprint 02C) and the pre-existing legacy `lots`-table dual
-        // write immediately below (untouched, out of this sprint's
-        // scope). They intentionally do not share state: parentCloudSync
-        // reports on the land_records parent ONLY (never geometry,
-        // points, parties, documents, or the legacy `lots` row), and
-        // saveMessage below continues to report on the legacy `lots`
-        // write exactly as before. If this step succeeds and the legacy
-        // step then fails, parentCloudSync legitimately stays
-        // "core_record_synced" while saveMessage separately shows the
-        // legacy failure -- that is not a false "whole record synced"
-        // claim, since parentCloudSyncSynced's copy is scoped explicitly
-        // to "land record details" (see PAGE_TEXT), not the legacy lot
-        // entry or any child table.
+        // Parent first, then its one authoritative `parent_lot` boundary.
+        // Geometry never runs under an unsettled parent and reports through
+        // its own state so a partial save cannot look fully synchronized.
         setParentCloudSync({ status: "saving" });
+        setGeometryCloudSync({ status: "idle" });
+        const cloudClient = createClient();
+        let parentSyncResult: ParentSyncResult;
 
         try {
-          const parentSyncResult =
-            await syncParentLandRecordToCloud(
-              createClient(),
-              {
+          parentSyncResult = await syncParentLandRecordToCloud(
+            cloudClient,
+            {
                 localId: localRecord.id,
                 recordName: lotName,
                 lotNumber:
@@ -2036,19 +2098,28 @@ export default function HomePage() {
                 landHistoryNotes:
                   formData.landRecord.landHistoryNotes.trim() ||
                   null,
-              },
-            );
+            },
+          );
 
           setParentCloudSync(parentSyncResult);
         } catch (error) {
-          setParentCloudSync({
+          parentSyncResult = {
             status: "network_error",
             message:
               error instanceof Error
                 ? error.message
                 : "Unknown cloud sync error.",
-          });
+          };
+          setParentCloudSync(parentSyncResult);
         }
+
+        setGeometryCloudSync({ status: "saving" });
+        const geometrySyncResult = await syncParentGeometryToCloud(
+          cloudClient,
+          parentSyncResult,
+          drawingObjects,
+        );
+        setGeometryCloudSync(geometrySyncResult);
 
         try {
           const supabase =
@@ -7183,6 +7254,31 @@ export default function HomePage() {
     }
   };
 
+  const geometryCloudSyncMessage = (): string | null => {
+    switch (geometryCloudSync.status) {
+      case "idle":
+        return null;
+      case "saving":
+        return text.geometryCloudSyncSaving;
+      case "geometry_synced":
+        return text.geometryCloudSyncSynced;
+      case "local_only":
+        return geometryCloudSync.localOnlyReason === "no_parent_geometry"
+          ? text.geometryCloudSyncNoParentGeometry
+          : text.geometryCloudSyncParentNotSynced;
+      case "invalid_input":
+      case "duplicate_conflict":
+        return text.geometryCloudSyncInvalidInput;
+      case "stale_conflict":
+        return text.geometryCloudSyncConflict;
+      case "failed":
+      case "network_error":
+        return text.geometryCloudSyncFailed;
+      default:
+        return null;
+    }
+  };
+
   return (
     <main className="sl-app-shell">
       <Map
@@ -7722,6 +7818,15 @@ export default function HomePage() {
                 role="status"
               >
                 {parentCloudSyncMessage()}
+              </p>
+            )}
+
+            {geometryCloudSyncMessage() && (
+              <p
+                className={`sl-parent-cloud-sync-message sl-parent-cloud-sync-message--${geometryCloudSync.status}`}
+                role="status"
+              >
+                {geometryCloudSyncMessage()}
               </p>
             )}
           </form>

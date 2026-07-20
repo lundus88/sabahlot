@@ -13,6 +13,7 @@
 import {
   readCloudCache,
   syncParentLandRecordToCloud,
+  writeCloudCache,
   type ParentSyncInput,
 } from "./index";
 
@@ -512,6 +513,70 @@ async function testLegacyIdStaysLocalOnly() {
   assert(client.calls.length === 0, "expected no network call for a legacy id");
 }
 
+// ---- 13: updating a parent preserves cached child rows --------------------
+
+async function testParentUpdatePreservesCachedChildren() {
+  const client = new FakeSupabaseClient();
+  const userId = nextUserId();
+  client.userId = userId;
+  client.insertQueue.push({ data: baseRow(), error: null });
+
+  await syncParentLandRecordToCloud(
+    client as unknown as Parameters<typeof syncParentLandRecordToCloud>[0],
+    baseInput,
+  );
+
+  const cached = readCloudCache(userId);
+  assert(cached !== null, "expected cache after parent create");
+  const geometry = {
+    id: "55555555-5555-4555-8555-555555555555",
+    geometryType: "polygon" as const,
+    name: "Parent boundary",
+    category: "parent_lot" as const,
+    coordinates: [
+      { lat: 5, lng: 116 },
+      { lat: 5.1, lng: 116 },
+      { lat: 5, lng: 116.1 },
+      { lat: 5, lng: 116 },
+    ],
+    lineStyle: "solid" as const,
+    color: "#0f766e",
+    weight: 3,
+    isVisible: true,
+    areaSqm: 100,
+    areaHa: 0.01,
+    areaAcre: 0.0247,
+    perimeterM: 42,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-04-04T04:04:04.000Z",
+  };
+  writeCloudCache(
+    userId,
+    cached.records.map((record) =>
+      record.id === RECORD_ID ? { ...record, geometries: [geometry] } : record,
+    ),
+    cached.syncedAt,
+  );
+
+  client.updateQueue.push({
+    data: baseRow({ updated_at: "2026-06-06T06:06:06.000Z" }),
+    error: null,
+  });
+  const result = await syncParentLandRecordToCloud(
+    client as unknown as Parameters<typeof syncParentLandRecordToCloud>[0],
+    { ...baseInput, recordName: "Updated parent" },
+  );
+
+  assert(result.status === "core_record_synced", "expected parent update success");
+  assert(result.record?.geometries.length === 1, "expected returned child geometry preserved");
+  assert(
+    result.record?.geometries[0]?.updatedAt === geometry.updatedAt,
+    "expected server geometry updatedAt preserved for optimistic concurrency",
+  );
+  const cachedAfter = readCloudCache(userId)?.records.find((record) => record.id === RECORD_ID);
+  assert(cachedAfter?.geometries.length === 1, "expected cached child geometry preserved");
+}
+
 async function main() {
   await run("Test 1 (create produces a stable cloud UUID matching the local id)", testCreateProducesStableUuid);
   await run("Test 2 (server updated_at is carried through)", testServerUpdatedAtIsCarriedThrough);
@@ -527,6 +592,7 @@ async function main() {
   await run("Test 10 (cache reflects server data; later save updates using it)", testCacheReflectsServerDataAfterSuccess);
   await run("Test 11 (never writes outside land_records)", testNeverWritesOutsideLandRecords);
   await run("Test 12 (legacy id stays local-only)", testLegacyIdStaysLocalOnly);
+  await run("Test 13 (parent update preserves cached child rows)", testParentUpdatePreservesCachedChildren);
 
   if (failures > 0) {
     console.error(`\n${failures} test(s) FAILED.`);

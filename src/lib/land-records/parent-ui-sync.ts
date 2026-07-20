@@ -12,7 +12,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { isCloudWriteEnabled } from "./feature-gate";
-import { readCloudCache } from "./local-cache";
+import { readCloudCache, upsertCloudCacheRecord } from "./local-cache";
 import { isStableCloudId } from "./types";
 import type { CloudLandRecord, LandRecordWritableFields, WriteErrorCode } from "./types";
 import { createCloudLandRecord, updateCloudLandRecord } from "./write-coordinator";
@@ -116,7 +116,24 @@ export async function syncParentLandRecordToCloud(
       : await createCloudLandRecord(supabase, { id: localId, ...fields });
 
     if (result.ok) {
-      return { status: "core_record_synced", record: result.record };
+      // Parent writes return only the land_records row. Preserve child rows
+      // already loaded into the per-user cache; replacing them with the
+      // coordinator's empty child arrays would discard the server
+      // `updatedAt` values required by child optimistic concurrency.
+      const record = cached
+        ? {
+            ...result.record,
+            geometries: cached.geometries,
+            points: cached.points,
+            parties: cached.parties,
+          }
+        : result.record;
+
+      if (cached) {
+        upsertCloudCacheRecord(userId, record, new Date().toISOString());
+      }
+
+      return { status: "core_record_synced", record };
     }
 
     switch (result.code) {
