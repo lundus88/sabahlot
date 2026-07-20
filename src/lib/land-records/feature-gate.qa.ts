@@ -9,7 +9,11 @@
 // No network, no fake Supabase client needed -- this is a pure
 // environment-variable/function-output test.
 
-import { isCloudWriteEnabled, isTargetingSabahlotDevProject } from "./feature-gate";
+import {
+  isCloudReadEnabled,
+  isCloudWriteEnabled,
+  isTargetingSabahlotDevProject,
+} from "./feature-gate";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) {
@@ -46,6 +50,7 @@ const DEV_URL = "https://xsflrehitrmobiyfbfhk.supabase.co";
 function testDevUrlOpensGateInDevelopment() {
   setEnv({ NODE_ENV: "development", NEXT_PUBLIC_SUPABASE_URL: DEV_URL });
   assert(isTargetingSabahlotDevProject(), "expected the dev URL to be recognized as sabahlot-dev");
+  assert(isCloudReadEnabled(), "expected the read gate to be open for sabahlot-dev in development");
   assert(isCloudWriteEnabled(), "expected the write gate to be open for sabahlot-dev in development");
 }
 
@@ -57,6 +62,7 @@ function testOtherProjectUrlStaysClosed() {
     NEXT_PUBLIC_SUPABASE_URL: "https://someotherproject.supabase.co",
   });
   assert(!isTargetingSabahlotDevProject(), "expected a different project's URL to not match sabahlot-dev");
+  assert(!isCloudReadEnabled(), "expected the read gate to stay closed for a non-dev project URL");
   assert(!isCloudWriteEnabled(), "expected the write gate to stay closed for a non-dev project URL");
 }
 
@@ -65,6 +71,7 @@ function testOtherProjectUrlStaysClosed() {
 function testMissingUrlStaysClosed() {
   setEnv({ NODE_ENV: "development", NEXT_PUBLIC_SUPABASE_URL: undefined });
   assert(!isTargetingSabahlotDevProject(), "expected a missing URL to fail closed");
+  assert(!isCloudReadEnabled(), "expected the read gate to stay closed with no configured URL");
   assert(!isCloudWriteEnabled(), "expected the write gate to stay closed with no configured URL");
 }
 
@@ -73,6 +80,7 @@ function testMissingUrlStaysClosed() {
 function testEmptyUrlStaysClosed() {
   setEnv({ NODE_ENV: "development", NEXT_PUBLIC_SUPABASE_URL: "" });
   assert(!isTargetingSabahlotDevProject(), "expected an empty URL to fail closed");
+  assert(!isCloudReadEnabled(), "expected the read gate to stay closed with an empty URL");
   assert(!isCloudWriteEnabled(), "expected the write gate to stay closed with an empty URL");
 }
 
@@ -81,6 +89,7 @@ function testEmptyUrlStaysClosed() {
 function testMalformedUrlStaysClosed() {
   setEnv({ NODE_ENV: "development", NEXT_PUBLIC_SUPABASE_URL: "not a url at all" });
   assert(!isTargetingSabahlotDevProject(), "expected a malformed URL to fail closed, not throw");
+  assert(!isCloudReadEnabled(), "expected the read gate to stay closed with a malformed URL");
   assert(!isCloudWriteEnabled(), "expected the write gate to stay closed with a malformed URL");
 }
 
@@ -89,6 +98,7 @@ function testMalformedUrlStaysClosed() {
 function testProductionStaysClosedEvenWithDevUrl() {
   setEnv({ NODE_ENV: "production", NEXT_PUBLIC_SUPABASE_URL: DEV_URL });
   assert(isTargetingSabahlotDevProject(), "the URL itself is still recognized as sabahlot-dev");
+  assert(!isCloudReadEnabled(), "expected the read gate to stay closed in production regardless of URL");
   assert(!isCloudWriteEnabled(), "expected the write gate to stay closed in production regardless of URL");
 }
 
