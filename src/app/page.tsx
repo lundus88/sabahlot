@@ -7550,9 +7550,16 @@ export default function HomePage() {
             </p>
 
             <p className="sl-alpha-privacy-note">
-              For Alpha testing, avoid entering highly sensitive personal information.
-              {` ${PRELIMINARY_DISCLAIMER}`}
+              Preliminary reference only -- avoid sensitive personal information.
             </p>
+
+            <details className="sl-record-section sl-disclaimer-details">
+              <summary>Read more</summary>
+              <p className="sl-record-section-hint">
+                For Alpha testing, avoid entering highly sensitive personal information.
+                {` ${PRELIMINARY_DISCLAIMER}`}
+              </p>
+            </details>
           </div>
 
           <form
@@ -7561,8 +7568,15 @@ export default function HomePage() {
               saveLotRecord
             }
           >
-            <details className="sl-record-section" open>
+            <details
+              className="sl-record-section"
+              name="sl-lot-record-accordion"
+              open
+            >
               <summary>Basic Lot Info</summary>
+              <p className="sl-record-section-hint">
+                Required -- the core details that identify this record.
+              </p>
               <div className="sl-record-section-body">
             <label>
               <span>
@@ -7667,8 +7681,14 @@ export default function HomePage() {
               </div>
             </details>
 
-            <details className="sl-record-section">
+            <details
+              className="sl-record-section"
+              name="sl-lot-record-accordion"
+            >
               <summary>Land Application Record</summary>
+              <p className="sl-record-section-hint">
+                Optional -- application status and supporting documents already on hand.
+              </p>
               <div className="sl-record-section-body">
                 <label>
                   <span>Land case type</span>
@@ -7722,8 +7742,14 @@ export default function HomePage() {
               </div>
             </details>
 
-            <details className="sl-record-section">
+            <details
+              className="sl-record-section"
+              name="sl-lot-record-accordion"
+            >
               <summary>Family / Inheritance</summary>
+              <p className="sl-record-section-hint">
+                Optional -- for inheritance or family customary land cases only.
+              </p>
               <div className="sl-record-section-body">
                 <label>
                   <span>Original applicant name</span>
@@ -7793,8 +7819,14 @@ export default function HomePage() {
               </div>
             </details>
 
-            <details className="sl-record-section">
+            <details
+              className="sl-record-section"
+              name="sl-lot-record-accordion"
+            >
               <summary>Issue Tags</summary>
+              <p className="sl-record-section-hint">
+                Optional -- flag known issues with this land matter for follow-up.
+              </p>
               <div className="sl-record-section-body">
                 <fieldset className="sl-record-checklist">
                   <legend>Land issue tags</legend>
@@ -7812,8 +7844,14 @@ export default function HomePage() {
               </div>
             </details>
 
-            <details className="sl-record-section">
+            <details
+              className="sl-record-section"
+              name="sl-lot-record-accordion"
+            >
               <summary>Notes</summary>
+              <p className="sl-record-section-hint">
+                Optional -- any additional context for this record.
+              </p>
               <div className="sl-record-section-body">
                 <label>
                   <span>General record notes</span>
@@ -7825,6 +7863,23 @@ export default function HomePage() {
                 </label>
               </div>
             </details>
+
+            <div className="sl-record-review">
+              <strong>Review</strong>
+              <p>
+                {formData.lotNumber.trim() || formData.ownerName.trim()
+                  ? `${formData.lotNumber.trim() || "(no lot number)"} -- ${formData.ownerName.trim() || "(no owner name)"}`
+                  : "Fill in Basic Lot Info above to see a summary here."}
+                {polygon
+                  ? ` -- ${displayArea(polygon.areaM2)}`
+                  : " -- no boundary drawn yet"}
+              </p>
+              {!canSaveLot && (
+                <p className="sl-record-review-blocked">
+                  {saveBlockedMessage}
+                </p>
+              )}
+            </div>
 
             <button
               type="submit"
@@ -7877,6 +7932,15 @@ export default function HomePage() {
               </p>
             )}
           </form>
+
+          <details
+            className="sl-record-section"
+            name="sl-lot-utility-accordion"
+          >
+            <summary>Import Data</summary>
+            <p className="sl-record-section-hint">
+              Optional -- bring in coordinates from a KML, GeoJSON or CSV file instead of drawing on the map.
+            </p>
 
           <section className="sl-import-panel">
             <div className="sl-summary-heading">
@@ -8005,6 +8069,16 @@ export default function HomePage() {
               Imported data stays private-by-default on this device unless you explicitly save and sync a record.
             </small>
           </section>
+          </details>
+
+          <details
+            className="sl-record-section"
+            name="sl-lot-utility-accordion"
+          >
+            <summary>{text.summary}</summary>
+            <p className="sl-record-section-hint">
+              Drawing summary, exports (PDF/KML/DXF) and output plan options for this record.
+            </p>
 
           <section className="sl-drawing-summary">
             <div className="sl-summary-heading">
@@ -8494,6 +8568,16 @@ export default function HomePage() {
               </span>
             </button>
           </section>
+          </details>
+
+          <details
+            className="sl-record-section"
+            name="sl-lot-utility-accordion"
+          >
+            <summary>{text.savedLots}</summary>
+            <p className="sl-record-section-hint">
+              Optional -- browse, reload or manage records you have already saved on this device or account.
+            </p>
 
           <section className="sl-drawing-summary">
             <div className="sl-summary-heading">
@@ -8641,6 +8725,7 @@ export default function HomePage() {
               </div>
             )}
           </section>
+          </details>
         </div>
 
         <div className="sl-drawer-footer">
