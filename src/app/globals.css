@@ -4152,7 +4152,7 @@ select:focus-visible {
 
 .sl-floating-summary-card {
   position: absolute;
-  right: 18px;
+  right: max(18px, env(safe-area-inset-right));
   bottom: calc(env(safe-area-inset-bottom) + 34px);
   z-index: 1088;
   display: grid;
@@ -4621,7 +4621,7 @@ select:focus-visible {
 }
 
 .sl-floating-summary-card {
-  right: 16px;
+  right: max(16px, env(safe-area-inset-right));
   bottom: calc(env(safe-area-inset-bottom) + 34px);
   grid-template-columns: 1.35fr 0.72fr 1fr;
   width: min(318px, calc(100vw - 32px));
@@ -5152,7 +5152,7 @@ select:focus-visible {
 }
 
 .sl-floating-summary-card {
-  right: 14px;
+  right: max(14px, env(safe-area-inset-right));
   bottom: calc(env(safe-area-inset-bottom) + 34px);
   grid-template-columns: 1.35fr 0.7fr 1fr;
   width: min(304px, calc(100vw - 28px));
@@ -7018,7 +7018,7 @@ select:focus-visible {
 .sl-drawer-handle {
   position: fixed;
   top: 50%;
-  left: 0;
+  left: env(safe-area-inset-left);
   z-index: 1050;
 
   display: grid;
@@ -7541,5 +7541,222 @@ select:focus-visible {
   .sl-shell-toast {
     max-width: calc(100vw - 32px);
     white-space: normal;
+  }
+}
+
+/* =====================================================
+   MOBILE HEADER AND MAP OVERLAY RECOVERY
+
+   Authoritative mobile layout. Placed last in the file so it
+   wins (same specificity, later source order, plus !important
+   where an existing earlier rule was found redefining the same
+   property) over every earlier duplicate .sl-topbar /
+   .sl-search / .sl-mobile-top-control-stack / .sl-public-beta-label
+   rule already in this file, instead of chasing each one
+   individually. Row math is centralised in custom properties so
+   row 2/3 offsets can never drift out of sync with row 1's real
+   height again.
+
+   Row 1 (identity/actions): hamburger, brand mark, region pill,
+     language compact trigger, settings -- .sl-topbar +
+     .sl-topbar-actions, positioned as two independently-fixed
+     pieces that share row 1's vertical band (they are separate
+     React trees and cannot be made DOM siblings without a larger
+     refactor; the shared --sl-mh-* custom properties keep them
+     numerically in sync instead).
+   Row 2 (search): .sl-search, moved out of the row 1 grid and
+     given its own full-width fixed row so it is never squeezed
+     down to an unusably narrow input again.
+   Row 3 (status, only present when its content is): the
+     Preliminary Field Assist chip on the left, GPS/Objects
+     controls (.sl-mobile-top-control-stack) on the right -- same
+     row, opposite horizontal halves, so they can never overlap
+     regardless of which one is actually rendered.
+   ===================================================== */
+@media (max-width: 768px) {
+  :root {
+    --sl-mh-top: max(6px, env(safe-area-inset-top));
+    --sl-mh-row-h: 44px;
+    --sl-mh-gap: 8px;
+    --sl-mh-row2-top: calc(var(--sl-mh-top) + var(--sl-mh-row-h) + var(--sl-mh-gap));
+    --sl-mh-row3-top: calc(var(--sl-mh-top) + (var(--sl-mh-row-h) * 2) + (var(--sl-mh-gap) * 2));
+    --sl-mh-inset-right: max(8px, env(safe-area-inset-right));
+    --sl-mh-inset-left: max(8px, env(safe-area-inset-left));
+  }
+
+  /* --- Row 1: identity/actions --- */
+  .sl-topbar {
+    top: var(--sl-mh-top) !important;
+    left: var(--sl-mh-inset-left) !important;
+    right: auto !important;
+    bottom: auto !important;
+    width: auto !important;
+    max-width: calc(100vw - 100px) !important;
+    height: var(--sl-mh-row-h) !important;
+    min-height: var(--sl-mh-row-h) !important;
+    display: grid !important;
+    grid-template-columns: 36px 34px auto !important;
+    align-items: center !important;
+    gap: 4px !important;
+    padding: 4px !important;
+    box-sizing: border-box !important;
+    transform: none !important;
+  }
+
+  .sl-menu-button {
+    grid-column: 1 !important;
+  }
+
+  .sl-brand-chip {
+    grid-column: 2 !important;
+    width: 34px !important;
+    min-width: 34px !important;
+    height: 34px !important;
+    padding: 0 !important;
+  }
+
+  .sl-brand-chip > span:not(.sl-brand-mark) {
+    display: none !important;
+  }
+
+  .sl-region-indicator {
+    grid-column: 3 !important;
+    min-width: 0 !important;
+  }
+
+  .sl-region-pill {
+    min-height: 36px !important;
+    padding: 0 8px !important;
+    font-size: 12px !important;
+    white-space: nowrap !important;
+  }
+
+  .sl-topbar-actions {
+    position: fixed !important;
+    top: var(--sl-mh-top) !important;
+    right: var(--sl-mh-inset-right) !important;
+    left: auto !important;
+    bottom: auto !important;
+    width: auto !important;
+    height: var(--sl-mh-row-h) !important;
+    min-width: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    z-index: 7000;
+  }
+
+  .sl-topbar-actions .sl-icon-button {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+  }
+
+  /* Language switcher: exactly one compact trigger visible on
+     mobile, the full EN/BM/中文 row only ever renders as the
+     popover after tapping it. */
+  .sl-topbar-actions .sl-language-switcher {
+    position: relative !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .sl-topbar-actions .sl-language-compact-trigger {
+    display: inline-grid !important;
+    place-items: center;
+    width: 36px !important;
+    height: 36px !important;
+    padding: 0;
+    color: #0f172a;
+    background: var(--sl-glass);
+    border: 1px solid rgba(255, 255, 255, 0.82);
+    border-radius: 10px;
+    box-shadow: var(--sl-shadow-soft);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .sl-topbar-actions .sl-language-options {
+    display: none !important;
+  }
+
+  .sl-topbar-actions .sl-language-switcher.is-compact-open .sl-language-options {
+    display: flex !important;
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    left: auto;
+    max-width: calc(100vw - 16px);
+    z-index: 1600;
+    gap: 2px;
+    padding: 3px;
+    background: var(--sl-glass);
+    border: 1px solid rgba(255, 255, 255, 0.82);
+    border-radius: 10px;
+    box-shadow: var(--sl-shadow-soft);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  /* --- Row 2: search, its own full-width row --- */
+  .sl-search {
+    position: fixed !important;
+    top: var(--sl-mh-row2-top) !important;
+    left: var(--sl-mh-inset-left) !important;
+    right: var(--sl-mh-inset-right) !important;
+    bottom: auto !important;
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    height: var(--sl-mh-row-h) !important;
+    min-height: var(--sl-mh-row-h) !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: center !important;
+    padding: 0 10px !important;
+    box-sizing: border-box !important;
+    z-index: 1100;
+  }
+
+  .sl-search input {
+    height: 100% !important;
+    min-height: 0 !important;
+    min-width: 0 !important;
+    font-size: 15px !important;
+    line-height: 1.3 !important;
+  }
+
+  .sl-search button {
+    display: inline-flex !important;
+  }
+
+  /* --- Row 3: status -- Field Assist (left) / GPS+Objects (right) --- */
+  .sl-public-beta-label {
+    position: fixed !important;
+    top: var(--sl-mh-row3-top) !important;
+    left: var(--sl-mh-inset-left) !important;
+    right: auto !important;
+    bottom: auto !important;
+    transform: none !important;
+    max-width: min(150px, calc(50vw - 20px)) !important;
+  }
+
+  .sl-mobile-top-control-stack {
+    top: var(--sl-mh-row3-top) !important;
+    right: var(--sl-mh-inset-right) !important;
+    left: auto !important;
+    width: auto !important;
+    max-width: calc(50vw - 20px) !important;
+    justify-content: flex-end !important;
+  }
+
+  /* --- Drawer handle: full horizontal-inset safety --- */
+  .sl-drawer-handle {
+    left: var(--sl-mh-inset-left) !important;
   }
 }
