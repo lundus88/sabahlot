@@ -867,6 +867,14 @@ export default function FieldGpsLite({
     setPoints,
   ] = useState<FieldGpsPoint[]>([]);
   const [
+    renamingPointId,
+    setRenamingPointId,
+  ] = useState<string | null>(null);
+  const [
+    renameDraft,
+    setRenameDraft,
+  ] = useState("");
+  const [
     trackLog,
     setTrackLog,
   ] = useState<FieldGpsTrackPoint[]>(
@@ -2817,6 +2825,91 @@ export default function FieldGpsLite({
     );
   };
 
+  const startRenamingPoint = (
+    point: FieldGpsPoint,
+  ) => {
+    setRenamingPointId(point.id);
+    setRenameDraft(point.label);
+  };
+
+  const cancelRenamingPoint = () => {
+    setRenamingPointId(null);
+    setRenameDraft("");
+  };
+
+  const confirmRenamingPoint = () => {
+    const trimmed = renameDraft.trim();
+
+    if (!renamingPointId || !trimmed) {
+      cancelRenamingPoint();
+      return;
+    }
+
+    setPoints((current) =>
+      current.map((item) =>
+        item.id === renamingPointId
+          ? { ...item, label: trimmed }
+          : item,
+      ),
+    );
+    setCaptureMessage(
+      `Point renamed to ${trimmed}.`,
+    );
+    cancelRenamingPoint();
+  };
+
+  const deletePointWithConfirmation = (
+    point: FieldGpsPoint,
+  ) => {
+    if (
+      !window.confirm(
+        `Delete point "${point.label}"? This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+
+    setPoints((current) =>
+      current.filter(
+        (item) => item.id !== point.id,
+      ),
+    );
+
+    if (renamingPointId === point.id) {
+      cancelRenamingPoint();
+    }
+
+    setCaptureMessage(
+      `Point "${point.label}" deleted.`,
+    );
+  };
+
+  const deleteFoundPointWithConfirmation = (
+    point: FieldGpsPoint,
+  ) => {
+    if (
+      !window.confirm(
+        `Delete found point "${point.label}"? This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+
+    setFoundPoints((current) =>
+      current.filter(
+        (item) => item.id !== point.id,
+      ),
+    );
+    setFoundPointRecords((current) =>
+      current.filter(
+        (item) => item.id !== point.id,
+      ),
+    );
+    setCaptureMessage(
+      `Found point "${point.label}" deleted.`,
+    );
+  };
+
   const generatePolygon = () => {
     const polygon =
       createPreliminaryPolygonResult(
@@ -3768,9 +3861,36 @@ export default function FieldGpsLite({
                       className="sl-field-gps-point"
                     >
                       <div>
-                        <strong>
-                          {point.label}
-                        </strong>
+                        {renamingPointId === point.id ? (
+                          <div className="sl-field-gps-rename">
+                            <input
+                              type="text"
+                              value={renameDraft}
+                              onChange={(event) =>
+                                setRenameDraft(
+                                  event.target.value,
+                                )
+                              }
+                              autoFocus
+                            />
+                            <button
+                              type="button"
+                              onClick={confirmRenamingPoint}
+                            >
+                              Save
+                            </button>
+                            <button
+                              type="button"
+                              onClick={cancelRenamingPoint}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <strong>
+                            {point.label}
+                          </strong>
+                        )}
                         <span>
                           {point.source === "keyed-coordinate"
                             ? "Keyed coordinate"
@@ -3778,6 +3898,9 @@ export default function FieldGpsLite({
                               point.accuracyMeters,
                             )} | Grade {point.qualityGrade} | {point.captureMethod}
                         </span>
+                        <small>
+                          {formatCoordinate(point.latitude)}, {formatCoordinate(point.longitude)}
+                        </small>
                         <small>
                           {point.timestamp}
                           {point.note
@@ -3809,13 +3932,18 @@ export default function FieldGpsLite({
                         <button
                           type="button"
                           onClick={() =>
-                            setPoints(
-                              (current) =>
-                                current.filter(
-                                  (item) =>
-                                    item.id !==
-                                    point.id,
-                                ),
+                            startRenamingPoint(
+                              point,
+                            )
+                          }
+                        >
+                          Rename
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            deletePointWithConfirmation(
+                              point,
                             )
                           }
                         >
@@ -3882,24 +4010,11 @@ export default function FieldGpsLite({
                         </button>
                         <button
                           type="button"
-                          onClick={() => {
-                            setFoundPoints(
-                              (current) =>
-                                current.filter(
-                                  (item) =>
-                                    item.id !==
-                                    point.id,
-                                ),
-                            );
-                            setFoundPointRecords(
-                              (current) =>
-                                current.filter(
-                                  (item) =>
-                                    item.id !==
-                                    point.id,
-                                ),
-                            );
-                          }}
+                          onClick={() =>
+                            deleteFoundPointWithConfirmation(
+                              point,
+                            )
+                          }
                         >
                           Delete
                         </button>
