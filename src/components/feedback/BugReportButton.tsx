@@ -5,6 +5,7 @@ import { useState } from "react";
 import FeedbackModal from "@/components/feedback/FeedbackModal";
 import type { FeedbackEntryInput } from "@/lib/feedback/feedbackStorage";
 import { readFieldAssistActiveTarget } from "@/lib/field-assist-active-target";
+import { useAppBrandLabel } from "@/lib/branding/appBrandLabel";
 
 function getGpsAccuracyText(): Promise<string> {
   return new Promise((resolve) => {
@@ -62,6 +63,7 @@ export default function BugReportButton() {
   const [initialValues, setInitialValues] = useState<
     Partial<FeedbackEntryInput> | undefined
   >(undefined);
+  const reportTitle = useAppBrandLabel("Report Issue — SabahLot Beta");
 
   const handleClick = async () => {
     setLoading(true);
@@ -95,7 +97,7 @@ export default function BugReportButton() {
 
       <FeedbackModal
         open={open}
-        title="Report Issue — SabahLot Beta"
+        title={reportTitle}
         initialValues={initialValues}
         onClose={() => setOpen(false)}
       />

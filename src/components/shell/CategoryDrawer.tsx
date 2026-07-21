@@ -7,6 +7,7 @@ import type { AppMode } from "@/lib/appMode/appModeStorage";
 import type { AppLanguage } from "@/lib/i18n/appLanguageStorage";
 import { getAppText, MODULE_ORDER, type ModuleId } from "@/lib/i18n/appText";
 import ModeToggle from "@/components/shell/ModeToggle";
+import { useAppBrandLabel } from "@/lib/branding/appBrandLabel";
 
 const MODULE_ICON_PATHS: Record<ModuleId, ReactNode> = {
   ncr: (
@@ -69,6 +70,13 @@ export interface CategoryDrawerProps {
   appMode: AppMode;
   onModeChange: (mode: AppMode) => void;
   onSelectCategory: (id: ModuleId) => void;
+  /**
+   * Suppress the closed-state edge handle while another full-height,
+   * left-edge panel (e.g. the Lot Information drawer) is open. Both
+   * share the same left:0 screen region; without this, the handle
+   * remains mounted and interactive underneath that panel.
+   */
+  suppressHandle?: boolean;
 }
 
 export default function CategoryDrawer({
@@ -79,8 +87,10 @@ export default function CategoryDrawer({
   appMode,
   onModeChange,
   onSelectCategory,
+  suppressHandle = false,
 }: CategoryDrawerProps) {
   const text = getAppText(language);
+  const brandLabel = useAppBrandLabel(text.brand);
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
 
@@ -126,7 +136,7 @@ export default function CategoryDrawer({
 
   return (
     <>
-      {!open && (
+      {!open && !suppressHandle && (
         <button
           type="button"
           className="sl-drawer-handle"
@@ -156,7 +166,7 @@ export default function CategoryDrawer({
       >
         <div className="sl-category-drawer-header">
           <span className="sl-category-drawer-brand">
-            {text.brand}
+            {brandLabel}
           </span>
           <button
             type="button"
