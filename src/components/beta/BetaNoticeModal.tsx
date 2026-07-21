@@ -6,10 +6,14 @@ import {
   acceptBetaNotice,
   hasAcceptedBetaNotice,
 } from "@/lib/beta/betaNoticeStorage";
+import { useAppBrandLabel } from "@/lib/branding/appBrandLabel";
 
 export default function BetaNoticeModal() {
   const [visible, setVisible] = useState(false);
   const [agreed, setAgreed] = useState(false);
+  const brandLabel = useAppBrandLabel("SabahLot Beta");
+  const noticeHeading = useAppBrandLabel("Notis Beta Awam SabahLot");
+  const testingPhaseWord = useAppBrandLabel("beta");
 
   useEffect(() => {
     if (!hasAcceptedBetaNotice()) {
@@ -40,10 +44,10 @@ export default function BetaNoticeModal() {
         aria-modal="true"
         aria-labelledby="sl-beta-notice-title"
       >
-        <h2 id="sl-beta-notice-title">Notis Beta Awam SabahLot</h2>
+        <h2 id="sl-beta-notice-title">{noticeHeading}</h2>
 
         <p>
-          SabahLot Beta adalah untuk <strong>Preliminary Field Assist</strong> /
+          {brandLabel} adalah untuk <strong>Preliminary Field Assist</strong> /
           rujukan awal sahaja.
         </p>
 
@@ -61,7 +65,7 @@ export default function BetaNoticeModal() {
 
         <p>
           Semua koordinat, peta, GPS, AR Guide, import KML/CSV/DXF dan
-          laporan adalah untuk ujian beta / rujukan awal sahaja.
+          laporan adalah untuk ujian {testingPhaseWord} / rujukan awal sahaja.
         </p>
 
         <label className="sl-beta-notice-checkbox">
@@ -71,7 +75,7 @@ export default function BetaNoticeModal() {
             onChange={(event) => setAgreed(event.target.checked)}
           />
           <span>
-            Saya faham dan bersetuju menggunakan SabahLot Beta sebagai
+            Saya faham dan bersetuju menggunakan {brandLabel} sebagai
             rujukan awal sahaja.
           </span>
         </label>

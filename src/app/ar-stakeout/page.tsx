@@ -8,6 +8,7 @@ import {
   readGpsTargetMemory,
   saveGpsTargetMemory,
 } from "@/utils/gpsTargetMemory";
+import { useAppBrandLabel } from "@/lib/branding/appBrandLabel";
 import styles from "./ar-stakeout.module.css";
 
 type GpsFix = {
@@ -247,6 +248,7 @@ export default function ArStakeoutPage() {
   const [targetLatText, setTargetLatText] = useState("");
   const [targetLngText, setTargetLngText] = useState("");
   const [note, setNote] = useState("");
+  const brandLabel = useAppBrandLabel("SabahLot Beta");
 
   const [gps, setGps] = useState<GpsFix | null>(null);
   const [gpsStatus, setGpsStatus] = useState("GPS stopped");
@@ -702,7 +704,7 @@ export default function ArStakeoutPage() {
     <main className={styles.page}>
       <section className={styles.header}>
         <div>
-          <p className={styles.kicker}>SabahLot Beta</p>
+          <p className={styles.kicker}>{brandLabel}</p>
           <h1>AR Guide</h1>
           <p>
             Preliminary Field Assist using phone GPS, camera, and directional arrow.

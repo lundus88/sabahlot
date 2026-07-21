@@ -37,6 +37,7 @@ import type { AppMode } from "@/lib/appMode/appModeStorage";
 import type { RegionId } from "@/lib/region/regionStorage";
 import RegionIndicator from "@/components/shell/RegionIndicator";
 import LanguageSwitcher from "@/components/shell/LanguageSwitcher";
+import { useAppBrandLabel } from "@/lib/branding/appBrandLabel";
 export type DistanceUnit = "m" | "ft" | "link" | "chain";
 export type AreaUnit = "m2" | "ft2" | "ha" | "acre";
 
@@ -3087,6 +3088,8 @@ export default function Map({
     MAP_TEXT[
       language
     ];
+
+  const brandLabel = useAppBrandLabel("SabahLot Beta");
 
   const coordinatePairsToCoordinates = (
     points: CoordinatePair[],
@@ -9725,7 +9728,7 @@ export default function Map({
             SL
           </span>
           <span>
-            <strong>SabahLot Beta</strong>
+            <strong>{brandLabel}</strong>
             <small>powered by Myukur</small>
           </span>
         </div>

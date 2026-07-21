@@ -7407,6 +7407,7 @@ export default function HomePage() {
         appMode={appMode}
         onModeChange={setAppMode}
         onSelectCategory={handleSelectCategory}
+        suppressHandle={lotPanelOpen}
       />
 
       <NcrScreen
