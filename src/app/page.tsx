@@ -50,6 +50,9 @@ import {
   type ImportedGeometryPreview,
   type ImportFileStatus,
 } from "@/lib/import-geometries";
+import {
+  createKeyedCoordinatePoint,
+} from "@/lib/field-gps";
 
 import {
   syncParentGeometryToCloud,
@@ -1939,6 +1942,49 @@ export default function HomePage() {
 
     setSaveMessage(
       "Imported polygon applied as a preliminary SabahLot record.",
+    );
+  };
+
+  const useImportedPoint = () => {
+    if (!importPreview) {
+      setImportError("Preview a valid import file first.");
+      return;
+    }
+
+    if (
+      importPreview.kind !== "point" ||
+      importPreview.coordinates.length !== 1
+    ) {
+      setImportError(
+        "Only a single-point import can be added as a field point.",
+      );
+      return;
+    }
+
+    const coordinate =
+      importPreview.coordinates[0];
+    const point =
+      createKeyedCoordinatePoint(
+        coordinate.lat,
+        coordinate.lng,
+        importPreview.name || "Imported point",
+        `Imported from ${importPreview.format} file.`,
+      );
+
+    window.dispatchEvent(
+      new CustomEvent(
+        "sabahlot:add-field-gps-point",
+        {
+          detail: {
+            point,
+          },
+        },
+      ),
+    );
+
+    setImportError("");
+    setSaveMessage(
+      `${point.label} added as a field point from ${importPreview.format} import.`,
     );
   };
 
@@ -7879,6 +7925,18 @@ export default function HomePage() {
                   }
                 >
                   Use Geometry
+                </button>
+
+                <button
+                  type="button"
+                  onClick={useImportedPoint}
+                  disabled={
+                    !importPreview ||
+                    importPreview.kind !==
+                      "point"
+                  }
+                >
+                  Add as Field Point
                 </button>
 
                 <button

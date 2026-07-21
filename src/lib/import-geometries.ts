@@ -439,7 +439,7 @@ function parseGeoJson(
       coordinates: [coordinate],
       polygon: null,
       pointCount: 1,
-      message: "Point preview ready. Saving currently requires a polygon.",
+      message: "Point preview ready.",
     };
   }
 
@@ -513,8 +513,20 @@ function parseCsv(
     })),
   );
 
+  if (coordinates.length === 1) {
+    return {
+      kind: "point",
+      format: "CSV",
+      name: fileName,
+      coordinates,
+      polygon: null,
+      pointCount: 1,
+      message: "Point preview ready.",
+    };
+  }
+
   if (coordinates.length < 3) {
-    throw new Error("CSV polygon needs at least 3 valid coordinate rows.");
+    throw new Error("CSV polygon needs at least 3 valid coordinate rows, or exactly 1 row for a single point.");
   }
 
   return {
