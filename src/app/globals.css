@@ -2109,6 +2109,83 @@ select:focus-visible {
   padding: 12px;
 }
 
+.sl-record-section-hint {
+  margin: 0;
+  padding: 0 12px 10px;
+
+  color: #64748b;
+
+  font-size: 10px;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+.sl-record-section[open] > .sl-record-section-hint {
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 10px;
+}
+
+.sl-drawer-body > details.sl-record-section {
+  margin-bottom: 12px;
+}
+
+.sl-disclaimer-details > summary {
+  padding: 6px 0;
+
+  color: #64748b;
+
+  background: transparent;
+  border: 0;
+
+  font-size: 10px;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.sl-disclaimer-details {
+  border: 0;
+  background: transparent;
+}
+
+.sl-disclaimer-details .sl-record-section-hint {
+  padding: 0 0 8px;
+  font-style: normal;
+}
+
+.sl-record-review {
+  padding: 10px 12px;
+
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.sl-record-review strong {
+  display: block;
+  margin-bottom: 4px;
+
+  color: #1e293b;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sl-record-review p {
+  margin: 0;
+
+  color: #334155;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.sl-record-review-blocked {
+  margin-top: 4px !important;
+
+  color: #b45309 !important;
+  font-weight: 700;
+}
+
 .sl-record-section select,
 .sl-record-section textarea {
   width: 100%;
@@ -4076,7 +4153,7 @@ select:focus-visible {
 .sl-floating-summary-card {
   position: absolute;
   right: 18px;
-  bottom: 28px;
+  bottom: calc(env(safe-area-inset-bottom) + 34px);
   z-index: 1088;
   display: grid;
   grid-template-columns: repeat(3, minmax(76px, 1fr));
@@ -4545,7 +4622,7 @@ select:focus-visible {
 
 .sl-floating-summary-card {
   right: 16px;
-  bottom: 22px;
+  bottom: calc(env(safe-area-inset-bottom) + 34px);
   grid-template-columns: 1.35fr 0.72fr 1fr;
   width: min(318px, calc(100vw - 32px));
   border-radius: 16px;
@@ -5076,7 +5153,7 @@ select:focus-visible {
 
 .sl-floating-summary-card {
   right: 14px;
-  bottom: 18px;
+  bottom: calc(env(safe-area-inset-bottom) + 34px);
   grid-template-columns: 1.35fr 0.7fr 1fr;
   width: min(304px, calc(100vw - 28px));
   border-radius: 14px;
@@ -5395,13 +5472,13 @@ select:focus-visible {
 
   .sl-topbar {
     top: max(6px, env(safe-area-inset-top));
-    right: 52px;
+    right: 96px;
     left: 8px;
     display: grid;
-    grid-template-columns: 36px 34px minmax(0, 1fr);
+    grid-template-columns: 36px 34px auto minmax(0, 1fr);
     align-items: center;
     width: auto;
-    max-width: calc(100vw - 60px);
+    max-width: calc(100vw - 104px);
     min-height: 42px;
     box-sizing: border-box;
     padding: 4px;
@@ -5434,8 +5511,20 @@ select:focus-visible {
     display: none;
   }
 
-  .sl-search {
+  .sl-region-indicator {
     grid-column: 3;
+    min-width: 0;
+  }
+
+  .sl-region-pill {
+    min-height: 36px;
+    padding: 0 8px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .sl-search {
+    grid-column: 4;
     height: 36px;
     min-height: 36px;
     width: auto;
@@ -5465,12 +5554,72 @@ select:focus-visible {
     right: 8px;
     display: flex;
     grid-column: auto;
-    width: 42px;
-    height: 42px;
+    width: auto;
+    height: 36px;
     min-width: 0;
+    gap: 4px;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-end;
     z-index: 7000;
+  }
+
+  .sl-topbar-actions .sl-icon-button {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+  }
+
+  /* Language switcher collapses to a single compact trigger here --
+     the full 3-option row doesn't fit next to the search bar at this
+     width. Tapping the trigger opens the same 3 options as a small
+     popover; language-picking function is unchanged, just relocated. */
+  .sl-topbar-actions .sl-language-switcher {
+    position: relative;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .sl-topbar-actions .sl-language-compact-trigger {
+    display: inline-grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    color: #0f172a;
+    background: var(--sl-glass);
+    border: 1px solid rgba(255, 255, 255, 0.82);
+    border-radius: 10px;
+    box-shadow: var(--sl-shadow-soft);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  .sl-topbar-actions .sl-language-options {
+    display: none;
+  }
+
+  .sl-topbar-actions .sl-language-switcher.is-compact-open .sl-language-options {
+    display: flex;
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 1600;
+    gap: 2px;
+    padding: 3px;
+    background: var(--sl-glass);
+    border: 1px solid rgba(255, 255, 255, 0.82);
+    border-radius: 10px;
+    box-shadow: var(--sl-shadow-soft);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
   }
 
   .sl-object-list-tab {
@@ -6381,7 +6530,7 @@ select:focus-visible {
 
 .sl-public-beta-label {
   position: fixed;
-  top: 60px;
+  top: calc(env(safe-area-inset-top) + 58px);
   left: 50%;
   z-index: 1078;
 
@@ -6981,6 +7130,18 @@ select:focus-visible {
 
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
+}
+
+/* Desktop/default: the compact trigger is unused, and .sl-language-options
+   is display:contents so its buttons lay out exactly as direct children of
+   .sl-language-switcher -- zero visual change from before this control
+   existed. The mobile override below reverses both. */
+.sl-language-compact-trigger {
+  display: none;
+}
+
+.sl-language-options {
+  display: contents;
 }
 
 .sl-language-option {
