@@ -7633,6 +7633,18 @@ select:focus-visible {
     right: 8px !important;
   }
 
+  /* Region ("Sabah") popover: same class of bug as the language dropdown
+     above -- "top: calc(100% + 8px)" is relative to the pill's own row,
+     which put it over the search box and the Preliminary Field Assist
+     badge. Anchor to the real header bottom instead. */
+  .sl-region-popover {
+    position: fixed !important;
+    top: calc(env(safe-area-inset-top) + 84px) !important;
+    left: 8px !important;
+    right: auto !important;
+    max-width: calc(100vw - 16px);
+  }
+
   .sl-area-card {
     width: min(180px, calc(100vw - 24px));
     box-sizing: border-box;
