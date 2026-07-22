@@ -7572,6 +7572,7 @@ select:focus-visible {
    Keep this block last so older sprint overrides cannot win the cascade.
    ===================================================== */
 @media (max-width: 768px) {
+  :root,
   .sl-map-shell {
     --sl-mobile-edge: 8px;
     --sl-mobile-header-top: max(8px, env(safe-area-inset-top));
@@ -7582,6 +7583,7 @@ select:focus-visible {
     --sl-mobile-dock-bottom: calc(env(safe-area-inset-bottom) + 8px);
     --sl-mobile-dock-height: 58px;
     --sl-mobile-summary-bottom: calc(env(safe-area-inset-bottom) + 74px);
+    --sl-mobile-field-controls-bottom: calc(env(safe-area-inset-bottom) + 140px);
   }
 
   .sl-topbar {
@@ -7638,12 +7640,13 @@ select:focus-visible {
   }
 
   .sl-mobile-top-control-stack {
-    top: var(--sl-mobile-secondary-top) !important;
+    top: auto !important;
     right: 12px !important;
-    left: 12px !important;
-    width: calc(100vw - 24px) !important;
-    min-height: var(--sl-mobile-secondary-height) !important;
-    height: var(--sl-mobile-secondary-height) !important;
+    bottom: var(--sl-mobile-field-controls-bottom) !important;
+    left: auto !important;
+    width: auto !important;
+    min-height: 48px !important;
+    height: 48px !important;
   }
 
   .sl-mobile-top-control-stack .sl-field-gps-stack,
@@ -7652,8 +7655,25 @@ select:focus-visible {
     pointer-events: auto !important;
   }
 
+  .sl-mobile-top-control-stack .sl-field-gps-toggle {
+    width: 52px !important;
+    min-width: 52px !important;
+    height: 48px !important;
+    min-height: 48px !important;
+    padding: 0 !important;
+    border-radius: 16px !important;
+  }
+
+  .sl-mobile-top-control-stack .sl-field-gps-card {
+    top: auto !important;
+    right: 0 !important;
+    bottom: calc(100% + 8px) !important;
+    width: calc(100vw - 24px) !important;
+    max-height: min(58dvh, calc(100dvh - 176px - env(safe-area-inset-top) - env(safe-area-inset-bottom))) !important;
+  }
+
   .sl-public-beta-label {
-    top: calc(var(--sl-mobile-secondary-top) + 1px) !important;
+    top: var(--sl-mobile-secondary-top) !important;
     max-width: min(132px, calc(100vw - 150px));
   }
 

@@ -2988,23 +2988,23 @@ export default function FieldGpsLite({
             stopArGuide();
           }
 
-          setOpen(
-            (current) => {
-              const nextOpen =
-                !current;
+          const nextOpen = !open;
 
-              if (nextOpen) {
-                window.dispatchEvent(
-                  new CustomEvent(
-                    "sabahlot:field-gps-panel-opened",
-                  ),
-                );
-              }
+          setOpen(nextOpen);
 
-              return nextOpen;
-            },
-          );
+          if (nextOpen) {
+            window.dispatchEvent(
+              new CustomEvent(
+                "sabahlot:field-gps-panel-opened",
+              ),
+            );
+
+            if (!gpsActive) {
+              startGps();
+            }
+          }
         }}
+        aria-label={gpsActive ? "Open active GPS" : "Start GPS"}
       >
         <span className="sl-field-gps-toggle-label-full">
           Handheld GPS
