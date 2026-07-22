@@ -146,7 +146,9 @@ export default function CategoryDrawer({
           aria-label={text.menuButton}
           title={text.menuButton}
         >
-          <span className="sl-drawer-handle-bar" />
+          <Icon>
+            <path d="M9 6l6 6-6 6" />
+          </Icon>
         </button>
       )}
 
