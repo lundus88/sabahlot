@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { AppLanguage } from "@/lib/i18n/appLanguageStorage";
 import { getAppText } from "@/lib/i18n/appText";
@@ -22,9 +22,26 @@ export default function RegionIndicator({
   const [open, setOpen] = useState(false);
   const text = getAppText(language);
   const current = REGION_DEFINITIONS[region];
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () =>
+      document.removeEventListener("pointerdown", handlePointerDown);
+  }, [open]);
 
   return (
-    <div className="sl-region-indicator">
+    <div ref={rootRef} className="sl-region-indicator">
       <button
         type="button"
         className="sl-region-pill"
