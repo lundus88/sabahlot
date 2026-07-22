@@ -7629,17 +7629,19 @@ select:focus-visible {
 
   .sl-topbar-actions .sl-language-switcher.is-compact-open .sl-language-options {
     position: fixed !important;
-    top: calc(env(safe-area-inset-top) + 54px) !important;
+    /* Header ends at ~50px and the secondary GPS/Alpha row occupies
+       58-96px. Popovers start after both rows so they never cover a
+       touch target, regardless of which control opened them. */
+    top: calc(env(safe-area-inset-top) + 104px) !important;
     right: 8px !important;
   }
 
-  /* Region ("Sabah") popover: same class of bug as the language dropdown
-     above -- "top: calc(100% + 8px)" is relative to the pill's own row,
-     which put it over the search box and the Preliminary Field Assist
-     badge. Anchor to the real header bottom instead. */
+  /* Match the language/GPS panel boundary above. The previous 84px offset
+     crossed the GPS row (58-96px), so the popover could still intercept
+     the GPS button even though its click-outside behaviour was correct. */
   .sl-region-popover {
     position: fixed !important;
-    top: calc(env(safe-area-inset-top) + 84px) !important;
+    top: calc(env(safe-area-inset-top) + 104px) !important;
     left: 8px !important;
     right: auto !important;
     max-width: calc(100vw - 16px);
