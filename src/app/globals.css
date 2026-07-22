@@ -7565,79 +7565,76 @@ select:focus-visible {
   }
 }
 
-/* =====================================================
-   REAL-DEVICE QA FIX: stable two-row mobile header
-   =====================================================
-   Real-device testing (390x844/412x915) found the single-row 4-column
-   topbar grid (menu/brand/region/search squeezed into one row, with
-   language+settings pulled out via position:fixed) left the search
-   input ~134px wide and clipped, and -- combined with the
-   .sl-topbar-actions overflow bug fixed earlier in this file -- put
-   header controls visually on top of each other. This block is placed
-   last in the cascade so it is the unambiguous final word for these
-   selectors on mobile: row 1 = menu, brand, region, language+settings;
-   row 2 = search, full width. */
+/* Final mobile composition. Keep every header control in one shared grid
+   so no fixed child can escape its measured bounds or cover the GPS control.
+   This preserves a 44px header and leaves roughly 86-88% of a typical phone
+   viewport as the default map workspace after the bottom dock. */
 @media (max-width: 768px) {
   .sl-topbar {
-    display: flex !important;
-    flex-wrap: wrap !important;
+    display: grid !important;
+    grid-template-columns: 34px 34px auto minmax(72px, 1fr) auto !important;
     align-items: center !important;
     top: max(8px, env(safe-area-inset-top)) !important;
     right: 8px !important;
     left: 8px !important;
     width: auto !important;
     max-width: none !important;
+    min-height: 42px !important;
+    padding: 4px !important;
+    gap: 4px !important;
   }
 
   .sl-topbar .sl-menu-button {
-    order: 1;
-    flex: 0 0 auto;
+    grid-column: 1;
   }
 
   .sl-topbar .sl-brand-chip {
-    order: 2;
-    flex: 0 0 auto;
+    grid-column: 2;
   }
 
   .sl-topbar .sl-region-indicator {
-    order: 3;
-    flex: 0 0 auto;
+    grid-column: 3;
+    min-width: 0;
   }
 
-  /* Rejoin the topbar's normal flow instead of escaping via
-     position:fixed -- that escape hatch (plus the width:38px bug
-     fixed earlier) is what let this capsule overflow on top of
-     nearby controls including the GPS toggle. */
   .sl-topbar .sl-topbar-actions {
-    order: 4;
+    grid-column: 5;
     position: static !important;
-    flex: 0 0 auto;
-    margin-left: auto;
+    width: auto !important;
+    height: 34px !important;
+    margin: 0;
   }
 
   .sl-topbar .sl-search {
-    order: 5;
-    flex: 1 1 100% !important;
+    grid-column: 4;
     width: 100% !important;
     min-width: 0 !important;
     max-width: none !important;
   }
 
-  /* The two-row header above is taller than the single-row layout this
-     label's flat 58px offset was tuned for -- without this it now sits
-     on top of the search row (row 2). Measured real header height is
-     ~90px past its own top offset; 108px clears row 2 with a margin. */
-  .sl-public-beta-label {
-    top: calc(env(safe-area-inset-top) + 108px) !important;
+  .sl-mobile-top-control-stack {
+    top: calc(env(safe-area-inset-top) + 58px) !important;
   }
 
-  /* Same reason: "top: calc(100% + 6px)" was relative to the EN trigger's
-     own row-1 box, so the dropdown opened over row 2 (search) instead of
-     below the full two-row header. Anchor it to the real header bottom
-     instead, matching the badge above. */
+  .sl-mobile-top-control-stack .sl-field-gps-stack,
+  .sl-mobile-top-control-stack .sl-field-gps-panel,
+  .sl-mobile-top-control-stack .sl-field-gps-toggle {
+    pointer-events: auto !important;
+  }
+
+  .sl-public-beta-label {
+    top: calc(env(safe-area-inset-top) + 59px) !important;
+    max-width: min(132px, calc(100vw - 150px));
+  }
+
   .sl-topbar-actions .sl-language-switcher.is-compact-open .sl-language-options {
     position: fixed !important;
-    top: calc(env(safe-area-inset-top) + 106px) !important;
+    top: calc(env(safe-area-inset-top) + 54px) !important;
     right: 8px !important;
+  }
+
+  .sl-area-card {
+    width: min(180px, calc(100vw - 24px));
+    box-sizing: border-box;
   }
 }
