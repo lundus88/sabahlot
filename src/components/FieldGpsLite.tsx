@@ -4135,7 +4135,7 @@ export default function FieldGpsLite({
               <BugReportButton />
               <FeedbackExportButton />
               <Link href="/manual-beta" className="sl-beta-action-button">
-                Manual Pengguna Beta
+                Manual Pengguna Alpha
               </Link>
             </div>
           </section>

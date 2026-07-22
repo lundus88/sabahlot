@@ -3,7 +3,7 @@ import Link from "next/link";
 import styles from "./manual-beta.module.css";
 
 export const metadata = {
-  title: "Manual Pengguna Beta — SabahLot GPS",
+  title: "Manual Pengguna Alpha — SabahLot GPS",
 };
 
 export default function ManualBetaPage() {
@@ -14,11 +14,11 @@ export default function ManualBetaPage() {
           ← Kembali ke peta
         </Link>
 
-        <span className={styles.badge}>Beta Public Testing — Preliminary Only</span>
+        <span className={styles.badge}>Controlled Alpha — Preliminary Only</span>
 
-        <h1>Manual Pengguna Beta SabahLot GPS</h1>
+        <h1>Manual Pengguna Alpha SabahLot GPS</h1>
         <p>
-          Ringkasan langkah menggunakan SabahLot Beta di beta.sabahlot.com.
+          Ringkasan langkah menggunakan SabahLot Alpha di alpha.sabahlot.com.
           Manual penuh disimpan dalam repositori projek pada laluan berikut:
         </p>
         <code className={styles.docPath}>
@@ -27,7 +27,7 @@ export default function ManualBetaPage() {
 
         <h2>1. Mula</h2>
         <ol>
-          <li>Buka https://beta.sabahlot.com pada telefon atau tablet.</li>
+          <li>Buka https://alpha.sabahlot.com pada telefon atau tablet.</li>
           <li>Benarkan kebenaran GPS/lokasi apabila diminta.</li>
           <li>Benarkan kebenaran kamera untuk fungsi AR Guide (jika digunakan).</li>
         </ol>
@@ -47,7 +47,7 @@ export default function ManualBetaPage() {
 
         <h2>3. Maklum Balas</h2>
         <p>
-          Gunakan butang <strong>Feedback Beta</strong> untuk hantar maklum
+          Gunakan butang <strong>Feedback Alpha</strong> untuk hantar maklum
           balas am, atau <strong>Report Issue</strong> untuk laporkan pepijat
           dengan maklumat teknikal automatik. Semua maklum balas disimpan
           pada peranti anda sahaja.
@@ -61,12 +61,12 @@ export default function ManualBetaPage() {
         </ul>
 
         <p className={styles.disclaimer}>
-          Penafian: SabahLot Beta adalah untuk Preliminary Field Assist /
+          Penafian: SabahLot Alpha adalah untuk Preliminary Field Assist /
           rujukan awal sahaja. Ia bukan pengukuran kadaster, bukan
           penentuan sempadan sah, bukan sistem rasmi JTU Sabah, dan bukan
           pengganti juruukur berlesen, peguam, proses pejabat tanah, PBT,
           atau kelulusan JTU Sabah. Semua koordinat, peta, GPS, AR Guide,
-          import KML/CSV/DXF dan laporan adalah untuk ujian beta / rujukan
+          import KML/CSV/DXF dan laporan adalah untuk ujian Alpha / rujukan
           awal sahaja.
         </p>
       </div>
