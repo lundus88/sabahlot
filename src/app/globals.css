@@ -7565,21 +7565,36 @@ select:focus-visible {
   }
 }
 
-/* Final mobile composition. Keep every header control in one shared grid
-   so no fixed child can escape its measured bounds or cover the GPS control.
-   This preserves a 44px header and leaves roughly 86-88% of a typical phone
-   viewport as the default map workspace after the bottom dock. */
+/* =====================================================
+   MOBILE LAYOUT CONTRACT
+   One set of shared zones replaces independent pixel offsets:
+   header -> secondary controls -> panels -> map workspace -> summary -> dock.
+   Keep this block last so older sprint overrides cannot win the cascade.
+   ===================================================== */
 @media (max-width: 768px) {
+  .sl-map-shell {
+    --sl-mobile-edge: 8px;
+    --sl-mobile-header-top: max(8px, env(safe-area-inset-top));
+    --sl-mobile-header-height: 42px;
+    --sl-mobile-secondary-top: calc(env(safe-area-inset-top) + 58px);
+    --sl-mobile-secondary-height: 38px;
+    --sl-mobile-panel-top: calc(env(safe-area-inset-top) + 104px);
+    --sl-mobile-dock-bottom: calc(env(safe-area-inset-bottom) + 8px);
+    --sl-mobile-dock-height: 58px;
+    --sl-mobile-summary-bottom: calc(env(safe-area-inset-bottom) + 74px);
+  }
+
   .sl-topbar {
     display: grid !important;
     grid-template-columns: 34px 34px auto minmax(72px, 1fr) auto !important;
     align-items: center !important;
-    top: max(8px, env(safe-area-inset-top)) !important;
-    right: 8px !important;
-    left: 8px !important;
+    top: var(--sl-mobile-header-top) !important;
+    right: var(--sl-mobile-edge) !important;
+    left: var(--sl-mobile-edge) !important;
     width: auto !important;
     max-width: none !important;
-    min-height: 42px !important;
+    min-height: var(--sl-mobile-header-height) !important;
+    height: var(--sl-mobile-header-height) !important;
     padding: 4px !important;
     gap: 4px !important;
   }
@@ -7595,6 +7610,16 @@ select:focus-visible {
   .sl-topbar .sl-region-indicator {
     grid-column: 3;
     min-width: 0;
+  }
+
+  .sl-topbar .sl-region-pill {
+    max-width: 72px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .sl-topbar .sl-region-pill .sl-region-badge {
+    display: none;
   }
 
   .sl-topbar .sl-topbar-actions {
@@ -7613,7 +7638,12 @@ select:focus-visible {
   }
 
   .sl-mobile-top-control-stack {
-    top: calc(env(safe-area-inset-top) + 58px) !important;
+    top: var(--sl-mobile-secondary-top) !important;
+    right: 12px !important;
+    left: 12px !important;
+    width: calc(100vw - 24px) !important;
+    min-height: var(--sl-mobile-secondary-height) !important;
+    height: var(--sl-mobile-secondary-height) !important;
   }
 
   .sl-mobile-top-control-stack .sl-field-gps-stack,
@@ -7623,7 +7653,7 @@ select:focus-visible {
   }
 
   .sl-public-beta-label {
-    top: calc(env(safe-area-inset-top) + 59px) !important;
+    top: calc(var(--sl-mobile-secondary-top) + 1px) !important;
     max-width: min(132px, calc(100vw - 150px));
   }
 
@@ -7632,8 +7662,8 @@ select:focus-visible {
     /* Header ends at ~50px and the secondary GPS/Alpha row occupies
        58-96px. Popovers start after both rows so they never cover a
        touch target, regardless of which control opened them. */
-    top: calc(env(safe-area-inset-top) + 104px) !important;
-    right: 8px !important;
+    top: var(--sl-mobile-panel-top) !important;
+    right: var(--sl-mobile-edge) !important;
   }
 
   /* Match the language/GPS panel boundary above. The previous 84px offset
@@ -7641,14 +7671,67 @@ select:focus-visible {
      the GPS button even though its click-outside behaviour was correct. */
   .sl-region-popover {
     position: fixed !important;
-    top: calc(env(safe-area-inset-top) + 104px) !important;
-    left: 8px !important;
+    top: var(--sl-mobile-panel-top) !important;
+    left: var(--sl-mobile-edge) !important;
     right: auto !important;
     max-width: calc(100vw - 16px);
   }
 
+  .sl-settings-card,
+  .sl-object-list {
+    top: var(--sl-mobile-panel-top) !important;
+  }
+
+  /* Pinch zoom is native on phones. Retain only Fit and Home, in a compact
+     middle-right rail which cannot collide with either top or bottom zones. */
+  .sl-map-navigation {
+    top: 50% !important;
+    right: var(--sl-mobile-edge) !important;
+    bottom: auto !important;
+    transform: translateY(-50%) !important;
+    z-index: 1092 !important;
+  }
+
+  .sl-map-navigation button:nth-child(1),
+  .sl-map-navigation button:nth-child(2) {
+    display: none !important;
+  }
+
+  .sl-floating-summary-card {
+    right: var(--sl-mobile-edge) !important;
+    bottom: var(--sl-mobile-summary-bottom) !important;
+    left: var(--sl-mobile-edge) !important;
+    width: auto !important;
+    max-width: none !important;
+  }
+
+  .sl-tool-dock {
+    right: var(--sl-mobile-edge) !important;
+    bottom: var(--sl-mobile-dock-bottom) !important;
+    left: var(--sl-mobile-edge) !important;
+    height: var(--sl-mobile-dock-height) !important;
+    max-height: var(--sl-mobile-dock-height) !important;
+  }
+
   .sl-area-card {
     width: min(180px, calc(100vw - 24px));
+    max-width: calc(100vw - 24px) !important;
     box-sizing: border-box;
+  }
+}
+
+@media (max-width: 380px) {
+  .sl-topbar {
+    grid-template-columns: 34px 34px minmax(44px, auto) minmax(56px, 1fr) auto !important;
+  }
+
+  .sl-topbar .sl-region-pill {
+    max-width: 56px;
+    padding-inline: 6px !important;
+  }
+
+  .sl-public-beta-label {
+    max-width: 112px;
+    font-size: 7px;
   }
 }
