@@ -1,14 +1,55 @@
-/* SabahLot mobile field shell.
-   This file is intentionally loaded after globals.css and owns the complete
-   narrow-screen layout contract. Desktop rules remain in globals.css. */
+/* SabahLot mobile field shell zone contract.
+   Loaded after globals.css; this is the single authority for narrow screens. */
+
+:root {
+  --sl-a-h: 44px;
+  --sl-b-h: 0px;
+  --sl-c-h: 16px;
+  --sl-e-h: 0px;
+  --sl-f-visible-h: 0px;
+  --sl-safe-top: env(safe-area-inset-top, 0px);
+  --sl-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --sl-mobile-edge: 8px;
+  --sl-control-size: 46px;
+  --sl-top-stack-h: calc(
+    var(--sl-safe-top) + var(--sl-a-h) + var(--sl-b-h) + var(--sl-c-h)
+  );
+  --sl-bottom-stack-h: calc(
+    var(--sl-safe-bottom) + var(--sl-e-h) + var(--sl-f-visible-h)
+  );
+  --sl-z-map-controls: 1100;
+  --sl-z-header: 1400;
+  --sl-z-popover: 1700;
+  --sl-z-sheet: 1650;
+  --sl-z-modal: 1900;
+}
 
 @media (max-width: 768px) {
+  :root[data-sl-notice-visible="false"] {
+    --sl-c-h: 0px;
+  }
+
+  :root[data-sl-status-visible="true"] {
+    --sl-b-h: 30px;
+  }
+
+  .sl-map-shell[data-status-visible="true"] {
+    --sl-b-h: 30px;
+  }
+
+  .sl-map-shell[data-summary-visible="true"] {
+    --sl-e-h: 36px;
+  }
+
+  .sl-map-shell[data-sheet-state="peek"] {
+    --sl-f-visible-h: 56px;
+  }
+
   .sl-map-shell {
-    --sl-mobile-edge: 10px;
-    --sl-mobile-header-top: max(8px, env(safe-area-inset-top));
-    --sl-mobile-header-height: 100px;
-    --sl-mobile-control-size: 48px;
-    --sl-mobile-bottom-clearance: max(18px, env(safe-area-inset-bottom));
+    position: relative;
+    width: 100%;
+    height: 100dvh;
+    overflow: hidden;
   }
 
   .sl-map-canvas,
@@ -17,59 +58,62 @@
     height: 100dvh;
   }
 
+  /* Zone A: compact application header. */
   .sl-topbar {
     position: fixed;
-    inset: var(--sl-mobile-header-top) var(--sl-mobile-edge) auto;
-    z-index: 1400;
+    inset: var(--sl-safe-top) 0 auto;
+    z-index: var(--sl-z-header);
     display: grid;
-    grid-template-columns: 44px 44px minmax(68px, auto) 1fr;
-    grid-template-rows: 44px 44px;
-    gap: 6px;
-    width: auto;
+    grid-template-columns: 40px 40px minmax(62px, 1fr) 40px auto;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
     max-width: none;
-    min-width: 0;
-    height: var(--sl-mobile-header-height);
-    padding: 0;
-    background: transparent;
+    height: var(--sl-a-h);
+    min-height: var(--sl-a-h);
+    padding: 2px var(--sl-mobile-edge);
+    background: rgba(248, 250, 252, 0.96);
     border: 0;
-    box-shadow: none;
-    backdrop-filter: none;
+    border-bottom: 1px solid rgba(203, 213, 225, 0.9);
+    border-radius: 0;
+    box-shadow: 0 3px 14px rgba(15, 23, 42, 0.14);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
   }
 
   .sl-topbar > * {
     min-width: 0;
   }
 
-  .sl-menu-button,
+  .sl-topbar .sl-icon-button,
   .sl-brand-chip,
   .sl-region-pill,
-  .sl-topbar-actions,
-  .sl-search {
-    min-height: 44px;
-    background: rgba(255, 255, 255, 0.96);
-    border: 1px solid rgba(203, 213, 225, 0.9);
-    box-shadow: 0 5px 18px rgba(15, 23, 42, 0.16);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
+  .sl-mobile-search-trigger {
+    box-sizing: border-box;
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    border-radius: 10px;
+    box-shadow: none;
   }
 
-  .sl-topbar .sl-menu-button {
+  .sl-topbar .sl-menu-button,
+  .sl-topbar .sl-mobile-search-trigger {
+    width: 40px !important;
+    height: 40px !important;
+  }
+
+  .sl-menu-button {
     grid-column: 1;
-    grid-row: 1;
-    width: 44px;
-    height: 44px;
-    border-radius: 14px;
   }
 
   .sl-brand-chip {
     grid-column: 2;
-    grid-row: 1;
     display: grid;
-    width: 44px;
-    height: 44px;
-    padding: 0;
     place-items: center;
-    border-radius: 14px;
   }
 
   .sl-brand-chip > span:last-child {
@@ -77,62 +121,147 @@
   }
 
   .sl-brand-mark {
+    display: grid;
     width: 34px;
     height: 34px;
-    border-radius: 11px;
+    place-items: center;
+    border-radius: 10px;
   }
 
   .sl-region-indicator {
     grid-column: 3;
-    grid-row: 1;
+    min-width: 0;
   }
 
   .sl-region-pill {
     width: 100%;
-    height: 44px;
-    min-height: 44px;
-    padding: 0 10px;
+    padding: 0 8px;
     justify-content: center;
-    border-radius: 14px;
+    color: #0f172a;
+    font-size: 12px;
+    font-weight: 800;
   }
 
   .sl-region-pill .sl-region-badge {
     display: none;
   }
 
-  .sl-region-popover {
-    position: fixed;
-    top: calc(var(--sl-mobile-header-top) + 50px);
-    left: var(--sl-mobile-edge);
-    right: var(--sl-mobile-edge);
-    z-index: 1700;
-    width: auto;
-    min-width: 0;
-    max-height: calc(100dvh - 130px);
-    overflow-y: auto;
+  .sl-mobile-search-trigger {
+    display: grid;
+    grid-column: 4;
+    place-items: center;
   }
 
   .sl-topbar-actions {
-    grid-column: 4;
-    grid-row: 1;
+    grid-column: 5;
     display: flex;
+    align-items: center;
     justify-self: end;
-    gap: 4px;
-    height: 44px;
-    padding: 3px;
-    border-radius: 14px;
+    gap: 0;
+    height: 40px;
+    width: 76px !important;
+    min-width: 76px !important;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    position: static !important;
+    inset: auto !important;
+    transform: none !important;
   }
 
   .sl-topbar-actions > .sl-icon-button {
     width: 38px;
     height: 38px;
+  }
+
+  /* Search is a modal surface on mobile, not a permanent header row. */
+  .sl-search {
+    display: none;
+  }
+
+  .sl-search.is-mobile-open {
+    position: fixed;
+    inset: 0;
+    z-index: var(--sl-z-modal);
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+    grid-template-rows: 48px auto;
+    align-content: start;
+    gap: 8px;
+    width: 100vw;
+    height: 100dvh;
+    padding: calc(var(--sl-safe-top) + 12px) 12px 12px;
+    background: rgba(248, 250, 252, 0.98);
     border: 0;
+    border-radius: 0;
     box-shadow: none;
-    background: transparent;
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
+
+  .sl-mobile-search-close,
+  .sl-search.is-mobile-open > button {
+    box-sizing: border-box;
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+  }
+
+  .sl-mobile-search-close {
+    grid-column: 1;
+    color: #334155;
+    background: #fff;
+    font-size: 24px;
+  }
+
+  .sl-search.is-mobile-open input {
+    grid-column: 2;
+    min-width: 0;
+    height: 44px;
+    padding: 0 12px;
+    background: #fff;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    font-size: 16px;
+  }
+
+  .sl-search.is-mobile-open > button[type="submit"] {
+    grid-column: 3;
+  }
+
+  .sl-search-message {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    position: static;
+    width: 100%;
+    margin: 0;
+  }
+
+  /* Popovers always begin below the complete active top stack. */
+  .sl-region-popover,
+  .sl-language-options {
+    position: fixed;
+    top: calc(var(--sl-top-stack-h) + 8px);
+    z-index: var(--sl-z-popover);
+    max-height: calc(100dvh - var(--sl-top-stack-h) - 20px);
+    overflow-y: auto;
+  }
+
+  .sl-region-popover {
+    right: var(--sl-mobile-edge);
+    left: var(--sl-mobile-edge);
+    width: auto;
+    min-width: 0;
   }
 
   .sl-language-switcher {
-    position: relative;
+    position: static !important;
+    inset: auto !important;
+    transform: none !important;
     padding: 0;
     background: transparent;
     border: 0;
@@ -142,7 +271,7 @@
 
   .sl-language-compact-trigger {
     display: grid;
-    width: 42px;
+    width: 38px;
     height: 38px;
     padding: 0;
     place-items: center;
@@ -155,14 +284,11 @@
   }
 
   .sl-language-options {
-    position: fixed;
-    top: calc(var(--sl-mobile-header-top) + 50px);
     right: var(--sl-mobile-edge);
-    z-index: 1750;
     display: none;
     grid-template-columns: repeat(3, minmax(52px, 1fr));
     gap: 4px;
-    width: min(220px, calc(100vw - 20px));
+    width: min(220px, calc(100vw - 16px));
     padding: 6px;
     background: #fff;
     border: 1px solid #dbe3ee;
@@ -178,76 +304,161 @@
     min-height: 42px;
   }
 
-  .sl-search {
-    grid-column: 1 / -1;
-    grid-row: 2;
+  /* Zone B: a 30px status strip, present only when there is content. */
+  .sl-map-status {
+    position: fixed;
+    top: calc(var(--sl-safe-top) + var(--sl-a-h));
+    right: 0;
+    bottom: auto;
+    left: 0;
+    z-index: calc(var(--sl-z-header) - 10);
+    display: none;
     width: 100%;
-    height: 44px;
-    padding: 3px;
-    border-radius: 14px;
+    max-width: none;
+    height: var(--sl-b-h);
+    min-height: 0;
+    padding: 0 10px;
+    overflow: hidden;
+    background: rgba(15, 23, 42, 0.86);
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
   }
 
-  .sl-search input {
+  .sl-map-shell[data-status-visible="true"] .sl-map-status {
+    display: flex;
+  }
+
+  .sl-status-message {
     min-width: 0;
-    height: 36px;
-    padding: 0 12px;
-    font-size: 14px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
-  .sl-search > button {
-    flex: 0 0 38px;
-    width: 38px;
-    height: 38px;
-    border-radius: 11px;
+  .sl-status-location-divider,
+  .sl-location-status,
+  .sl-location-accuracy {
+    display: none;
   }
 
+  /* Zone C: dismissible Alpha notice. */
   .sl-public-beta-label {
     position: fixed;
-    top: calc(max(8px, env(safe-area-inset-top)) + 107px);
-    left: 50%;
-    z-index: 1350;
-    max-width: calc(100vw - 24px);
-    transform: translateX(-50%);
+    top: calc(var(--sl-safe-top) + var(--sl-a-h) + var(--sl-b-h));
+    left: 0;
+    z-index: calc(var(--sl-z-header) - 20);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    right: 0;
+    width: 100% !important;
+    max-width: none !important;
+    height: var(--sl-c-h);
+    min-height: 0;
+    padding: 0 6px;
+    transform: none;
+    color: #78350f;
+    background: rgba(255, 247, 237, 0.96);
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    font-size: 9px;
+    line-height: 1;
     white-space: nowrap;
-    pointer-events: none;
+    pointer-events: auto;
   }
 
-  .sl-drawer-handle {
+  .sl-public-beta-label button {
+    display: grid;
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    place-items: center;
+    color: #92400e;
+    background: transparent;
+    border: 0;
+    font-size: 14px;
+    line-height: 1;
+  }
+
+  /* Zone D: map navigation and GPS, anchored above the bottom stack. */
+  .sl-map-navigation {
+    position: fixed;
+    top: auto;
+    right: var(--sl-mobile-edge);
+    bottom: calc(var(--sl-bottom-stack-h) + 12px);
+    left: auto;
+    z-index: var(--sl-z-map-controls);
+    display: grid;
+    grid-template-rows: repeat(2, var(--sl-control-size));
+    align-content: start;
+    width: var(--sl-control-size);
+    height: calc(var(--sl-control-size) * 2) !important;
+    min-height: 0;
+    max-height: calc(var(--sl-control-size) * 2);
+    padding: 0;
+    gap: 0;
+    overflow: hidden;
+    transform: none;
+  }
+
+  .sl-map-navigation button {
+    box-sizing: border-box;
+    width: var(--sl-control-size);
+    height: var(--sl-control-size);
+    min-height: var(--sl-control-size);
+    flex: 0 0 var(--sl-control-size);
+  }
+
+  .sl-map-navigation button:nth-child(-n + 2) {
     display: none;
   }
 
   .sl-mobile-top-control-stack {
+    display: contents;
+  }
+
+  .sl-object-list-tab {
     position: fixed;
+    top: calc(var(--sl-safe-top) + var(--sl-a-h));
+    right: 8px;
+    z-index: calc(var(--sl-z-header) - 5);
+    height: var(--sl-b-h);
+    min-height: 0;
+  }
+
+  .sl-map-shell .sl-field-gps-stack {
+    position: fixed !important;
     top: auto !important;
-    right: var(--sl-mobile-edge);
-    bottom: calc(var(--sl-mobile-bottom-clearance) + 126px);
+    right: calc(var(--sl-mobile-edge) + var(--sl-control-size) + 8px);
+    bottom: calc(var(--sl-bottom-stack-h) + 12px);
     left: auto !important;
-    z-index: 1250;
-    display: grid;
-    width: auto;
-    height: auto;
-    gap: 8px;
-    justify-items: end;
-    pointer-events: none;
+    z-index: var(--sl-z-map-controls);
+    display: block !important;
+    width: auto !important;
+    height: auto !important;
   }
 
-  .sl-mobile-top-control-stack > * {
-    pointer-events: auto;
-  }
-
-  .sl-field-gps-stack,
   .sl-field-gps-panel {
-    position: static;
-    width: auto;
+    position: fixed !important;
+    top: auto !important;
+    right: calc(var(--sl-mobile-edge) + var(--sl-control-size) + 8px) !important;
+    bottom: calc(var(--sl-bottom-stack-h) + 12px) !important;
+    left: auto !important;
+    z-index: var(--sl-z-map-controls);
+    width: auto !important;
+    height: auto !important;
   }
 
   .sl-field-gps-toggle {
     box-sizing: border-box !important;
-    min-width: var(--sl-mobile-control-size);
-    width: var(--sl-mobile-control-size) !important;
-    height: var(--sl-mobile-control-size) !important;
-    min-height: var(--sl-mobile-control-size) !important;
-    max-height: var(--sl-mobile-control-size) !important;
+    width: var(--sl-control-size) !important;
+    min-width: var(--sl-control-size) !important;
+    height: var(--sl-control-size) !important;
+    min-height: var(--sl-control-size) !important;
+    max-height: var(--sl-control-size) !important;
     padding: 0;
     border: 2px solid #fff;
     border-radius: 50%;
@@ -267,85 +478,66 @@
   .sl-field-gps-card {
     position: fixed;
     right: var(--sl-mobile-edge);
-    bottom: calc(var(--sl-mobile-bottom-clearance) + 186px);
-    z-index: 1650;
-    width: min(360px, calc(100vw - 20px));
-    max-height: calc(100dvh - var(--sl-mobile-header-height) - 150px);
+    bottom: calc(var(--sl-bottom-stack-h) + var(--sl-control-size) + 20px);
+    z-index: var(--sl-z-sheet);
+    width: min(360px, calc(100vw - 16px));
+    max-height: calc(100dvh - var(--sl-top-stack-h) - var(--sl-bottom-stack-h) - 24px);
     overflow-y: auto;
   }
 
-  .sl-map-navigation {
+  /* Zones E and F: summary strip and contextual bottom sheet. */
+  .sl-floating-summary-card {
     position: fixed;
-    top: 50%;
-    right: var(--sl-mobile-edge);
-    bottom: auto;
-    left: auto;
-    z-index: 1150;
-    display: grid;
-    width: var(--sl-mobile-control-size);
-    grid-template-rows: repeat(2, var(--sl-mobile-control-size));
-    align-content: start;
-    height: calc(var(--sl-mobile-control-size) * 2) !important;
-    max-height: calc(var(--sl-mobile-control-size) * 2);
-    min-height: 0;
-    padding: 0;
-    gap: 0;
-    overflow: hidden;
-    transform: translateY(-35%);
-  }
-
-  .sl-map-navigation button {
-    width: var(--sl-mobile-control-size);
-    height: var(--sl-mobile-control-size);
-    min-height: var(--sl-mobile-control-size);
-    flex: 0 0 var(--sl-mobile-control-size);
-  }
-
-  .sl-map-navigation button:nth-child(-n + 2) {
+    right: 0;
+    bottom: calc(var(--sl-safe-bottom) + var(--sl-f-visible-h));
+    left: 0;
+    z-index: 1200;
     display: none;
+    grid-template-columns: 1fr auto auto;
+    width: 100%;
+    max-width: none;
+    height: var(--sl-e-h);
+    min-height: 0;
+    padding: 4px 10px;
+    overflow: hidden;
+    border-radius: 0;
+    transform: none;
+  }
+
+  .sl-map-shell[data-summary-visible="true"] .sl-floating-summary-card {
+    display: grid;
+  }
+
+  .sl-floating-summary-card small,
+  .sl-floating-summary-card strong,
+  .sl-floating-summary-card span {
+    font-size: 9px;
+    line-height: 1.1;
   }
 
   .sl-progressive-menu,
-  .sl-area-card,
-  .sl-floating-summary-card {
+  .sl-area-card {
     position: fixed;
-    right: 50%;
-    bottom: calc(var(--sl-mobile-bottom-clearance) + 68px);
-    left: auto;
+    right: 0;
+    bottom: var(--sl-safe-bottom);
+    left: 0;
     z-index: 1300;
-    width: min(340px, calc(100vw - 24px));
-    max-width: calc(100vw - 24px);
-    transform: translateX(50%);
+    width: 100%;
+    max-width: none;
+    max-height: min(52dvh, 420px);
+    padding: 10px 12px;
+    overflow-y: auto;
+    border-radius: 16px 16px 0 0;
+    transform: none;
   }
 
   .sl-area-card-value {
     overflow-wrap: anywhere;
   }
 
-  .sl-map-status {
-    position: fixed;
-    right: var(--sl-mobile-edge);
-    bottom: var(--sl-mobile-bottom-clearance);
-    left: var(--sl-mobile-edge);
-    z-index: 1100;
-    width: auto;
-    max-width: none;
-    min-height: 44px;
-    padding: 8px 12px;
-    overflow: hidden;
-    border-radius: 14px;
-  }
-
-  .sl-status-message {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .sl-status-location-divider,
-  .sl-location-status,
-  .sl-location-accuracy {
+  /* Zone G remains independent. The legacy floating edge handle is removed
+     on mobile; drawer access remains available from the Zone A menu button. */
+  .sl-drawer-handle {
     display: none;
   }
 
@@ -357,26 +549,58 @@
   }
 }
 
-@media (min-width: 769px) {
-  .sl-field-gps-stack {
-    right: 72px;
-    bottom: 78px;
-  }
-}
-
 @media (max-width: 380px) {
+  :root {
+    --sl-mobile-edge: 6px;
+    --sl-control-size: 44px;
+  }
+
   .sl-topbar {
-    grid-template-columns: 42px 42px minmax(62px, auto) 1fr;
-    gap: 5px;
+    grid-template-columns: 38px 38px minmax(58px, 1fr) 38px auto;
+    gap: 2px;
+    padding-inline: 5px;
+  }
+
+  .sl-topbar .sl-icon-button,
+  .sl-brand-chip,
+  .sl-mobile-search-trigger {
+    width: 38px;
+    height: 38px;
   }
 
   .sl-region-pill {
-    padding: 0 7px;
+    padding-inline: 5px;
     font-size: 11px;
   }
 
   .sl-topbar-actions > .sl-icon-button,
   .sl-language-compact-trigger {
     width: 36px;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  :root {
+    --sl-a-h: 44px;
+    --sl-b-h: 0px;
+    --sl-c-h: 0px;
+    --sl-e-h: 32px;
+  }
+
+  .sl-field-gps-card {
+    max-height: calc(100dvh - var(--sl-top-stack-h) - 12px);
+  }
+}
+
+@media (min-width: 769px) {
+  .sl-mobile-search-trigger,
+  .sl-mobile-search-close,
+  .sl-public-beta-label button {
+    display: none;
+  }
+
+  .sl-field-gps-stack {
+    right: 72px;
+    bottom: 78px;
   }
 }

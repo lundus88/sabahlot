@@ -2950,6 +2950,35 @@ export default function Map({
     null,
   );
 
+  const [
+    mobileSearchOpen,
+    setMobileSearchOpen,
+  ] = useState(false);
+  const mobileSearchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!mobileSearchOpen) {
+      return;
+    }
+
+    const focusId = window.setTimeout(() => {
+      mobileSearchInputRef.current?.focus();
+    }, 0);
+
+    return () => window.clearTimeout(focusId);
+  }, [mobileSearchOpen]);
+
+  useEffect(() => {
+    const statusVisible = drawingObjects.length > 0 || pointCount > 0;
+    document.documentElement.dataset.slStatusVisible = statusVisible
+      ? "true"
+      : "false";
+
+    return () => {
+      delete document.documentElement.dataset.slStatusVisible;
+    };
+  }, [drawingObjects.length, pointCount]);
+
   const closeMapPanels = () => {
     setActivePanel(null);
     setSettingsOpen(false);
@@ -9698,6 +9727,13 @@ export default function Map({
           ? "is-drawing-tool-active sabahlot-drawing-cursor"
           : ""
       }`}
+      data-status-visible={
+        drawingObjects.length > 0 || summaryPointCount > 0
+          ? "true"
+          : "false"
+      }
+      data-summary-visible={buildOneSummary ? "true" : "false"}
+      data-sheet-state={activePanel ? "peek" : "closed"}
     >
       <div
         ref={mapContainerRef}
@@ -9741,11 +9777,44 @@ export default function Map({
           />
         )}
 
-        <form
-          className="sl-search"
-          onSubmit={performSearch}
+        <button
+          type="button"
+          className="sl-icon-button sl-mobile-search-trigger"
+          onClick={() => setMobileSearchOpen(true)}
+          aria-label={text.search}
+          title={text.search}
         >
+          <Icon>
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.7-3.7" />
+          </Icon>
+        </button>
+
+        <form
+          className={`sl-search ${
+            mobileSearchOpen ? "is-mobile-open" : ""
+          }`}
+          onSubmit={(event) => {
+            void performSearch(event);
+            setMobileSearchOpen(false);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              setMobileSearchOpen(false);
+            }
+          }}
+        >
+          <button
+            type="button"
+            className="sl-mobile-search-close"
+            onClick={() => setMobileSearchOpen(false)}
+            aria-label="Close search"
+          >
+            ×
+          </button>
+
           <input
+            ref={mobileSearchInputRef}
             type="text"
             value={searchValue}
             onChange={(
