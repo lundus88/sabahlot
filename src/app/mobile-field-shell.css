@@ -593,10 +593,12 @@
 }
 
 @media (min-width: 769px) {
-  .sl-mobile-search-trigger,
-  .sl-mobile-search-close,
+  /* Keep mobile-only search controls out of the desktop search form.
+     The qualified selectors intentionally beat legacy topbar/button rules. */
+  .sl-topbar .sl-mobile-search-trigger,
+  .sl-search .sl-mobile-search-close,
   .sl-public-beta-label button {
-    display: none;
+    display: none !important;
   }
 
   .sl-field-gps-stack {
