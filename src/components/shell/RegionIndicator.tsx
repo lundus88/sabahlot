@@ -48,6 +48,9 @@ export default function RegionIndicator({
         onClick={() => setOpen((value) => !value)}
         title={text.regionPickerTitle}
         aria-label={text.regionPickerTitle}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        aria-controls="sl-region-options"
       >
         <span className="sl-region-pill-label">
           {current.label[language]}
@@ -60,7 +63,11 @@ export default function RegionIndicator({
       </button>
 
       {open && (
-        <div className="sl-region-popover" role="listbox">
+        <div
+          id="sl-region-options"
+          className="sl-region-popover"
+          role="listbox"
+        >
           {REGION_ORDER.map((id) => {
             const definition = REGION_DEFINITIONS[id];
             return (
