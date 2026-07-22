@@ -47,7 +47,7 @@ export interface FeedbackModalProps {
 
 export default function FeedbackModal({
   open,
-  title = "Feedback Beta SabahLot",
+  title = "Feedback Alpha SabahLot",
   initialValues,
   onClose,
   onSaved,

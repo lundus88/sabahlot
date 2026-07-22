@@ -2407,7 +2407,7 @@ export default function FieldGpsLite({
           );
           clearCameraErrorDetails();
           setArMessage(
-            "Camera requires HTTPS. Please open https://beta.sabahlot.com",
+            "Camera requires HTTPS. Please open https://alpha.sabahlot.com",
           );
           return;
         }
@@ -2423,7 +2423,7 @@ export default function FieldGpsLite({
           );
           clearCameraErrorDetails();
           setArMessage(
-            "Camera is not supported in this browser. Open beta.sabahlot.com in Chrome Android or Safari iPhone.",
+            "Camera is not supported in this browser. Open alpha.sabahlot.com in Chrome Android or Safari iPhone.",
           );
           return;
         }
@@ -4127,7 +4127,7 @@ export default function FieldGpsLite({
 
           <section className="sl-field-gps-section sl-beta-help-section">
             <div className="sl-field-gps-heading">
-              <span>Bantuan &amp; Maklum Balas Beta</span>
+              <span>Bantuan &amp; Maklum Balas Alpha</span>
             </div>
 
             <div className="sl-field-gps-target-grid">

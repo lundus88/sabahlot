@@ -52,7 +52,7 @@ export function downloadFeedbackCsv(entries: FeedbackEntry[]): void {
   const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
 
   link.href = url;
-  link.download = `sabahlot-beta-feedback-${timestamp}.csv`;
+  link.download = `sabahlot-alpha-feedback-${timestamp}.csv`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
