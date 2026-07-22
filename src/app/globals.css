@@ -6265,9 +6265,15 @@ select:focus-visible {
     max-height: 66px;
   }
 
+  /* Final-winning mobile offset for .sl-map-navigation (last matching
+     max-width:768px rule in cascade order). Was 140px, leaving only ~14px
+     of clearance above .sl-floating-summary-card's resolved top edge
+     (bottom:74px + max-height:52px = 126px) at every width in the
+     360-640px range that both share -- below a safe touch/visual gap.
+     156px restores a ~30px gap without moving the card. */
   .sl-map-navigation {
     right: 8px !important;
-    bottom: calc(env(safe-area-inset-bottom) + 140px) !important;
+    bottom: calc(env(safe-area-inset-bottom) + 156px) !important;
     z-index: 1092 !important;
   }
 }
