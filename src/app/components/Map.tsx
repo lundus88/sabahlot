@@ -3089,7 +3089,7 @@ export default function Map({
       language
     ];
 
-  const brandLabel = useAppBrandLabel("SabahLot Beta");
+  const brandLabel = useAppBrandLabel("SabahLot Alpha");
 
   const coordinatePairsToCoordinates = (
     points: CoordinatePair[],
@@ -10311,7 +10311,7 @@ export default function Map({
           </button>
         )}
 
-      {fieldGpsControl && appMode === "advanced" ? (
+      {fieldGpsControl ? (
         <div className="sl-field-gps-stack">
           {fieldGpsControl}
         </div>

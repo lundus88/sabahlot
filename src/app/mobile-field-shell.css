@@ -1,0 +1,382 @@
+/* SabahLot mobile field shell.
+   This file is intentionally loaded after globals.css and owns the complete
+   narrow-screen layout contract. Desktop rules remain in globals.css. */
+
+@media (max-width: 768px) {
+  .sl-map-shell {
+    --sl-mobile-edge: 10px;
+    --sl-mobile-header-top: max(8px, env(safe-area-inset-top));
+    --sl-mobile-header-height: 100px;
+    --sl-mobile-control-size: 48px;
+    --sl-mobile-bottom-clearance: max(18px, env(safe-area-inset-bottom));
+  }
+
+  .sl-map-canvas,
+  .sl-map-canvas .leaflet-container {
+    width: 100%;
+    height: 100dvh;
+  }
+
+  .sl-topbar {
+    position: fixed;
+    inset: var(--sl-mobile-header-top) var(--sl-mobile-edge) auto;
+    z-index: 1400;
+    display: grid;
+    grid-template-columns: 44px 44px minmax(68px, auto) 1fr;
+    grid-template-rows: 44px 44px;
+    gap: 6px;
+    width: auto;
+    max-width: none;
+    min-width: 0;
+    height: var(--sl-mobile-header-height);
+    padding: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+
+  .sl-topbar > * {
+    min-width: 0;
+  }
+
+  .sl-menu-button,
+  .sl-brand-chip,
+  .sl-region-pill,
+  .sl-topbar-actions,
+  .sl-search {
+    min-height: 44px;
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid rgba(203, 213, 225, 0.9);
+    box-shadow: 0 5px 18px rgba(15, 23, 42, 0.16);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+
+  .sl-topbar .sl-menu-button {
+    grid-column: 1;
+    grid-row: 1;
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+  }
+
+  .sl-brand-chip {
+    grid-column: 2;
+    grid-row: 1;
+    display: grid;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    place-items: center;
+    border-radius: 14px;
+  }
+
+  .sl-brand-chip > span:last-child {
+    display: none;
+  }
+
+  .sl-brand-mark {
+    width: 34px;
+    height: 34px;
+    border-radius: 11px;
+  }
+
+  .sl-region-indicator {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .sl-region-pill {
+    width: 100%;
+    height: 44px;
+    min-height: 44px;
+    padding: 0 10px;
+    justify-content: center;
+    border-radius: 14px;
+  }
+
+  .sl-region-pill .sl-region-badge {
+    display: none;
+  }
+
+  .sl-region-popover {
+    position: fixed;
+    top: calc(var(--sl-mobile-header-top) + 50px);
+    left: var(--sl-mobile-edge);
+    right: var(--sl-mobile-edge);
+    z-index: 1700;
+    width: auto;
+    min-width: 0;
+    max-height: calc(100dvh - 130px);
+    overflow-y: auto;
+  }
+
+  .sl-topbar-actions {
+    grid-column: 4;
+    grid-row: 1;
+    display: flex;
+    justify-self: end;
+    gap: 4px;
+    height: 44px;
+    padding: 3px;
+    border-radius: 14px;
+  }
+
+  .sl-topbar-actions > .sl-icon-button {
+    width: 38px;
+    height: 38px;
+    border: 0;
+    box-shadow: none;
+    background: transparent;
+  }
+
+  .sl-language-switcher {
+    position: relative;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+
+  .sl-language-compact-trigger {
+    display: grid;
+    width: 42px;
+    height: 38px;
+    padding: 0;
+    place-items: center;
+    color: #0f172a;
+    background: transparent;
+    border: 0;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 850;
+  }
+
+  .sl-language-options {
+    position: fixed;
+    top: calc(var(--sl-mobile-header-top) + 50px);
+    right: var(--sl-mobile-edge);
+    z-index: 1750;
+    display: none;
+    grid-template-columns: repeat(3, minmax(52px, 1fr));
+    gap: 4px;
+    width: min(220px, calc(100vw - 20px));
+    padding: 6px;
+    background: #fff;
+    border: 1px solid #dbe3ee;
+    border-radius: 14px;
+    box-shadow: 0 16px 36px rgba(15, 23, 42, 0.24);
+  }
+
+  .sl-language-switcher.is-compact-open .sl-language-options {
+    display: grid;
+  }
+
+  .sl-language-option {
+    min-height: 42px;
+  }
+
+  .sl-search {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+    height: 44px;
+    padding: 3px;
+    border-radius: 14px;
+  }
+
+  .sl-search input {
+    min-width: 0;
+    height: 36px;
+    padding: 0 12px;
+    font-size: 14px;
+  }
+
+  .sl-search > button {
+    flex: 0 0 38px;
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+  }
+
+  .sl-public-beta-label {
+    position: fixed;
+    top: calc(max(8px, env(safe-area-inset-top)) + 107px);
+    left: 50%;
+    z-index: 1350;
+    max-width: calc(100vw - 24px);
+    transform: translateX(-50%);
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  .sl-drawer-handle {
+    display: none;
+  }
+
+  .sl-mobile-top-control-stack {
+    position: fixed;
+    top: auto !important;
+    right: var(--sl-mobile-edge);
+    bottom: calc(var(--sl-mobile-bottom-clearance) + 126px);
+    left: auto !important;
+    z-index: 1250;
+    display: grid;
+    width: auto;
+    height: auto;
+    gap: 8px;
+    justify-items: end;
+    pointer-events: none;
+  }
+
+  .sl-mobile-top-control-stack > * {
+    pointer-events: auto;
+  }
+
+  .sl-field-gps-stack,
+  .sl-field-gps-panel {
+    position: static;
+    width: auto;
+  }
+
+  .sl-field-gps-toggle {
+    box-sizing: border-box !important;
+    min-width: var(--sl-mobile-control-size);
+    width: var(--sl-mobile-control-size) !important;
+    height: var(--sl-mobile-control-size) !important;
+    min-height: var(--sl-mobile-control-size) !important;
+    max-height: var(--sl-mobile-control-size) !important;
+    padding: 0;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.28);
+  }
+
+  .sl-field-gps-toggle-label-full {
+    display: none;
+  }
+
+  .sl-field-gps-toggle-label-short {
+    display: inline;
+    font-size: 11px;
+    font-weight: 900;
+  }
+
+  .sl-field-gps-card {
+    position: fixed;
+    right: var(--sl-mobile-edge);
+    bottom: calc(var(--sl-mobile-bottom-clearance) + 186px);
+    z-index: 1650;
+    width: min(360px, calc(100vw - 20px));
+    max-height: calc(100dvh - var(--sl-mobile-header-height) - 150px);
+    overflow-y: auto;
+  }
+
+  .sl-map-navigation {
+    position: fixed;
+    top: 50%;
+    right: var(--sl-mobile-edge);
+    bottom: auto;
+    left: auto;
+    z-index: 1150;
+    display: grid;
+    width: var(--sl-mobile-control-size);
+    grid-template-rows: repeat(2, var(--sl-mobile-control-size));
+    align-content: start;
+    height: calc(var(--sl-mobile-control-size) * 2) !important;
+    max-height: calc(var(--sl-mobile-control-size) * 2);
+    min-height: 0;
+    padding: 0;
+    gap: 0;
+    overflow: hidden;
+    transform: translateY(-35%);
+  }
+
+  .sl-map-navigation button {
+    width: var(--sl-mobile-control-size);
+    height: var(--sl-mobile-control-size);
+    min-height: var(--sl-mobile-control-size);
+    flex: 0 0 var(--sl-mobile-control-size);
+  }
+
+  .sl-map-navigation button:nth-child(-n + 2) {
+    display: none;
+  }
+
+  .sl-progressive-menu,
+  .sl-area-card,
+  .sl-floating-summary-card {
+    position: fixed;
+    right: 50%;
+    bottom: calc(var(--sl-mobile-bottom-clearance) + 68px);
+    left: auto;
+    z-index: 1300;
+    width: min(340px, calc(100vw - 24px));
+    max-width: calc(100vw - 24px);
+    transform: translateX(50%);
+  }
+
+  .sl-area-card-value {
+    overflow-wrap: anywhere;
+  }
+
+  .sl-map-status {
+    position: fixed;
+    right: var(--sl-mobile-edge);
+    bottom: var(--sl-mobile-bottom-clearance);
+    left: var(--sl-mobile-edge);
+    z-index: 1100;
+    width: auto;
+    max-width: none;
+    min-height: 44px;
+    padding: 8px 12px;
+    overflow: hidden;
+    border-radius: 14px;
+  }
+
+  .sl-status-message {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sl-status-location-divider,
+  .sl-location-status,
+  .sl-location-accuracy {
+    display: none;
+  }
+
+  .sl-beta-notice-modal {
+    width: min(100%, 560px);
+    max-height: calc(100dvh - 24px);
+    padding: 20px;
+    overflow-y: auto;
+  }
+}
+
+@media (min-width: 769px) {
+  .sl-field-gps-stack {
+    right: 72px;
+    bottom: 78px;
+  }
+}
+
+@media (max-width: 380px) {
+  .sl-topbar {
+    grid-template-columns: 42px 42px minmax(62px, auto) 1fr;
+    gap: 5px;
+  }
+
+  .sl-region-pill {
+    padding: 0 7px;
+    font-size: 11px;
+  }
+
+  .sl-topbar-actions > .sl-icon-button,
+  .sl-language-compact-trigger {
+    width: 36px;
+  }
+}

@@ -63,7 +63,7 @@ export default function BugReportButton() {
   const [initialValues, setInitialValues] = useState<
     Partial<FeedbackEntryInput> | undefined
   >(undefined);
-  const reportTitle = useAppBrandLabel("Report Issue — SabahLot Beta");
+  const reportTitle = useAppBrandLabel("Report Issue — SabahLot Alpha");
 
   const handleClick = async () => {
     setLoading(true);

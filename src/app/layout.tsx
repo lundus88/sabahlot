@@ -10,6 +10,7 @@ import type {
 import PWARegister from "@/components/PWARegister";
 
 import "./globals.css";
+import "./mobile-field-shell.css";
 
 export const metadata: Metadata = {
   title:

@@ -14,7 +14,7 @@ export default function FeedbackForm() {
         className="sl-beta-action-button"
         onClick={() => setOpen(true)}
       >
-        Feedback Beta
+        Feedback Alpha
       </button>
 
       <FeedbackModal open={open} onClose={() => setOpen(false)} />

@@ -2407,7 +2407,7 @@ export default function FieldGpsLite({
           );
           clearCameraErrorDetails();
           setArMessage(
-            "Camera requires HTTPS. Please open https://beta.sabahlot.com",
+            "Camera requires HTTPS. Please open https://alpha.sabahlot.com",
           );
           return;
         }
@@ -2423,7 +2423,7 @@ export default function FieldGpsLite({
           );
           clearCameraErrorDetails();
           setArMessage(
-            "Camera is not supported in this browser. Open beta.sabahlot.com in Chrome Android or Safari iPhone.",
+            "Camera is not supported in this browser. Open alpha.sabahlot.com in Chrome Android or Safari iPhone.",
           );
           return;
         }
@@ -2980,6 +2980,7 @@ export default function FieldGpsLite({
       <button
         type="button"
         className="sl-field-gps-toggle"
+        aria-label={open ? "Close Handheld GPS" : "Start Handheld GPS"}
         onClick={() => {
           if (
             open &&
@@ -2988,22 +2989,23 @@ export default function FieldGpsLite({
             stopArGuide();
           }
 
-          setOpen(
-            (current) => {
-              const nextOpen =
-                !current;
+          const nextOpen = !open;
+          setOpen(nextOpen);
 
-              if (nextOpen) {
-                window.dispatchEvent(
-                  new CustomEvent(
-                    "sabahlot:field-gps-panel-opened",
-                  ),
-                );
-              }
-
-              return nextOpen;
-            },
-          );
+          if (nextOpen) {
+            if (!gpsActive) {
+              window.setTimeout(() => {
+                try {
+                  startGps();
+                } catch {
+                  setLastGpsError("unavailable");
+                  setStatus(
+                    "Unable to start GPS. Check location permission and secure connection.",
+                  );
+                }
+              }, 0);
+            }
+          }
         }}
       >
         <span className="sl-field-gps-toggle-label-full">
@@ -4127,7 +4129,7 @@ export default function FieldGpsLite({
 
           <section className="sl-field-gps-section sl-beta-help-section">
             <div className="sl-field-gps-heading">
-              <span>Bantuan &amp; Maklum Balas Beta</span>
+              <span>Bantuan &amp; Maklum Balas Alpha</span>
             </div>
 
             <div className="sl-field-gps-target-grid">
@@ -4135,7 +4137,7 @@ export default function FieldGpsLite({
               <BugReportButton />
               <FeedbackExportButton />
               <Link href="/manual-beta" className="sl-beta-action-button">
-                Manual Pengguna Beta
+                Manual Pengguna Alpha
               </Link>
             </div>
           </section>

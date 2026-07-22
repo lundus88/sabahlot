@@ -248,7 +248,7 @@ export default function ArStakeoutPage() {
   const [targetLatText, setTargetLatText] = useState("");
   const [targetLngText, setTargetLngText] = useState("");
   const [note, setNote] = useState("");
-  const brandLabel = useAppBrandLabel("SabahLot Beta");
+  const brandLabel = useAppBrandLabel("SabahLot Alpha");
 
   const [gps, setGps] = useState<GpsFix | null>(null);
   const [gpsStatus, setGpsStatus] = useState("GPS stopped");
@@ -556,12 +556,12 @@ export default function ArStakeoutPage() {
       setCameraStatus("Starting");
 
       if (secureContext !== "yes") {
-        throw new Error("Camera requires HTTPS. Please open https://beta.sabahlot.com");
+        throw new Error("Camera requires HTTPS. Please open https://alpha.sabahlot.com");
       }
 
       if (getUserMediaSupport !== "yes") {
         const error = new Error(
-          "Camera is not supported in this browser. Open beta.sabahlot.com in Chrome Android or Safari iPhone."
+          "Camera is not supported in this browser. Open alpha.sabahlot.com in Chrome Android or Safari iPhone."
         );
         error.name = "NotSupportedError";
         throw error;
