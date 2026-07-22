@@ -39,6 +39,8 @@ import {
   type LocalLotRecord,
   type LandRecordDetails,
   type AvailableRecord,
+  type ApplicantStatus,
+  type HeirLocationKnowledge,
   type LandIssueTag,
   markLocalLotSynced,
   normalizeLandRecordDetails,
@@ -92,12 +94,13 @@ import CategoryDrawer from "@/components/shell/CategoryDrawer";
 import NcrScreen from "@/components/ncr/NcrScreen";
 import ServiceRequestScreen from "@/components/serviceRequest/ServiceRequestScreen";
 import FeedbackModal from "@/components/feedback/FeedbackModal";
+import LotFormWizard from "./components/LotFormWizard";
 
 import type {
   OfflineMapView,
 } from "@/lib/offline-map-cache";
 
-interface LotFormData {
+export interface LotFormData {
   ownerName: string;
   lotNumber: string;
   village: string;
@@ -235,43 +238,55 @@ const EMPTY_FORM: LotFormData = {
   },
 };
 
-const LAND_CASE_OPTIONS = [
-  ["land_application", "Permohonan tanah"],
-  ["inheritance_land", "Tanah pusaka"],
-  ["family_customary_land", "Tanah adat keluarga"],
-  ["titled_land", "Sudah mempunyai geran"],
-  ["unsure", "Tidak pasti"],
+export const LAND_CASE_VALUES = [
+  "land_application",
+  "inheritance_land",
+  "family_customary_land",
+  "titled_land",
+  "unsure",
 ] as const;
 
-const AVAILABLE_RECORD_OPTIONS: ReadonlyArray<readonly [AvailableRecord, string]> = [
-  ["title", "Geran"],
-  ["official_receipt", "Resit rasmi"],
-  ["application_letter", "Surat permohonan"],
-  ["plan_or_sketch", "Pelan/lakaran"],
-  ["gps_coordinates", "Koordinat GPS"],
-  ["site_photos", "Gambar lokasi"],
-  ["no_record", "Tiada rekod"],
+export const AVAILABLE_RECORD_VALUES: readonly AvailableRecord[] = [
+  "title",
+  "official_receipt",
+  "application_letter",
+  "plan_or_sketch",
+  "gps_coordinates",
+  "site_photos",
+  "no_record",
 ];
 
-const APPLICATION_AGE_OPTIONS = [
-  ["under_5_years", "Kurang 5 tahun"],
-  ["5_to_10_years", "5-10 tahun"],
-  ["10_to_20_years", "10-20 tahun"],
-  ["over_20_years", "Lebih 20 tahun"],
-  ["unsure", "Tidak pasti"],
+export const APPLICATION_AGE_VALUES = [
+  "under_5_years",
+  "5_to_10_years",
+  "10_to_20_years",
+  "over_20_years",
+  "unsure",
 ] as const;
 
-const ISSUE_TAG_OPTIONS: ReadonlyArray<readonly [LandIssueTag, string]> = [
-  ["unknown_application_status", "Tidak tahu status permohonan"],
-  ["difficult_to_get_information", "Sukar mendapatkan maklumat"],
-  ["lost_documents", "Dokumen hilang"],
-  ["unknown_land_location", "Tidak tahu lokasi tanah"],
-  ["unclear_land_process", "Tidak faham proses tanah"],
-  ["boundary_dispute", "Pertikaian sempadan"],
-  ["title_subdivision", "Pecah geran"],
-  ["customary_land_ncr", "Tanah adat / NCR"],
-  ["encroachment", "Pencerobohan"],
-  ["overlapping_land", "Tanah bertindih"],
+export const ISSUE_TAG_VALUES: readonly LandIssueTag[] = [
+  "unknown_application_status",
+  "difficult_to_get_information",
+  "lost_documents",
+  "unknown_land_location",
+  "unclear_land_process",
+  "boundary_dispute",
+  "title_subdivision",
+  "customary_land_ncr",
+  "encroachment",
+  "overlapping_land",
+];
+
+export const APPLICANT_STATUS_VALUES: readonly ApplicantStatus[] = [
+  "alive",
+  "deceased",
+  "unknown",
+];
+
+export const HEIR_LOCATION_VALUES: readonly HeirLocationKnowledge[] = [
+  "yes",
+  "no",
+  "not_sure",
 ];
 
 const EMPTY_PDF_IDENTITIES: PdfIdentityFields = {
@@ -293,7 +308,7 @@ const EMPTY_PDF_IDENTITIES: PdfIdentityFields = {
   },
 };
 
-const PAGE_TEXT = {
+export const PAGE_TEXT = {
   en: {
     panelTitle:
       "Lot Information",
@@ -504,6 +519,108 @@ const PAGE_TEXT = {
 
     confirmClear:
       "Clear the saved lot details on this device?",
+
+    sectionBasicTitle: "Basic Lot Info",
+    sectionBasicHint:
+      "Required -- the core details that identify this record.",
+    sectionLandAppTitle: "Land Application Record",
+    sectionLandAppHint:
+      "Optional -- application status and supporting documents already on hand.",
+    sectionFamilyTitle: "Family / Inheritance",
+    sectionFamilyHint:
+      "Optional -- for inheritance or family customary land cases only.",
+    sectionIssuesTitle: "Issue Tags",
+    sectionIssuesHint:
+      "Optional -- flag known issues with this land matter for follow-up.",
+    sectionNotesTitle: "Notes",
+    sectionNotesHint:
+      "Optional -- any additional context for this record.",
+
+    landCaseTypeLabel: "Land case type",
+    landCaseTypePlaceholder: "Select case type",
+    recordsAvailableLabel: "Record available",
+    applicationAgeLabel: "Application age",
+    applicationAgePlaceholder: "Select application age",
+    originalApplicantNameLabel: "Original applicant name",
+    originalApplicantStatusLabel: "Original applicant status",
+    originalApplicantStatusPlaceholder: "Select status",
+    mainHeirNameLabel: "Main heir name",
+    relationshipToApplicantLabel: "Relationship to applicant",
+    heirsCanIdentifyLocationLabel:
+      "Can heirs identify the land location?",
+    heirsCanIdentifyLocationPlaceholder: "Select answer",
+    landHistoryNotesLabel: "Land history notes",
+    issueTagsLegend: "Land issue tags",
+    generalNotesLabel: "General record notes",
+
+    answerYes: "Yes",
+    answerNo: "No",
+    answerNotSure: "Not sure",
+    statusAlive: "Alive",
+    statusDeceased: "Deceased",
+    statusUnknown: "Unknown",
+
+    landCaseOptions: {
+      land_application: "Land application",
+      inheritance_land: "Inheritance land",
+      family_customary_land: "Family customary land",
+      titled_land: "Already has a title",
+      unsure: "Not sure",
+    },
+    availableRecordOptions: {
+      title: "Title deed",
+      official_receipt: "Official receipt",
+      application_letter: "Application letter",
+      plan_or_sketch: "Plan / sketch",
+      gps_coordinates: "GPS coordinates",
+      site_photos: "Site photos",
+      no_record: "No record",
+    },
+    applicationAgeOptions: {
+      under_5_years: "Under 5 years",
+      "5_to_10_years": "5-10 years",
+      "10_to_20_years": "10-20 years",
+      over_20_years: "Over 20 years",
+      unsure: "Not sure",
+    },
+    issueTagOptions: {
+      unknown_application_status: "Unknown application status",
+      difficult_to_get_information: "Difficult to get information",
+      lost_documents: "Lost documents",
+      unknown_land_location: "Unknown land location",
+      unclear_land_process: "Unclear land process",
+      boundary_dispute: "Boundary dispute",
+      title_subdivision: "Title subdivision",
+      customary_land_ncr: "Customary land / NCR",
+      encroachment: "Encroachment",
+      overlapping_land: "Overlapping land",
+    },
+
+    reviewTitle: "Review",
+    reviewFallbackPrompt:
+      "Fill in Basic Lot Info above to see a summary here.",
+    reviewNoLotNumberFallback: "(no lot number)",
+    reviewNoOwnerNameFallback: "(no owner name)",
+    reviewNoBoundarySuffix: "no boundary drawn yet",
+    reviewNotProvided: "Not provided",
+    reviewNoneSelected: "None selected",
+
+    wizardProgressTemplate: "Step {current} of {total}",
+    wizardBack: "Back",
+    wizardNext: "Next",
+    wizardStepBasicTitle: "Basic Information",
+    wizardStepCaseTypeTitle: "Land Case Type",
+    wizardStepRecordsTitle: "Existing Records",
+    wizardStepAgeTitle: "Application Age",
+    wizardStepFamilyTitle: "Family / Heirs",
+    wizardStepIssuesTitle: "Related Issues",
+    wizardStepNotesTitle: "Additional Notes",
+    wizardStepReviewTitle: "Review & Save",
+    wizardReviewHeading: "Review your information",
+    wizardDisclaimerReminder:
+      "Please review the disclaimer above before saving.",
+    wizardExpertViewHint:
+      "Advanced mode shows every field on one screen.",
   },
 
   ms: {
@@ -716,6 +833,108 @@ const PAGE_TEXT = {
 
     confirmClear:
       "Padam maklumat lot yang disimpan dalam peranti ini?",
+
+    sectionBasicTitle: "Maklumat Asas Lot",
+    sectionBasicHint:
+      "Wajib -- butiran utama yang mengenal pasti rekod ini.",
+    sectionLandAppTitle: "Rekod Permohonan Tanah",
+    sectionLandAppHint:
+      "Pilihan -- status permohonan dan dokumen sokongan yang sedia ada.",
+    sectionFamilyTitle: "Keluarga / Pusaka",
+    sectionFamilyHint:
+      "Pilihan -- untuk kes tanah pusaka atau tanah adat keluarga sahaja.",
+    sectionIssuesTitle: "Tag Isu",
+    sectionIssuesHint:
+      "Pilihan -- tandakan isu yang diketahui bagi hal tanah ini untuk susulan.",
+    sectionNotesTitle: "Catatan",
+    sectionNotesHint:
+      "Pilihan -- sebarang konteks tambahan untuk rekod ini.",
+
+    landCaseTypeLabel: "Jenis kes tanah",
+    landCaseTypePlaceholder: "Pilih jenis kes",
+    recordsAvailableLabel: "Rekod sedia ada",
+    applicationAgeLabel: "Umur permohonan",
+    applicationAgePlaceholder: "Pilih umur permohonan",
+    originalApplicantNameLabel: "Nama pemohon asal",
+    originalApplicantStatusLabel: "Status pemohon asal",
+    originalApplicantStatusPlaceholder: "Pilih status",
+    mainHeirNameLabel: "Nama waris utama",
+    relationshipToApplicantLabel: "Hubungan dengan pemohon",
+    heirsCanIdentifyLocationLabel:
+      "Bolehkah waris mengenal pasti lokasi tanah?",
+    heirsCanIdentifyLocationPlaceholder: "Pilih jawapan",
+    landHistoryNotesLabel: "Catatan sejarah tanah",
+    issueTagsLegend: "Tag isu tanah",
+    generalNotesLabel: "Catatan am rekod",
+
+    answerYes: "Ya",
+    answerNo: "Tidak",
+    answerNotSure: "Tidak pasti",
+    statusAlive: "Masih hidup",
+    statusDeceased: "Telah meninggal dunia",
+    statusUnknown: "Tidak diketahui",
+
+    landCaseOptions: {
+      land_application: "Permohonan tanah",
+      inheritance_land: "Tanah pusaka",
+      family_customary_land: "Tanah adat keluarga",
+      titled_land: "Sudah mempunyai geran",
+      unsure: "Tidak pasti",
+    },
+    availableRecordOptions: {
+      title: "Geran",
+      official_receipt: "Resit rasmi",
+      application_letter: "Surat permohonan",
+      plan_or_sketch: "Pelan/lakaran",
+      gps_coordinates: "Koordinat GPS",
+      site_photos: "Gambar lokasi",
+      no_record: "Tiada rekod",
+    },
+    applicationAgeOptions: {
+      under_5_years: "Kurang 5 tahun",
+      "5_to_10_years": "5-10 tahun",
+      "10_to_20_years": "10-20 tahun",
+      over_20_years: "Lebih 20 tahun",
+      unsure: "Tidak pasti",
+    },
+    issueTagOptions: {
+      unknown_application_status: "Tidak tahu status permohonan",
+      difficult_to_get_information: "Sukar mendapatkan maklumat",
+      lost_documents: "Dokumen hilang",
+      unknown_land_location: "Tidak tahu lokasi tanah",
+      unclear_land_process: "Tidak faham proses tanah",
+      boundary_dispute: "Pertikaian sempadan",
+      title_subdivision: "Pecah geran",
+      customary_land_ncr: "Tanah adat / NCR",
+      encroachment: "Pencerobohan",
+      overlapping_land: "Tanah bertindih",
+    },
+
+    reviewTitle: "Semakan",
+    reviewFallbackPrompt:
+      "Isikan Maklumat Asas Lot di atas untuk melihat ringkasan di sini.",
+    reviewNoLotNumberFallback: "(tiada nombor lot)",
+    reviewNoOwnerNameFallback: "(tiada nama pemilik)",
+    reviewNoBoundarySuffix: "sempadan belum dilukis",
+    reviewNotProvided: "Tidak dinyatakan",
+    reviewNoneSelected: "Tiada dipilih",
+
+    wizardProgressTemplate: "Langkah {current} daripada {total}",
+    wizardBack: "Kembali",
+    wizardNext: "Seterusnya",
+    wizardStepBasicTitle: "Maklumat Asas",
+    wizardStepCaseTypeTitle: "Jenis Kes Tanah",
+    wizardStepRecordsTitle: "Rekod Sedia Ada",
+    wizardStepAgeTitle: "Umur Permohonan",
+    wizardStepFamilyTitle: "Waris/Keluarga",
+    wizardStepIssuesTitle: "Isu Berkaitan",
+    wizardStepNotesTitle: "Catatan Tambahan",
+    wizardStepReviewTitle: "Semakan & Simpan",
+    wizardReviewHeading: "Semak maklumat anda",
+    wizardDisclaimerReminder:
+      "Sila semak penafian di atas sebelum menyimpan.",
+    wizardExpertViewHint:
+      "Mod Advanced memaparkan semua medan pada satu skrin.",
   },
 
   zh: {
@@ -928,8 +1147,103 @@ const PAGE_TEXT = {
 
     confirmClear:
       "清除此设备上保存的地块信息?",
+
+    sectionBasicTitle: "地块基本信息",
+    sectionBasicHint: "必填 -- 用于识别此记录的核心信息。",
+    sectionLandAppTitle: "土地申请记录",
+    sectionLandAppHint: "选填 -- 现有的申请状态与支持文件。",
+    sectionFamilyTitle: "家庭 / 继承",
+    sectionFamilyHint: "选填 -- 仅适用于继承地或家族习俗地案件。",
+    sectionIssuesTitle: "问题标签",
+    sectionIssuesHint: "选填 -- 标记此土地事项中已知的问题以便跟进。",
+    sectionNotesTitle: "备注",
+    sectionNotesHint: "选填 -- 此记录的任何补充说明。",
+
+    landCaseTypeLabel: "土地案件类型",
+    landCaseTypePlaceholder: "选择案件类型",
+    recordsAvailableLabel: "现有记录",
+    applicationAgeLabel: "申请年限",
+    applicationAgePlaceholder: "选择申请年限",
+    originalApplicantNameLabel: "原申请人姓名",
+    originalApplicantStatusLabel: "原申请人状况",
+    originalApplicantStatusPlaceholder: "选择状况",
+    mainHeirNameLabel: "主要继承人姓名",
+    relationshipToApplicantLabel: "与申请人的关系",
+    heirsCanIdentifyLocationLabel: "继承人能否辨认土地位置?",
+    heirsCanIdentifyLocationPlaceholder: "选择答案",
+    landHistoryNotesLabel: "土地历史备注",
+    issueTagsLegend: "土地问题标签",
+    generalNotesLabel: "一般记录备注",
+
+    answerYes: "是",
+    answerNo: "否",
+    answerNotSure: "不确定",
+    statusAlive: "在世",
+    statusDeceased: "已故",
+    statusUnknown: "未知",
+
+    landCaseOptions: {
+      land_application: "土地申请",
+      inheritance_land: "继承地",
+      family_customary_land: "家族习俗地",
+      titled_land: "已有地契",
+      unsure: "不确定",
+    },
+    availableRecordOptions: {
+      title: "地契",
+      official_receipt: "官方收据",
+      application_letter: "申请信",
+      plan_or_sketch: "图纸/草图",
+      gps_coordinates: "GPS坐标",
+      site_photos: "现场照片",
+      no_record: "无记录",
+    },
+    applicationAgeOptions: {
+      under_5_years: "少于5年",
+      "5_to_10_years": "5-10年",
+      "10_to_20_years": "10-20年",
+      over_20_years: "超过20年",
+      unsure: "不确定",
+    },
+    issueTagOptions: {
+      unknown_application_status: "不清楚申请状态",
+      difficult_to_get_information: "难以获取信息",
+      lost_documents: "文件遗失",
+      unknown_land_location: "不清楚土地位置",
+      unclear_land_process: "不清楚土地程序",
+      boundary_dispute: "边界纠纷",
+      title_subdivision: "地契分割",
+      customary_land_ncr: "习俗地 / NCR",
+      encroachment: "侵占",
+      overlapping_land: "土地重叠",
+    },
+
+    reviewTitle: "审核",
+    reviewFallbackPrompt: "请先填写上方的地块基本信息以查看摘要。",
+    reviewNoLotNumberFallback: "(无地块编号)",
+    reviewNoOwnerNameFallback: "(无业主姓名)",
+    reviewNoBoundarySuffix: "尚未绘制边界",
+    reviewNotProvided: "未提供",
+    reviewNoneSelected: "未选择",
+
+    wizardProgressTemplate: "第 {current} 步,共 {total} 步",
+    wizardBack: "上一步",
+    wizardNext: "下一步",
+    wizardStepBasicTitle: "基本信息",
+    wizardStepCaseTypeTitle: "土地案件类型",
+    wizardStepRecordsTitle: "现有记录",
+    wizardStepAgeTitle: "申请年限",
+    wizardStepFamilyTitle: "家属/继承人",
+    wizardStepIssuesTitle: "相关问题",
+    wizardStepNotesTitle: "补充备注",
+    wizardStepReviewTitle: "审核并保存",
+    wizardReviewHeading: "请审核您的信息",
+    wizardDisclaimerReminder: "保存前请查看上方的免责声明。",
+    wizardExpertViewHint: "高级模式会在同一屏幕显示所有字段。",
   },
 } as const;
+
+export type LotPageText = (typeof PAGE_TEXT)[keyof typeof PAGE_TEXT];
 
 function formatNumber(
   value: number,
@@ -1716,6 +2030,78 @@ export default function HomePage() {
         : [...current, tag],
     );
   };
+
+  const renderReviewAndSave = () => (
+    <>
+      <div className="sl-record-review">
+        <strong>{text.reviewTitle}</strong>
+        <p>
+          {formData.lotNumber.trim() || formData.ownerName.trim()
+            ? `${formData.lotNumber.trim() || text.reviewNoLotNumberFallback} -- ${formData.ownerName.trim() || text.reviewNoOwnerNameFallback}`
+            : text.reviewFallbackPrompt}
+          {polygon
+            ? ` -- ${displayArea(polygon.areaM2)}`
+            : ` -- ${text.reviewNoBoundarySuffix}`}
+        </p>
+        {!canSaveLot && (
+          <p className="sl-record-review-blocked">
+            {saveBlockedMessage}
+          </p>
+        )}
+      </div>
+
+      <button
+        type="submit"
+        className={`sl-save-button ${
+          hasUnsavedChanges
+            ? "is-unsaved"
+            : ""
+        }`}
+        disabled={
+          isSaving
+        }
+        title={
+          canSaveLot
+            ? text.save
+            : saveBlockedMessage
+        }
+      >
+        <span aria-hidden="true">
+          {"✓"}
+        </span>
+
+        <span>
+          {isSaving
+            ? text.saving
+            : text.save}
+        </span>
+      </button>
+
+      {saveMessage && (
+        <p className="sl-save-message">
+          {saveMessage}
+        </p>
+      )}
+
+      {parentCloudSyncMessage() && (
+        <p
+          className={`sl-parent-cloud-sync-message sl-parent-cloud-sync-message--${parentCloudSync.status}`}
+          role="status"
+        >
+          {parentCloudSyncMessage()}
+        </p>
+      )}
+
+      {geometryCloudSyncMessage() && (
+        <p
+          className={`sl-parent-cloud-sync-message sl-parent-cloud-sync-message--${geometryCloudSync.status}`}
+          role="status"
+        >
+          {geometryCloudSyncMessage()}
+        </p>
+      )}
+    </>
+  );
 
   const updatePdfIdentity = (
     field: keyof PdfIdentityFields,
@@ -7568,368 +7954,320 @@ export default function HomePage() {
               saveLotRecord
             }
           >
-            <details
-              className="sl-record-section"
-              name="sl-lot-record-accordion"
-              open
-            >
-              <summary>Basic Lot Info</summary>
-              <p className="sl-record-section-hint">
-                Required -- the core details that identify this record.
-              </p>
-              <div className="sl-record-section-body">
-            <label>
-              <span>
-                {text.ownerName}
-              </span>
-
-              <input
-                type="text"
-                value={
-                  formData.ownerName
-                }
-                onChange={(
-                  event,
-                ) =>
-                  updateField(
-                    "ownerName",
-                    event.target.value,
-                  )
-                }
-                placeholder={
-                  text.ownerPlaceholder
-                }
-                autoComplete="name"
-              />
-            </label>
-
-            <label>
-              <span>
-                {text.lotNumber}
-              </span>
-
-              <input
-                type="text"
-                value={
-                  formData.lotNumber
-                }
-                onChange={(
-                  event,
-                ) =>
-                  updateField(
-                    "lotNumber",
-                    event.target.value,
-                  )
-                }
-                placeholder={
-                  text.lotPlaceholder
-                }
-                autoComplete="off"
-              />
-            </label>
-
-            <label>
-              <span>
-                {text.village}
-              </span>
-
-              <input
-                type="text"
-                value={
-                  formData.village
-                }
-                onChange={(
-                  event,
-                ) =>
-                  updateField(
-                    "village",
-                    event.target.value,
-                  )
-                }
-                placeholder={
-                  text.villagePlaceholder
-                }
-                autoComplete="address-level3"
-              />
-            </label>
-
-            <label>
-              <span>
-                {text.district}
-              </span>
-
-              <input
-                type="text"
-                value={
-                  formData.district
-                }
-                onChange={(
-                  event,
-                ) =>
-                  updateField(
-                    "district",
-                    event.target.value,
-                  )
-                }
-                placeholder={
-                  text.districtPlaceholder
-                }
-                autoComplete="address-level2"
-              />
-            </label>
-
-              </div>
-            </details>
-
-            <details
-              className="sl-record-section"
-              name="sl-lot-record-accordion"
-            >
-              <summary>Land Application Record</summary>
-              <p className="sl-record-section-hint">
-                Optional -- application status and supporting documents already on hand.
-              </p>
-              <div className="sl-record-section-body">
-                <label>
-                  <span>Land case type</span>
-                  <select
-                    value={formData.landRecord.landCaseType}
-                    onChange={(event) =>
-                      updateLandRecordField(
-                        "landCaseType",
-                        event.target.value as LandRecordDetails["landCaseType"],
-                      )
-                    }
-                  >
-                    <option value="">Select case type</option>
-                    {LAND_CASE_OPTIONS.map(([value, label]) => (
-                      <option key={value} value={value}>{label}</option>
-                    ))}
-                  </select>
-                </label>
-
-                <fieldset className="sl-record-checklist">
-                  <legend>Record available</legend>
-                  {AVAILABLE_RECORD_OPTIONS.map(([value, label]) => (
-                    <label key={value}>
-                      <input
-                        type="checkbox"
-                        checked={formData.landRecord.recordsAvailable.includes(value)}
-                        onChange={() => toggleAvailableRecord(value)}
-                      />
-                      <span>{label}</span>
-                    </label>
-                  ))}
-                </fieldset>
-
-                <label>
-                  <span>Application age</span>
-                  <select
-                    value={formData.landRecord.applicationAge}
-                    onChange={(event) =>
-                      updateLandRecordField(
-                        "applicationAge",
-                        event.target.value as LandRecordDetails["applicationAge"],
-                      )
-                    }
-                  >
-                    <option value="">Select application age</option>
-                    {APPLICATION_AGE_OPTIONS.map(([value, label]) => (
-                      <option key={value} value={value}>{label}</option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-            </details>
-
-            <details
-              className="sl-record-section"
-              name="sl-lot-record-accordion"
-            >
-              <summary>Family / Inheritance</summary>
-              <p className="sl-record-section-hint">
-                Optional -- for inheritance or family customary land cases only.
-              </p>
-              <div className="sl-record-section-body">
-                <label>
-                  <span>Original applicant name</span>
-                  <input
-                    type="text"
-                    value={formData.landRecord.originalApplicantName}
-                    onChange={(event) => updateLandRecordField("originalApplicantName", event.target.value)}
-                    autoComplete="off"
-                  />
-                </label>
-                <label>
-                  <span>Original applicant status</span>
-                  <select
-                    value={formData.landRecord.originalApplicantStatus}
-                    onChange={(event) => updateLandRecordField(
-                      "originalApplicantStatus",
-                      event.target.value as LandRecordDetails["originalApplicantStatus"],
-                    )}
-                  >
-                    <option value="">Select status</option>
-                    <option value="alive">Alive</option>
-                    <option value="deceased">Deceased</option>
-                    <option value="unknown">Unknown</option>
-                  </select>
-                </label>
-                <label>
-                  <span>Main heir name</span>
-                  <input
-                    type="text"
-                    value={formData.landRecord.mainHeirName}
-                    onChange={(event) => updateLandRecordField("mainHeirName", event.target.value)}
-                    autoComplete="off"
-                  />
-                </label>
-                <label>
-                  <span>Relationship to applicant</span>
-                  <input
-                    type="text"
-                    value={formData.landRecord.relationshipToApplicant}
-                    onChange={(event) => updateLandRecordField("relationshipToApplicant", event.target.value)}
-                    autoComplete="off"
-                  />
-                </label>
-                <label>
-                  <span>Can heirs identify the land location?</span>
-                  <select
-                    value={formData.landRecord.heirsCanIdentifyLocation}
-                    onChange={(event) => updateLandRecordField(
-                      "heirsCanIdentifyLocation",
-                      event.target.value as LandRecordDetails["heirsCanIdentifyLocation"],
-                    )}
-                  >
-                    <option value="">Select answer</option>
-                    <option value="yes">Yes</option>
-                    <option value="no">No</option>
-                    <option value="not_sure">Not sure</option>
-                  </select>
-                </label>
-                <label>
-                  <span>Land history notes</span>
-                  <textarea
-                    value={formData.landRecord.landHistoryNotes}
-                    onChange={(event) => updateLandRecordField("landHistoryNotes", event.target.value)}
-                    rows={4}
-                  />
-                </label>
-              </div>
-            </details>
-
-            <details
-              className="sl-record-section"
-              name="sl-lot-record-accordion"
-            >
-              <summary>Issue Tags</summary>
-              <p className="sl-record-section-hint">
-                Optional -- flag known issues with this land matter for follow-up.
-              </p>
-              <div className="sl-record-section-body">
-                <fieldset className="sl-record-checklist">
-                  <legend>Land issue tags</legend>
-                  {ISSUE_TAG_OPTIONS.map(([value, label]) => (
-                    <label key={value}>
-                      <input
-                        type="checkbox"
-                        checked={formData.landRecord.issueTags.includes(value)}
-                        onChange={() => toggleIssueTag(value)}
-                      />
-                      <span>{label}</span>
-                    </label>
-                  ))}
-                </fieldset>
-              </div>
-            </details>
-
-            <details
-              className="sl-record-section"
-              name="sl-lot-record-accordion"
-            >
-              <summary>Notes</summary>
-              <p className="sl-record-section-hint">
-                Optional -- any additional context for this record.
-              </p>
-              <div className="sl-record-section-body">
-                <label>
-                  <span>General record notes</span>
-                  <textarea
-                    value={formData.notes}
-                    onChange={(event) => updateField("notes", event.target.value)}
-                    rows={4}
-                  />
-                </label>
-              </div>
-            </details>
-
-            <div className="sl-record-review">
-              <strong>Review</strong>
-              <p>
-                {formData.lotNumber.trim() || formData.ownerName.trim()
-                  ? `${formData.lotNumber.trim() || "(no lot number)"} -- ${formData.ownerName.trim() || "(no owner name)"}`
-                  : "Fill in Basic Lot Info above to see a summary here."}
-                {polygon
-                  ? ` -- ${displayArea(polygon.areaM2)}`
-                  : " -- no boundary drawn yet"}
-              </p>
-              {!canSaveLot && (
-                <p className="sl-record-review-blocked">
-                  {saveBlockedMessage}
+            {appMode === "advanced" ? (
+              <>
+                <p className="sl-record-section-hint sl-wizard-expert-hint">
+                  {text.wizardExpertViewHint}
                 </p>
-              )}
-            </div>
 
-            <button
-              type="submit"
-              className={`sl-save-button ${
-                hasUnsavedChanges
-                  ? "is-unsaved"
-                  : ""
-              }`}
-              disabled={
-                isSaving
-              }
-              title={
-                canSaveLot
-                  ? text.save
-                  : saveBlockedMessage
-              }
-            >
-              <span aria-hidden="true">
-                {"\u2713"}
-              </span>
+                <details
+                  className="sl-record-section"
+                  name="sl-lot-record-accordion"
+                  open
+                >
+                  <summary>{text.sectionBasicTitle}</summary>
+                  <p className="sl-record-section-hint">
+                    {text.sectionBasicHint}
+                  </p>
+                  <div className="sl-record-section-body">
+                <label>
+                  <span>
+                    {text.ownerName}
+                  </span>
 
-              <span>
-                {isSaving
-                  ? text.saving
-                  : text.save}
-              </span>
-            </button>
+                  <input
+                    type="text"
+                    value={
+                      formData.ownerName
+                    }
+                    onChange={(
+                      event,
+                    ) =>
+                      updateField(
+                        "ownerName",
+                        event.target.value,
+                      )
+                    }
+                    placeholder={
+                      text.ownerPlaceholder
+                    }
+                    autoComplete="name"
+                  />
+                </label>
 
-            {saveMessage && (
-              <p className="sl-save-message">
-                {saveMessage}
-              </p>
-            )}
+                <label>
+                  <span>
+                    {text.lotNumber}
+                  </span>
 
-            {parentCloudSyncMessage() && (
-              <p
-                className={`sl-parent-cloud-sync-message sl-parent-cloud-sync-message--${parentCloudSync.status}`}
-                role="status"
-              >
-                {parentCloudSyncMessage()}
-              </p>
-            )}
+                  <input
+                    type="text"
+                    value={
+                      formData.lotNumber
+                    }
+                    onChange={(
+                      event,
+                    ) =>
+                      updateField(
+                        "lotNumber",
+                        event.target.value,
+                      )
+                    }
+                    placeholder={
+                      text.lotPlaceholder
+                    }
+                    autoComplete="off"
+                  />
+                </label>
 
-            {geometryCloudSyncMessage() && (
-              <p
-                className={`sl-parent-cloud-sync-message sl-parent-cloud-sync-message--${geometryCloudSync.status}`}
-                role="status"
-              >
-                {geometryCloudSyncMessage()}
-              </p>
+                <label>
+                  <span>
+                    {text.village}
+                  </span>
+
+                  <input
+                    type="text"
+                    value={
+                      formData.village
+                    }
+                    onChange={(
+                      event,
+                    ) =>
+                      updateField(
+                        "village",
+                        event.target.value,
+                      )
+                    }
+                    placeholder={
+                      text.villagePlaceholder
+                    }
+                    autoComplete="address-level3"
+                  />
+                </label>
+
+                <label>
+                  <span>
+                    {text.district}
+                  </span>
+
+                  <input
+                    type="text"
+                    value={
+                      formData.district
+                    }
+                    onChange={(
+                      event,
+                    ) =>
+                      updateField(
+                        "district",
+                        event.target.value,
+                      )
+                    }
+                    placeholder={
+                      text.districtPlaceholder
+                    }
+                    autoComplete="address-level2"
+                  />
+                </label>
+
+                  </div>
+                </details>
+
+                <details
+                  className="sl-record-section"
+                  name="sl-lot-record-accordion"
+                >
+                  <summary>{text.sectionLandAppTitle}</summary>
+                  <p className="sl-record-section-hint">
+                    {text.sectionLandAppHint}
+                  </p>
+                  <div className="sl-record-section-body">
+                    <label>
+                      <span>{text.landCaseTypeLabel}</span>
+                      <select
+                        value={formData.landRecord.landCaseType}
+                        onChange={(event) =>
+                          updateLandRecordField(
+                            "landCaseType",
+                            event.target.value as LandRecordDetails["landCaseType"],
+                          )
+                        }
+                      >
+                        <option value="">{text.landCaseTypePlaceholder}</option>
+                        {LAND_CASE_VALUES.map((value) => (
+                          <option key={value} value={value}>{text.landCaseOptions[value]}</option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <fieldset className="sl-record-checklist">
+                      <legend>{text.recordsAvailableLabel}</legend>
+                      {AVAILABLE_RECORD_VALUES.map((value) => (
+                        <label key={value}>
+                          <input
+                            type="checkbox"
+                            checked={formData.landRecord.recordsAvailable.includes(value)}
+                            onChange={() => toggleAvailableRecord(value)}
+                          />
+                          <span>{text.availableRecordOptions[value]}</span>
+                        </label>
+                      ))}
+                    </fieldset>
+
+                    <label>
+                      <span>{text.applicationAgeLabel}</span>
+                      <select
+                        value={formData.landRecord.applicationAge}
+                        onChange={(event) =>
+                          updateLandRecordField(
+                            "applicationAge",
+                            event.target.value as LandRecordDetails["applicationAge"],
+                          )
+                        }
+                      >
+                        <option value="">{text.applicationAgePlaceholder}</option>
+                        {APPLICATION_AGE_VALUES.map((value) => (
+                          <option key={value} value={value}>{text.applicationAgeOptions[value]}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                </details>
+
+                <details
+                  className="sl-record-section"
+                  name="sl-lot-record-accordion"
+                >
+                  <summary>{text.sectionFamilyTitle}</summary>
+                  <p className="sl-record-section-hint">
+                    {text.sectionFamilyHint}
+                  </p>
+                  <div className="sl-record-section-body">
+                    <label>
+                      <span>{text.originalApplicantNameLabel}</span>
+                      <input
+                        type="text"
+                        value={formData.landRecord.originalApplicantName}
+                        onChange={(event) => updateLandRecordField("originalApplicantName", event.target.value)}
+                        autoComplete="off"
+                      />
+                    </label>
+                    <label>
+                      <span>{text.originalApplicantStatusLabel}</span>
+                      <select
+                        value={formData.landRecord.originalApplicantStatus}
+                        onChange={(event) => updateLandRecordField(
+                          "originalApplicantStatus",
+                          event.target.value as LandRecordDetails["originalApplicantStatus"],
+                        )}
+                      >
+                        <option value="">{text.originalApplicantStatusPlaceholder}</option>
+                        <option value="alive">{text.statusAlive}</option>
+                        <option value="deceased">{text.statusDeceased}</option>
+                        <option value="unknown">{text.statusUnknown}</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span>{text.mainHeirNameLabel}</span>
+                      <input
+                        type="text"
+                        value={formData.landRecord.mainHeirName}
+                        onChange={(event) => updateLandRecordField("mainHeirName", event.target.value)}
+                        autoComplete="off"
+                      />
+                    </label>
+                    <label>
+                      <span>{text.relationshipToApplicantLabel}</span>
+                      <input
+                        type="text"
+                        value={formData.landRecord.relationshipToApplicant}
+                        onChange={(event) => updateLandRecordField("relationshipToApplicant", event.target.value)}
+                        autoComplete="off"
+                      />
+                    </label>
+                    <label>
+                      <span>{text.heirsCanIdentifyLocationLabel}</span>
+                      <select
+                        value={formData.landRecord.heirsCanIdentifyLocation}
+                        onChange={(event) => updateLandRecordField(
+                          "heirsCanIdentifyLocation",
+                          event.target.value as LandRecordDetails["heirsCanIdentifyLocation"],
+                        )}
+                      >
+                        <option value="">{text.heirsCanIdentifyLocationPlaceholder}</option>
+                        <option value="yes">{text.answerYes}</option>
+                        <option value="no">{text.answerNo}</option>
+                        <option value="not_sure">{text.answerNotSure}</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span>{text.landHistoryNotesLabel}</span>
+                      <textarea
+                        value={formData.landRecord.landHistoryNotes}
+                        onChange={(event) => updateLandRecordField("landHistoryNotes", event.target.value)}
+                        rows={4}
+                      />
+                    </label>
+                  </div>
+                </details>
+
+                <details
+                  className="sl-record-section"
+                  name="sl-lot-record-accordion"
+                >
+                  <summary>{text.sectionIssuesTitle}</summary>
+                  <p className="sl-record-section-hint">
+                    {text.sectionIssuesHint}
+                  </p>
+                  <div className="sl-record-section-body">
+                    <fieldset className="sl-record-checklist">
+                      <legend>{text.issueTagsLegend}</legend>
+                      {ISSUE_TAG_VALUES.map((value) => (
+                        <label key={value}>
+                          <input
+                            type="checkbox"
+                            checked={formData.landRecord.issueTags.includes(value)}
+                            onChange={() => toggleIssueTag(value)}
+                          />
+                          <span>{text.issueTagOptions[value]}</span>
+                        </label>
+                      ))}
+                    </fieldset>
+                  </div>
+                </details>
+
+                <details
+                  className="sl-record-section"
+                  name="sl-lot-record-accordion"
+                >
+                  <summary>{text.sectionNotesTitle}</summary>
+                  <p className="sl-record-section-hint">
+                    {text.sectionNotesHint}
+                  </p>
+                  <div className="sl-record-section-body">
+                    <label>
+                      <span>{text.generalNotesLabel}</span>
+                      <textarea
+                        value={formData.notes}
+                        onChange={(event) => updateField("notes", event.target.value)}
+                        rows={4}
+                      />
+                    </label>
+                  </div>
+                </details>
+
+                {renderReviewAndSave()}
+              </>
+            ) : (
+              <LotFormWizard
+                formData={formData}
+                text={text}
+                updateField={updateField}
+                updateLandRecordField={updateLandRecordField}
+                toggleAvailableRecord={toggleAvailableRecord}
+                toggleIssueTag={toggleIssueTag}
+                reviewAndSave={renderReviewAndSave()}
+              />
             )}
           </form>
 
