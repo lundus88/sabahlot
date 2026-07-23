@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { AppLanguage } from "@/lib/i18n/appLanguageStorage";
 import { getAppText } from "@/lib/i18n/appText";
@@ -22,15 +22,35 @@ export default function RegionIndicator({
   const [open, setOpen] = useState(false);
   const text = getAppText(language);
   const current = REGION_DEFINITIONS[region];
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () =>
+      document.removeEventListener("pointerdown", handlePointerDown);
+  }, [open]);
 
   return (
-    <div className="sl-region-indicator">
+    <div ref={rootRef} className="sl-region-indicator">
       <button
         type="button"
         className="sl-region-pill"
         onClick={() => setOpen((value) => !value)}
         title={text.regionPickerTitle}
         aria-label={text.regionPickerTitle}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        aria-controls="sl-region-options"
       >
         <span className="sl-region-pill-label">
           {current.label[language]}
@@ -43,7 +63,11 @@ export default function RegionIndicator({
       </button>
 
       {open && (
-        <div className="sl-region-popover" role="listbox">
+        <div
+          id="sl-region-options"
+          className="sl-region-popover"
+          role="listbox"
+        >
           {REGION_ORDER.map((id) => {
             const definition = REGION_DEFINITIONS[id];
             return (

@@ -5560,7 +5560,12 @@ select:focus-visible {
     gap: 4px;
     align-items: center;
     justify-content: flex-end;
-    z-index: 7000;
+    /* Was 7000 -- absurdly higher than every drawer/modal in this file
+       (max elsewhere is 1600). Combined with the width/height overflow
+       bug fixed above, that let this capsule visually blanket anything
+       near it. 1140 keeps it above the topbar (1100) it sits over,
+       still well below drawers/modals (1490+). */
+    z-index: 1140;
   }
 
   .sl-topbar-actions .sl-icon-button {
@@ -6265,9 +6270,15 @@ select:focus-visible {
     max-height: 66px;
   }
 
+  /* Final-winning mobile offset for .sl-map-navigation (last matching
+     max-width:768px rule in cascade order). Was 140px, leaving only ~14px
+     of clearance above .sl-floating-summary-card's resolved top edge
+     (bottom:74px + max-height:52px = 126px) at every width in the
+     360-640px range that both share -- below a safe touch/visual gap.
+     156px restores a ~30px gap without moving the card. */
   .sl-map-navigation {
     right: 8px !important;
-    bottom: calc(env(safe-area-inset-bottom) + 140px) !important;
+    bottom: calc(env(safe-area-inset-bottom) + 156px) !important;
     z-index: 1092 !important;
   }
 }
@@ -6392,6 +6403,11 @@ select:focus-visible {
     right: 0;
     width: calc(100vw - 24px);
     max-height: min(54dvh, calc(100dvh - 176px - env(safe-area-inset-top) - env(safe-area-inset-bottom))) !important;
+    /* .sl-field-gps-stack's own z-index (1130) is forced to `auto` above
+       once it's pinned static in the mobile control stack, so the card
+       needs its own stacking value here or it falls back to auto and
+       renders underneath .sl-map-navigation (z-index: 1092). */
+    z-index: 1130;
   }
 }
 
@@ -6454,11 +6470,18 @@ select:focus-visible {
 
 /* Alpha mobile field polish: keep secondary controls compact and quiet. */
 @media (max-width: 640px) {
+  /* Real-device QA fix: this previously forced the whole .sl-topbar-actions
+     container (language switcher + settings button together, ~76-80px of
+     real content) down to a single-icon 38x38 box. Content doesn't shrink
+     to fit a fixed box in flow layout, so it rendered ~36-40px outside its
+     own declared bounds -- landing on top of the GPS toggle / other header
+     controls, which is what real-device QA screenshots showed as
+     "everything overlapping". Height/width now come from content
+     (min-width:0, existing 36-38px .sl-icon-button sizing) instead of a
+     fixed box too small for two buttons. */
   .sl-topbar-actions {
     top: calc(env(safe-area-inset-top) + 8px) !important;
     right: 8px !important;
-    width: 38px !important;
-    height: 38px !important;
   }
 
   .sl-topbar .sl-icon-button,
@@ -7041,12 +7064,11 @@ select:focus-visible {
   cursor: pointer;
 }
 
-.sl-drawer-handle-bar {
-  width: 3px;
-  height: 24px;
+.sl-drawer-handle svg {
+  width: 13px;
+  height: 13px;
 
-  background: #94a3b8;
-  border-radius: 999px;
+  color: #475569;
 }
 
 /* =====================================================
@@ -7511,7 +7533,11 @@ select:focus-visible {
 }
 
 .sl-area-card {
+  left: 50%;
+  right: auto;
   width: 180px;
+  max-width: calc(100vw - 24px);
+  transform: translateX(-50%);
 }
 
 .sl-area-card-value {
@@ -7541,5 +7567,225 @@ select:focus-visible {
   .sl-shell-toast {
     max-width: calc(100vw - 32px);
     white-space: normal;
+  }
+}
+
+/* =====================================================
+   MOBILE LAYOUT CONTRACT
+   One set of shared zones replaces independent pixel offsets:
+   header -> secondary controls -> panels -> map workspace -> summary -> dock.
+   Keep this block last so older sprint overrides cannot win the cascade.
+   ===================================================== */
+@media (max-width: 768px) {
+  :root,
+  .sl-map-shell {
+    --sl-mobile-edge: 8px;
+    --sl-mobile-header-top: max(8px, env(safe-area-inset-top));
+    --sl-mobile-header-height: 84px;
+    --sl-mobile-secondary-top: calc(env(safe-area-inset-top) + 100px);
+    --sl-mobile-secondary-height: 38px;
+    --sl-mobile-panel-top: calc(env(safe-area-inset-top) + 132px);
+    --sl-mobile-dock-bottom: calc(env(safe-area-inset-bottom) + 8px);
+    --sl-mobile-dock-height: 58px;
+    --sl-mobile-summary-bottom: calc(env(safe-area-inset-bottom) + 74px);
+    --sl-mobile-field-controls-bottom: calc(env(safe-area-inset-bottom) + 140px);
+  }
+
+  .sl-topbar {
+    display: grid !important;
+    grid-template-columns: 34px minmax(112px, 1fr) auto auto !important;
+    grid-template-rows: 36px 36px !important;
+    align-items: center !important;
+    top: var(--sl-mobile-header-top) !important;
+    right: var(--sl-mobile-edge) !important;
+    left: var(--sl-mobile-edge) !important;
+    width: auto !important;
+    max-width: none !important;
+    min-height: var(--sl-mobile-header-height) !important;
+    height: var(--sl-mobile-header-height) !important;
+    padding: 4px !important;
+    gap: 4px !important;
+  }
+
+  .sl-topbar .sl-menu-button {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .sl-topbar .sl-brand-chip {
+    grid-column: 2;
+    grid-row: 1;
+    width: auto !important;
+    min-width: 0 !important;
+    height: 34px !important;
+    padding: 0 8px 0 0 !important;
+    gap: 6px !important;
+  }
+
+  .sl-topbar .sl-brand-chip > span:not(.sl-brand-mark) {
+    display: block !important;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .sl-topbar .sl-brand-chip strong {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px !important;
+  }
+
+  .sl-topbar .sl-brand-chip small {
+    display: none !important;
+  }
+
+  .sl-topbar .sl-region-indicator {
+    grid-column: 3;
+    grid-row: 1;
+    min-width: 0;
+  }
+
+  .sl-topbar .sl-region-pill {
+    max-width: 72px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .sl-topbar .sl-region-pill .sl-region-badge {
+    display: none;
+  }
+
+  .sl-topbar .sl-topbar-actions {
+    grid-column: 4;
+    grid-row: 1;
+    position: static !important;
+    width: auto !important;
+    height: 34px !important;
+    margin: 0;
+  }
+
+  .sl-topbar .sl-search {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+
+  .sl-mobile-top-control-stack {
+    top: auto !important;
+    right: 12px !important;
+    bottom: var(--sl-mobile-field-controls-bottom) !important;
+    left: auto !important;
+    width: auto !important;
+    min-height: 48px !important;
+    height: 48px !important;
+  }
+
+  .sl-mobile-top-control-stack .sl-field-gps-stack,
+  .sl-mobile-top-control-stack .sl-field-gps-panel,
+  .sl-mobile-top-control-stack .sl-field-gps-toggle {
+    pointer-events: auto !important;
+  }
+
+  .sl-mobile-top-control-stack .sl-field-gps-toggle {
+    width: 52px !important;
+    min-width: 52px !important;
+    height: 48px !important;
+    min-height: 48px !important;
+    padding: 0 !important;
+    border-radius: 16px !important;
+  }
+
+  .sl-mobile-top-control-stack .sl-field-gps-card {
+    top: auto !important;
+    right: 0 !important;
+    bottom: calc(100% + 8px) !important;
+    width: calc(100vw - 24px) !important;
+    max-height: min(58dvh, calc(100dvh - 176px - env(safe-area-inset-top) - env(safe-area-inset-bottom))) !important;
+  }
+
+  .sl-public-beta-label {
+    top: var(--sl-mobile-secondary-top) !important;
+    max-width: min(132px, calc(100vw - 150px));
+  }
+
+  .sl-topbar-actions .sl-language-switcher.is-compact-open .sl-language-options {
+    position: fixed !important;
+    /* Header ends at ~50px and the secondary GPS/Alpha row occupies
+       58-96px. Popovers start after both rows so they never cover a
+       touch target, regardless of which control opened them. */
+    top: var(--sl-mobile-panel-top) !important;
+    right: var(--sl-mobile-edge) !important;
+  }
+
+  /* Match the language/GPS panel boundary above. The previous 84px offset
+     crossed the GPS row (58-96px), so the popover could still intercept
+     the GPS button even though its click-outside behaviour was correct. */
+  .sl-region-popover {
+    position: fixed !important;
+    top: var(--sl-mobile-panel-top) !important;
+    left: var(--sl-mobile-edge) !important;
+    right: auto !important;
+    max-width: calc(100vw - 16px);
+  }
+
+  .sl-settings-card,
+  .sl-object-list {
+    top: var(--sl-mobile-panel-top) !important;
+  }
+
+  /* Pinch zoom is native on phones. Retain only Fit and Home, in a compact
+     middle-right rail which cannot collide with either top or bottom zones. */
+  .sl-map-navigation {
+    top: 50% !important;
+    right: var(--sl-mobile-edge) !important;
+    bottom: auto !important;
+    transform: translateY(-50%) !important;
+    z-index: 1092 !important;
+  }
+
+  .sl-map-navigation button:nth-child(1),
+  .sl-map-navigation button:nth-child(2) {
+    display: none !important;
+  }
+
+  .sl-floating-summary-card {
+    right: var(--sl-mobile-edge) !important;
+    bottom: var(--sl-mobile-summary-bottom) !important;
+    left: var(--sl-mobile-edge) !important;
+    width: auto !important;
+    max-width: none !important;
+  }
+
+  .sl-tool-dock {
+    right: var(--sl-mobile-edge) !important;
+    bottom: var(--sl-mobile-dock-bottom) !important;
+    left: var(--sl-mobile-edge) !important;
+    height: var(--sl-mobile-dock-height) !important;
+    max-height: var(--sl-mobile-dock-height) !important;
+  }
+
+  .sl-area-card {
+    width: min(180px, calc(100vw - 24px));
+    max-width: calc(100vw - 24px) !important;
+    box-sizing: border-box;
+  }
+}
+
+@media (max-width: 380px) {
+  .sl-topbar {
+    grid-template-columns: 34px minmax(96px, 1fr) minmax(44px, auto) auto !important;
+  }
+
+  .sl-topbar .sl-region-pill {
+    max-width: 56px;
+    padding-inline: 6px !important;
+  }
+
+  .sl-public-beta-label {
+    max-width: 112px;
+    font-size: 7px;
   }
 }

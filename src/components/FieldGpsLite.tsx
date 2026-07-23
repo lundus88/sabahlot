@@ -839,6 +839,10 @@ export default function FieldGpsLite({
     setOpen,
   ] = useState(false);
   const [
+    sabahlotDebugInfo,
+    setSabahlotDebugInfo,
+  ] = useState("");
+  const [
     status,
     setStatus,
   ] = useState(
@@ -2407,7 +2411,7 @@ export default function FieldGpsLite({
           );
           clearCameraErrorDetails();
           setArMessage(
-            "Camera requires HTTPS. Please open https://beta.sabahlot.com",
+            "Camera requires HTTPS. Please open https://alpha.sabahlot.com",
           );
           return;
         }
@@ -2423,7 +2427,7 @@ export default function FieldGpsLite({
           );
           clearCameraErrorDetails();
           setArMessage(
-            "Camera is not supported in this browser. Open beta.sabahlot.com in Chrome Android or Safari iPhone.",
+            "Camera is not supported in this browser. Open alpha.sabahlot.com in Chrome Android or Safari iPhone.",
           );
           return;
         }
@@ -2981,30 +2985,48 @@ export default function FieldGpsLite({
         type="button"
         className="sl-field-gps-toggle"
         onClick={() => {
-          if (
-            open &&
-            arActive
-          ) {
-            stopArGuide();
-          }
-
-          setOpen(
-            (current) => {
-              const nextOpen =
-                !current;
-
-              if (nextOpen) {
-                window.dispatchEvent(
-                  new CustomEvent(
-                    "sabahlot:field-gps-panel-opened",
-                  ),
-                );
-              }
-
-              return nextOpen;
-            },
+          setSabahlotDebugInfo(
+            `tap received, open=${open}`,
           );
+
+          try {
+            if (
+              open &&
+              arActive
+            ) {
+              stopArGuide();
+            }
+
+            const nextOpen = !open;
+
+            setOpen(nextOpen);
+
+            if (nextOpen) {
+              window.dispatchEvent(
+                new CustomEvent(
+                  "sabahlot:field-gps-panel-opened",
+                ),
+              );
+
+              if (!gpsActive) {
+                startGps();
+              }
+            }
+
+            setSabahlotDebugInfo(
+              `handler ok, nextOpen=${nextOpen}`,
+            );
+          } catch (err) {
+            setSabahlotDebugInfo(
+              `ERROR: ${
+                err instanceof Error
+                  ? err.message
+                  : String(err)
+              }`,
+            );
+          }
         }}
+        aria-label={gpsActive ? "Open active GPS" : "Start GPS"}
       >
         <span className="sl-field-gps-toggle-label-full">
           Handheld GPS
@@ -3013,6 +3035,29 @@ export default function FieldGpsLite({
           GPS
         </span>
       </button>
+
+      <div
+        style={{
+          position: "fixed",
+          left: 4,
+          bottom: 4,
+          zIndex: 2147483647,
+          background: "#dc2626",
+          color: "#fff",
+          fontSize: 11,
+          fontFamily: "monospace",
+          padding: "4px 8px",
+          borderRadius: 4,
+          pointerEvents: "none",
+          maxWidth: "calc(100vw - 8px)",
+          wordBreak: "break-word",
+        }}
+      >
+        SABAHLOT DEBUG: live open={String(open)} gpsActive={String(gpsActive)}
+        {sabahlotDebugInfo
+          ? ` | last: ${sabahlotDebugInfo}`
+          : ""}
+      </div>
 
       {open && (
         <div className="sl-field-gps-card">
@@ -4127,7 +4172,7 @@ export default function FieldGpsLite({
 
           <section className="sl-field-gps-section sl-beta-help-section">
             <div className="sl-field-gps-heading">
-              <span>Bantuan &amp; Maklum Balas Beta</span>
+              <span>Bantuan &amp; Maklum Balas Alpha</span>
             </div>
 
             <div className="sl-field-gps-target-grid">
@@ -4135,7 +4180,7 @@ export default function FieldGpsLite({
               <BugReportButton />
               <FeedbackExportButton />
               <Link href="/manual-beta" className="sl-beta-action-button">
-                Manual Pengguna Beta
+                Manual Pengguna Alpha
               </Link>
             </div>
           </section>
