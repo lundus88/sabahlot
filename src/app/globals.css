@@ -6403,6 +6403,11 @@ select:focus-visible {
     right: 0;
     width: calc(100vw - 24px);
     max-height: min(54dvh, calc(100dvh - 176px - env(safe-area-inset-top) - env(safe-area-inset-bottom))) !important;
+    /* .sl-field-gps-stack's own z-index (1130) is forced to `auto` above
+       once it's pinned static in the mobile control stack, so the card
+       needs its own stacking value here or it falls back to auto and
+       renders underneath .sl-map-navigation (z-index: 1092). */
+    z-index: 1130;
   }
 }
 
