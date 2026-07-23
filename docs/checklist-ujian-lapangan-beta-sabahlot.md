@@ -27,6 +27,12 @@ Tandakan setiap item selepas diuji di lapangan.
 - [ ] Back to Map — sasaran aktif kekal
 - [ ] Refresh browser — sasaran aktif dipulihkan
 
+## Ketahanan Lapangan
+
+- [ ] Mod pesawat — Mark Point masih berfungsi tanpa signal data
+- [ ] Mod pesawat — Export PDF/KML masih berfungsi tanpa signal data
+- [ ] Bateri — GPS watch berterusan + AR sekali-sekala selama 6–8 jam sesi lapangan
+
 ## Eksport
 
 - [ ] Export CSV

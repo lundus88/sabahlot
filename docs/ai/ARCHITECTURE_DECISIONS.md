@@ -91,3 +91,21 @@ Each decision is recorded once and never silently overridden. If a later sprint 
 **Reason:** No unique constraint exists on `land_record_geometries` and adding one requires a migration, out of scope for Sprint 02D-1A.
 **Consequences:** This has a documented, accepted TOCTOU race under true concurrent requests (two simultaneous creates for the same parent could theoretically both pass the check) — tracked as a MEDIUM finding, not silently hidden, and not a blocker for the sprint that introduced it.
 **Status:** Accepted with known limitation (Sprint 02D-1A). Revisit if concurrent-create abuse is ever observed in practice.
+
+### ADR-016
+**Decision:** No third-party device or vendor brand name (e.g. specific GNSS receiver/smartphone model names) may appear in any user-facing string, code identifier, filename, or public documentation for the Handheld GPS module. Internal accuracy targets (e.g. "0.5 m field reference") are chosen to be reasonable for a class of rugged Android GNSS devices generally, and are recorded and discussed only in private planning context (chat with AI collaborators, non-public sprint notes), never copied into the codebase or docs directories.
+**Reason:** SabahLot must not be seen as designed around, endorsed by, or imitating any specific commercial hardware vendor. The product's existing "preliminary reference only, not affiliated with JTU Sabah" disclaimer stance extends to hardware neutrality.
+**Consequences:** Accuracy thresholds and quality grades (`gps-quality.ts`) must be justified in generic terms ("typical rugged GNSS Android device performance") in any comment or commit message, not by naming the device used for calibration. Any future contributor (human or AI) proposing a code/doc change that references a specific device/vendor name should be redirected to generic language before merge. This rule applies to third-party commercial hardware/device vendors only; references to the project owner's own other tools (e.g. Pembantu e-BKL) are not restricted by this ADR.
+**Status:** Accepted.
+
+### ADR-017
+**Decision:** The Handheld GPS module (`FieldGpsLite.tsx`, `coordinate-parser.ts`, `CoordinateFinder.tsx`) will offer a **selectable coordinate system for display/output**, not just WGS84. Planned initial set, in priority order for the Sabah/Malaysia context:
+1. **WGS84** (DD / DMS / DDM) — existing, default, capture format from `navigator.geolocation`
+2. **BRSO Timbalai** (Borneo RSO, EPSG:29873 grid / EPSG:1236 datum shift) — Sabah/Sarawak cadastral standard
+3. **GDM2000** (Geocentric Datum of Malaysia 2000, current national datum) — both Peninsular RSO and Borneo RSO grid variants
+4. **UTM** (Zone 47N–50N as applicable) — general topographic/GIS interchange use
+5. **Cassini-Soldner** — deferred/optional, only if a concrete cadastral-legacy use case arises; not part of initial scope
+
+**Reason:** Malaysian land surveying practice routinely works across these systems depending on state (Sabah vs. Peninsular) and document vintage (older lots may still reference Cassini/Timbalai 1948). Restricting SabahLot to WGS84-only limits its usefulness as a field reference tool for licensed surveyors used to reading grid coordinates.
+**Consequences:** `coordinate-parser.ts` currently exports `parseWgs84Coordinate()` only — no BRSO/GDM2000/UTM transform exists in this repo today. The Hotine Oblique Mercator (variant B) + datum-shift logic already verified to sub-1mm round-trip accuracy exists in the separate **Pembantu e-BKL** tool and should be **ported and adapted**, not rebuilt from scratch, to avoid re-deriving/re-verifying projection math. This is net-new scope beyond the current 0.5 m accuracy-calibration task and should be scheduled as its own small sprint after the accuracy-grade calibration (ADR-016 context) lands, so the two changes can be tested and reviewed independently.
+**Status:** Proposed — pending owner confirmation of priority order and sprint scheduling before implementation begins.

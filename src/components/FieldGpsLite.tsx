@@ -3037,6 +3037,11 @@ export default function FieldGpsLite({
             Preliminary Field Assist
           </p>
 
+          <p className="sl-field-gps-note">
+            Capture works without signal. Map tiles and AR camera view
+            need a connection.
+          </p>
+
           <FieldGpsAccuracyPanel
             reading={reading}
             status={status}
@@ -3056,6 +3061,12 @@ export default function FieldGpsLite({
               setAllowApproximate
             }
           />
+
+          <p className="sl-field-gps-disclaimer">
+            This grade reflects device GPS accuracy only, not
+            cadastral-grade QA/QC (HRMS/VRMS/PDOP). For full QA/QC on raw
+            GNSS observations, use the Pembantu e-BKL tool.
+          </p>
 
           <section className="sl-field-gps-section">
             <div className="sl-field-gps-actions">

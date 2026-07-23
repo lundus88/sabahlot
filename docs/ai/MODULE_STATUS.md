@@ -5,7 +5,7 @@ _Last updated: 2026-07-20 (post-merge documentation sync for PR #23 and PR #24).
 | Module | Status | Environment | Cloud write | UI status | Next action |
 |---|---|---|---|---|---|
 | Map / local lots | Done | Alpha/Beta (localStorage) | No (legacy `lots` dual-write only, insert-only, out of scope for current work) | Active | None planned in current sprint series |
-| Handheld GPS | Done | Alpha/Beta | No | Active | None planned |
+| Handheld GPS | Done — accuracy-grade recalibrated 2026-07-23 (A/B/C/D now 0.5/1/3m, was 5/10/25m) plus QA/QC-scope and offline-capability disclaimer copy added | Alpha/Beta | No | Active | Physical-device verification of new thresholds; Could-tier import/AR-multi-target items tracked in `GPS_MODULE_BRAINSTORM_2026-07-23.md` |
 | AR Find Point | Done | Alpha/Beta | No | Active | None planned |
 | Beta Notice | Done | Beta | No | Active | None |
 | Feedback | Done (localStorage only) | Alpha/Beta | No (cloud `feedback` table exists, unused) | Active | Owner decision needed on cloud sync |
