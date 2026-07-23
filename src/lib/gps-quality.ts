@@ -12,15 +12,15 @@ export function getGpsQualityGrade(
     return "D";
   }
 
-  if (accuracyMeters <= 5) {
+  if (accuracyMeters <= 0.5) {
     return "A";
   }
 
-  if (accuracyMeters <= 10) {
+  if (accuracyMeters <= 1) {
     return "B";
   }
 
-  if (accuracyMeters <= 25) {
+  if (accuracyMeters <= 3) {
     return "C";
   }
 
