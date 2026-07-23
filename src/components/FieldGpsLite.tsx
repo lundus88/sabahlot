@@ -3036,27 +3036,28 @@ export default function FieldGpsLite({
         </span>
       </button>
 
-      {sabahlotDebugInfo && (
-        <div
-          style={{
-            position: "fixed",
-            left: 4,
-            bottom: 4,
-            zIndex: 2147483647,
-            background: "#dc2626",
-            color: "#fff",
-            fontSize: 11,
-            fontFamily: "monospace",
-            padding: "4px 8px",
-            borderRadius: 4,
-            pointerEvents: "none",
-            maxWidth: "calc(100vw - 8px)",
-            wordBreak: "break-word",
-          }}
-        >
-          SABAHLOT DEBUG: {sabahlotDebugInfo}
-        </div>
-      )}
+      <div
+        style={{
+          position: "fixed",
+          left: 4,
+          bottom: 4,
+          zIndex: 2147483647,
+          background: "#dc2626",
+          color: "#fff",
+          fontSize: 11,
+          fontFamily: "monospace",
+          padding: "4px 8px",
+          borderRadius: 4,
+          pointerEvents: "none",
+          maxWidth: "calc(100vw - 8px)",
+          wordBreak: "break-word",
+        }}
+      >
+        SABAHLOT DEBUG: live open={String(open)} gpsActive={String(gpsActive)}
+        {sabahlotDebugInfo
+          ? ` | last: ${sabahlotDebugInfo}`
+          : ""}
+      </div>
 
       {open && (
         <div className="sl-field-gps-card">
