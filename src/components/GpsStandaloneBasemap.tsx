@@ -3,6 +3,7 @@
 import {
   useEffect,
   useRef,
+  useState,
 } from "react";
 
 import type { FieldGpsPoint } from "@/lib/field-gps.types";
@@ -35,6 +36,13 @@ export default function GpsStandaloneBasemap({
     useRef<typeof import("leaflet") | null>(
       null,
     );
+  const lastPositionRef = useRef<
+    [number, number] | null
+  >(null);
+  const [
+    hasFix,
+    setHasFix,
+  ] = useState(false);
 
   useEffect(() => {
     let marker: import("leaflet").Marker | null =
@@ -95,6 +103,12 @@ export default function GpsStandaloneBasemap({
                 position.coords.latitude;
               const lng =
                 position.coords.longitude;
+
+              lastPositionRef.current = [
+                lat,
+                lng,
+              ];
+              setHasFix(true);
 
               if (!marker) {
                 marker = L.marker([
@@ -178,11 +192,35 @@ export default function GpsStandaloneBasemap({
     });
   }, [points]);
 
+  const recenter = () => {
+    const map = mapRef.current;
+    const position = lastPositionRef.current;
+
+    if (!map || !position) {
+      return;
+    }
+
+    map.setView(position, DEFAULT_ZOOM);
+  };
+
   return (
-    <div
-      ref={containerRef}
-      className="sl-gps-standalone-basemap"
-      aria-label="Basemap showing current location and marked points"
-    />
+    <>
+      <div
+        ref={containerRef}
+        className="sl-gps-standalone-basemap"
+        aria-label="Basemap showing current location and marked points"
+      />
+
+      {hasFix && (
+        <button
+          type="button"
+          className="sl-gps-recenter-button"
+          onClick={recenter}
+          aria-label="Track my position"
+        >
+          Track my position
+        </button>
+      )}
+    </>
   );
 }

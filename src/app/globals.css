@@ -231,6 +231,25 @@ select:focus-visible {
   display: none;
 }
 
+.sl-gps-recenter-button {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  z-index: 1140;
+  padding: 10px 16px;
+  background: rgba(15, 23, 42, 0.9);
+  color: #e2e8f0;
+  border: none;
+  border-radius: 999px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.sl-gps-recenter-button:active {
+  transform: translateX(-50%) scale(0.97);
+}
+
 .sl-field-gps-stack {
   position: absolute;
   right: 12px;
