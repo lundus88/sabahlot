@@ -183,7 +183,7 @@ select:focus-visible {
   left: 8px;
   top: 50%;
   transform: translateY(-50%);
-  z-index: 1120;
+  z-index: 1140;
   display: flex;
   flex-direction: column;
   gap: 6px;
