@@ -10,11 +10,18 @@ import "leaflet/dist/leaflet.css";
 
 export default function GpsStandalonePage() {
   const [points, setPoints] = useState<FieldGpsPoint[]>([]);
+  const [activeSection, setActiveSection] =
+    useState<string | null>(
+      "sl-field-gps-capture-section",
+    );
 
   return (
     <main className="sl-gps-standalone-shell">
       <GpsStandaloneBasemap points={points} />
-      <FieldGpsQuickActions />
+      <FieldGpsQuickActions
+        activeSection={activeSection}
+        onSelect={setActiveSection}
+      />
       <div className="sl-field-gps-stack">
         <FieldGpsLite
           enabled={true}
@@ -22,6 +29,8 @@ export default function GpsStandalonePage() {
           offlineMapNote=""
           onPointsChange={setPoints}
           startOpen={true}
+          activeSection={activeSection}
+          hideBetaFeedback={true}
         />
       </div>
     </main>

@@ -85,6 +85,8 @@ interface FieldGpsLiteProps {
     points: FieldGpsPoint[],
   ) => void;
   startOpen?: boolean;
+  activeSection?: string | null;
+  hideBetaFeedback?: boolean;
 }
 
 type CaptureMode =
@@ -849,8 +851,18 @@ export default function FieldGpsLite({
   onPolygonGenerated,
   onPointsChange,
   startOpen,
+  activeSection,
+  hideBetaFeedback,
 }: FieldGpsLiteProps) {
   const router = useRouter();
+
+  const sectionClassName = (
+    sectionId: string,
+  ) =>
+    activeSection && activeSection !== sectionId
+      ? "sl-field-gps-section sl-gps-section-hidden"
+      : "sl-field-gps-section";
+
   const [
     open,
     setOpen,
@@ -3202,7 +3214,7 @@ export default function FieldGpsLite({
           </p>
 
           <section
-            className="sl-field-gps-section"
+            className={sectionClassName("sl-field-gps-target-section")}
             id="sl-field-gps-target-section"
           >
             <div className="sl-field-gps-actions">
@@ -3939,7 +3951,7 @@ export default function FieldGpsLite({
           )}
 
           <section
-            className="sl-field-gps-section"
+            className={sectionClassName("sl-field-gps-capture-section")}
             id="sl-field-gps-capture-section"
           >
             <label className="sl-field-gps-label">
@@ -4088,7 +4100,7 @@ export default function FieldGpsLite({
           </section>
 
           <section
-            className="sl-field-gps-section"
+            className={sectionClassName("sl-field-gps-points-section")}
             id="sl-field-gps-points-section"
           >
             <div className="sl-field-gps-heading">
@@ -4207,9 +4219,18 @@ export default function FieldGpsLite({
             )}
           </section>
 
-          <FieldGpsInversePanel points={points} />
+          <div
+            className={
+              activeSection &&
+              activeSection !== "sl-field-gps-inverse-section"
+                ? "sl-gps-section-hidden"
+                : undefined
+            }
+          >
+            <FieldGpsInversePanel points={points} />
+          </div>
 
-          <section className="sl-field-gps-section">
+          <section className={activeSection ? "sl-field-gps-section sl-gps-section-hidden" : "sl-field-gps-section"}>
             <div className="sl-field-gps-heading">
               <span>Found points</span>
               <strong>
@@ -4278,7 +4299,7 @@ export default function FieldGpsLite({
             )}
           </section>
 
-          <section className="sl-field-gps-section">
+          <section className={activeSection ? "sl-field-gps-section sl-gps-section-hidden" : "sl-field-gps-section"}>
             <div className="sl-field-gps-heading">
               <span>Field Notes</span>
               <strong>
@@ -4377,20 +4398,22 @@ export default function FieldGpsLite({
             {FIELD_GPS_DISCLAIMER}
           </p>
 
-          <section className="sl-field-gps-section sl-beta-help-section">
-            <div className="sl-field-gps-heading">
-              <span>Bantuan &amp; Maklum Balas Beta</span>
-            </div>
+          {!hideBetaFeedback && (
+            <section className="sl-field-gps-section sl-beta-help-section">
+              <div className="sl-field-gps-heading">
+                <span>Bantuan &amp; Maklum Balas Beta</span>
+              </div>
 
-            <div className="sl-field-gps-target-grid">
-              <FeedbackForm />
-              <BugReportButton />
-              <FeedbackExportButton />
-              <Link href="/manual-beta" className="sl-beta-action-button">
-                Manual Pengguna Beta
-              </Link>
-            </div>
-          </section>
+              <div className="sl-field-gps-target-grid">
+                <FeedbackForm />
+                <BugReportButton />
+                <FeedbackExportButton />
+                <Link href="/manual-beta" className="sl-beta-action-button">
+                  Manual Pengguna Beta
+                </Link>
+              </div>
+            </section>
+          )}
         </div>
       )}
     </section>

@@ -178,46 +178,57 @@ select:focus-visible {
   z-index: 0;
 }
 
-.sl-gps-quick-actions {
-  position: relative;
+.sl-gps-icon-rail {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
   z-index: 1120;
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-  padding: 12px;
-  margin: 12px;
-  background: rgba(15, 23, 42, 0.92);
-  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+  background: rgba(15, 23, 42, 0.85);
+  border-radius: 14px;
 }
 
-.sl-gps-quick-action-tile {
+.sl-gps-rail-tile {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 14px 8px;
-  background: #1e293b;
+  gap: 2px;
+  width: 44px;
+  padding: 6px 2px;
+  background: transparent;
   border: none;
-  border-radius: 12px;
+  border-radius: 10px;
   cursor: pointer;
 }
 
-.sl-gps-quick-action-tile:active {
-  transform: scale(0.98);
+.sl-gps-rail-tile-active {
+  background: rgba(255, 255, 255, 0.12);
 }
 
-.sl-gps-quick-action-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
+.sl-gps-rail-tile:active {
+  transform: scale(0.96);
+}
+
+.sl-gps-rail-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.sl-gps-quick-action-label {
+.sl-gps-rail-label {
   color: #e2e8f0;
-  font-size: 12px;
+  font-size: 9px;
+}
+
+.sl-gps-section-hidden {
+  display: none;
 }
 
 .sl-field-gps-stack {
