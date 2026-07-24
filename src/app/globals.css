@@ -166,6 +166,60 @@ select:focus-visible {
   transform: translateX(-50%);
 }
 
+.sl-gps-standalone-shell {
+  position: relative;
+  min-height: 100dvh;
+  background: #0f172a;
+}
+
+.sl-gps-standalone-basemap {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.sl-gps-quick-actions {
+  position: relative;
+  z-index: 1120;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  padding: 12px;
+  margin: 12px;
+  background: rgba(15, 23, 42, 0.92);
+  border-radius: 16px;
+}
+
+.sl-gps-quick-action-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 8px;
+  background: #1e293b;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.sl-gps-quick-action-tile:active {
+  transform: scale(0.98);
+}
+
+.sl-gps-quick-action-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sl-gps-quick-action-label {
+  color: #e2e8f0;
+  font-size: 12px;
+}
+
 .sl-field-gps-stack {
   position: absolute;
   right: 12px;
@@ -175,6 +229,8 @@ select:focus-visible {
   gap: 8px;
   width: min(420px, calc(100vw - 24px));
   max-height: calc(100dvh - 116px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   pointer-events: none;
 }
 

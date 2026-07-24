@@ -72,6 +72,7 @@ import {
 } from "@/utils/gpsTargetMemory";
 
 import FieldGpsAccuracyPanel from "./FieldGpsAccuracyPanel";
+import FieldGpsInversePanel from "./FieldGpsInversePanel";
 
 interface FieldGpsLiteProps {
   enabled: boolean;
@@ -80,6 +81,10 @@ interface FieldGpsLiteProps {
   onPolygonGenerated?: (
     polygon: PolygonResult,
   ) => void;
+  onPointsChange?: (
+    points: FieldGpsPoint[],
+  ) => void;
+  startOpen?: boolean;
 }
 
 type CaptureMode =
@@ -842,12 +847,14 @@ export default function FieldGpsLite({
   recordName,
   offlineMapNote,
   onPolygonGenerated,
+  onPointsChange,
+  startOpen,
 }: FieldGpsLiteProps) {
   const router = useRouter();
   const [
     open,
     setOpen,
-  ] = useState(false);
+  ] = useState(startOpen ?? false);
   const [
     status,
     setStatus,
@@ -1464,6 +1471,13 @@ export default function FieldGpsLite({
     points,
     targetPoint,
     trackLog,
+  ]);
+
+  useEffect(() => {
+    onPointsChange?.(points);
+  }, [
+    onPointsChange,
+    points,
   ]);
 
   useEffect(() => {
@@ -3187,7 +3201,10 @@ export default function FieldGpsLite({
             GNSS observations, use the Pembantu e-BKL tool.
           </p>
 
-          <section className="sl-field-gps-section">
+          <section
+            className="sl-field-gps-section"
+            id="sl-field-gps-target-section"
+          >
             <div className="sl-field-gps-actions">
               <button
                 type="button"
@@ -3921,7 +3938,10 @@ export default function FieldGpsLite({
             </section>
           )}
 
-          <section className="sl-field-gps-section">
+          <section
+            className="sl-field-gps-section"
+            id="sl-field-gps-capture-section"
+          >
             <label className="sl-field-gps-label">
               <span>Occupation time</span>
               <select
@@ -4067,7 +4087,10 @@ export default function FieldGpsLite({
             )}
           </section>
 
-          <section className="sl-field-gps-section">
+          <section
+            className="sl-field-gps-section"
+            id="sl-field-gps-points-section"
+          >
             <div className="sl-field-gps-heading">
               <span>Point list</span>
               <strong>
@@ -4183,6 +4206,8 @@ export default function FieldGpsLite({
               </div>
             )}
           </section>
+
+          <FieldGpsInversePanel points={points} />
 
           <section className="sl-field-gps-section">
             <div className="sl-field-gps-heading">
