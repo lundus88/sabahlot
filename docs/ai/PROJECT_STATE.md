@@ -67,7 +67,7 @@ See `docs/ai/MODULE_STATUS.md` for the full per-module table.
 
 Between PR #24 and PR #31, five other PRs merged that this file had not previously recorded — backfilled here 2026-07-25:
 - **PR #25** (`80d7f6b`) — documentation sync after PR #23/#24 (the pass this file itself is a continuation of).
-- **PR #26** (`1b82317`) — completed local point-management UI (FieldGpsLite point list, delete confirmation, inline rename, single-point CSV/GeoJSON import bridge). **Does not** touch `src/lib/land-records/points-*.ts` or wire `createCloudPoint` — the cloud-write UI-wiring gap for points remains open (see next-sprint item 2).
+- **PR #26** (`1b82317`) — completed local point-management UI (FieldGpsLite point list, delete confirmation, inline rename, single-point CSV/GeoJSON import bridge). **Does not** touch `src/lib/land-records/points-*.ts` or wire `createCloudPoint` — the cloud-write UI-wiring gap for points remains open (see "Current approved next sprint" — Points cloud-write UI wiring).
 - **PR #27** (`1a0ecdb`) — mobile layout hardening: CategoryDrawer/Lot Information drawer kept within viewport.
 - **PR #28** (`3a6344b`) — mobile layout: CategoryDrawer edge handle no longer overlaps the Lot Information drawer.
 - **PR #29** (`9abe090`) — mobile map layout and lot information UX improvements.
@@ -76,19 +76,28 @@ None of PR #25–#29 touch any cloud-write path, Supabase migration, or `docs/ai
 
 ## Current approved next sprint
 
-No sprint is currently approved to start. Recommended next actions, each requiring its own explicit scope and approval:
+No sprint is currently approved to start. Reviewed item-by-item against `main@37f4065` on 2026-07-25; exactly two substantive items are actually open (verified from fact, not forced to a round number):
 
-1. Decide whether to merge the remaining, still-unmerged **doc-edit portion** of `b26ba8f` on `sprint-02c2-parent-cloud-ui-wiring` (its QA-fix portion is already merged via PR #19); do not delete that branch until this is intentionally handled.
-2. **Still open** — scope Points cloud-write UI wiring separately; PR #21 provides create-only backend persistence but nothing calls `createCloudPoint` from the UI yet. PR #26 completed a real but *different* need (local point-list management UX) and does not close this item — confirmed by inspecting PR #26's actual diff (`page.tsx`, `FieldGpsLite.tsx`, `globals.css`, `import-geometries.ts` only), not by assumption.
-3. ~~Harden `isCloudReadEnabled()`~~ — done, PR #23.
-4. ~~Geometry UI wiring~~ — done, PR #24.
-5. Consider formally recording PR #24's geometry-id mapping (an existing `drawing_objects` entry's own id, filtered to `category === "parent_lot"`) as its own ADR — `docs/ai/ARCHITECTURE_DECISIONS.md` currently stops at ADR-015 and does not document this choice, even though it's already shipped. Still not done; flagged as a suggested follow-up.
-6. Independently review and, if approved, clean up (retain-only vs. eventually delete) the now-superseded `sprint-02d1b-points-cloud-write` branch — no urgency, since it's confirmed to contain nothing `main` lacks.
-7. ~~Parties cloud create+update backend + create-only UI wiring~~ — done, PR #31.
-8. New, from PR #31: decide whether/when to add `updatedAt`/`createdAt` to `CloudLandParty` (`types.ts`/`mapper.ts`, both shared/Foundation-owned) so a real `updateCloudParty` UI path can eventually replace the current re-CREATE-on-every-save behavior.
-9. New, from PR #31: decide whether to surface parties sync status in the UI (a `partiesCloudSync` state already exists, tracked but deliberately unrendered) — mirroring geometry's status message, or left as-is.
-10. New, from PR #31: `index.ts` still does not barrel-export the parties modules (`parties-repository.ts`/`parties-validation.ts`/`parties-cache.ts`/`parties-write-coordinator.ts`/`parties-ui-sync.ts`) — out of scope for both parties sprints; a Foundation/Integration sprint should add this additively before other code needs to import them via `@/lib/land-records`.
-11. Retained branch cleanup: `sprint-parties-cloud-write` is merged (PR #31) and safe to delete on the remote whenever the owner confirms; not deleted automatically.
+1. **Points cloud-write UI wiring.** PR #21 (`main@d071d73`) provides create-only `land_points` backend persistence; nothing calls `createCloudPoint` from any UI save flow yet. **PR #26 is not this** — PR #26 ("complete points UI wiring") only completed local point-list management UX (FieldGpsLite point list, delete confirmation, inline rename, single-point CSV/GeoJSON import bridge). It touches `page.tsx`/`FieldGpsLite.tsx`/`globals.css`/`import-geometries.ts` only — none of `src/lib/land-records/points-*.ts` — and never calls the cloud-write coordinator. Confirmed by inspecting PR #26's actual diff, not by its title; do not let this be re-closed by assumption again. Needs its own explicit scope and approval before anyone starts it — no such sprint is approved as of this writing.
+2. **Documents / Supabase Storage (ADR-012).** Not started. Full module-tracking entry lives in `docs/ai/MODULE_STATUS.md` (row "Documents") and this file's Modules section ("Not started" list) — this entry is the cross-reference into "next sprint," not a duplicate, so the item is never again missing from this list. Current status: the `land-documents` Supabase Storage bucket (private, 10MB file-size limit, `image/*` + `application/pdf`) is being created manually by the owner directly via the Supabase Dashboard/CLI, separately from any Claude Code session — **not yet confirmed complete**. No cloud-write code, `storage.objects` RLS policy, or application code exists yet; remains its own, separately-scoped future sprint per ADR-012.
+
+### Housekeeping (rendah keutamaan)
+
+Small, scoped, non-blocking items — none of these are sprints in their own right:
+
+- Decide whether to merge the remaining, still-unmerged doc-edit portion of `b26ba8f` on `sprint-02c2-parent-cloud-ui-wiring` (its QA-fix portion already merged separately via PR #19). Branch still exists on remote as of 2026-07-25; do not delete until this is intentionally handled.
+- Formally record PR #24's geometry-id mapping (an existing `drawing_objects` entry's own id, filtered to `category === "parent_lot"`) as its own ADR — `docs/ai/ARCHITECTURE_DECISIONS.md` currently stops at ADR-015 and does not document this choice, even though it shipped in PR #24.
+- Clean up the now-superseded `sprint-02d1b-points-cloud-write` branch (confirmed to contain nothing `main` lacks) — still exists on remote as of 2026-07-25; no urgency.
+- Decide whether/when to add `updatedAt`/`createdAt` to `CloudLandParty` (`types.ts`/`mapper.ts`, both shared/Foundation-owned) so a real `updateCloudParty` UI path can eventually replace parties' current re-CREATE-on-every-save behavior.
+- Decide whether to surface parties sync status in the UI (a `partiesCloudSync` state from PR #31 exists, tracked but deliberately unrendered) — mirroring geometry's status message, or left as-is.
+- Barrel-export the parties modules via `index.ts` (`parties-repository.ts`/`parties-validation.ts`/`parties-cache.ts`/`parties-write-coordinator.ts`/`parties-ui-sync.ts`) — additive only, out of scope for both parties sprints that shipped them.
+- Delete the `sprint-parties-cloud-write` branch on the remote — merged via PR #31, confirmed safe, but **still exists** as of 2026-07-25: a `git push --delete` from a Claude Code session was blocked by that session's proxy egress policy (403), and no GitHub API tool for branch deletion was available either. Needs manual deletion via the GitHub UI.
+
+### Selesai (rekod sejarah, tidak lagi aktif)
+
+- ~~Harden `isCloudReadEnabled()`~~ — done, PR #23 (`main@a88316d`).
+- ~~Geometry UI wiring~~ — done, PR #24 (`main@91e64c0`).
+- ~~Parties cloud create+update backend + create-only UI wiring~~ — done, PR #31 (`main@f98445c8493f1764188ab6de8cf5f905274b0f51`).
 
 No Production/Beta project, migration, remote SQL, real cloud operation, or manual/Production deployment was touched by PR #18, PR #19, PR #21, PR #23–#29, PR #31, or this documentation pass. GitHub-triggered Vercel preview checks ran normally and passed on PR #31 (both `sabahlot` and `sabahlot-handheld` projects, `Ready`).
 
