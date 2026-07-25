@@ -52,8 +52,8 @@ Documents the actual, migrated schema (`supabase/migrations/202607110001` throug
 - **Writable in schema but NOT cloud-eligible in current sprint scope:** `id_number` — HIGH SENSITIVITY (government ID number), local-only until an explicit encryption/masking decision.
 - **DB-controlled:** `id`, `land_record_id`, `created_at`/`updated_at`.
 - **ID strategy:** Client-generated stable UUID — **note:** no local client object currently carries a party `id` at all (parties today are flat string fields, e.g. `LocalPdfIdentityPerson {name, idNo}`); a new UUID must be generated on first cloud sync and persisted back locally (Sprint 02A/02D-0 finding).
-- **Conflict strategy:** Same INSERT+23505 / atomic-UPDATE pattern as `land_records`/geometries (`updated_at` column exists).
-- **Current implementation status:** Not implemented. Design approved (Sprint 02D-0A) as create + update, minus `id_number`.
+- **Conflict strategy:** Same INSERT+23505 / atomic-UPDATE pattern as `land_records`/geometries (`updated_at` column exists — confirmed directly against `supabase/migrations/202607110007_create_land_parties.sql`: both the column and the `land_parties_set_updated_at` trigger exist).
+- **Current implementation status:** Backend implemented (create + update, minus `id_number` per ADR-014) on branch `sprint-parties-cloud-write`, based on `main@9abe090`; not yet committed/pushed pending owner review. Write: `parties-repository.ts`, `parties-write-coordinator.ts`, `parties-validation.ts`, `parties-cache.ts`. Not wired to Production UI or any UI at all this sprint. `index.ts` (shared barrel, outside this sprint's Allowed Files) does not yet re-export the new parties module — a future Foundation/Integration sprint would need to do that additively before any UI-wiring sprint can consume it via `@/lib/land-records`.
 
 ## `documents`
 - **Purpose:** Document METADATA only. No Supabase Storage bucket, no `storage.objects` policy, no upload capability exists yet — deliberately, per ADR-012.
