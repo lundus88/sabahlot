@@ -4,6 +4,7 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "CommonJS",
     "moduleResolution": "Node",
+    "rootDir": "../..",
     "baseUrl": "../..",
     "paths": {
       "@/*": ["src/*"]

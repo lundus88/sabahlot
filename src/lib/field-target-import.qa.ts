@@ -121,6 +121,23 @@ assert(
   "CSV empty: should warn that the file is empty",
 );
 
+const csvOutOfRange = parseCsvTargets(
+  [
+    "name,latitude,longitude",
+    "Point A,95.5,116.07",
+    "Point B,5.98,200.5",
+  ].join("\n"),
+);
+
+assert(
+  csvOutOfRange.points.length === 0,
+  "CSV out-of-range: invalid latitude/longitude must be skipped, not imported",
+);
+assert(
+  csvOutOfRange.skippedCount === 2,
+  "CSV out-of-range: skippedCount should equal invalid data row count",
+);
+
 // --- KML ---------------------------------------------------------------
 
 const kmlPoint = parseKmlTargets(
@@ -192,6 +209,36 @@ const kmlInvalid = parseKmlTargets("<kml><Document><Unclosed></Document></kml>")
 assert(
   Array.isArray(kmlInvalid.points),
   "KML invalid: should not throw and should return a points array",
+);
+
+const kmlOutOfRange = parseKmlTargets(
+  `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <Placemark>
+      <name>Bad Point</name>
+      <Point>
+        <coordinates>200.5,95.5,0</coordinates>
+      </Point>
+    </Placemark>
+  </Document>
+</kml>`,
+);
+
+assert(
+  kmlOutOfRange.points.length === 0,
+  "KML out-of-range: invalid coordinate must be skipped, not imported",
+);
+assert(
+  kmlOutOfRange.skippedCount === 1,
+  "KML out-of-range: skippedCount mismatch",
+);
+
+const kmlEmpty = parseKmlTargets("");
+assert(kmlEmpty.points.length === 0, "KML empty: should import zero points");
+assert(
+  !!kmlEmpty.warning,
+  "KML empty: should surface a warning rather than silently succeeding",
 );
 
 // --- DXF -----------------------------------------------------------------
