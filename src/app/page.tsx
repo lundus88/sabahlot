@@ -57,9 +57,19 @@ import {
 import {
   syncParentGeometryToCloud,
   syncParentLandRecordToCloud,
+  type CloudPartyRole,
   type GeometryUiSyncResult,
   type ParentSyncResult,
 } from "@/lib/land-records";
+// Deep import, not through "@/lib/land-records": index.ts is a shared
+// barrel file outside this sprint's Allowed Files and is deliberately
+// not updated to re-export the new parties-ui-sync module (see the
+// sprint report).
+import {
+  syncPdfIdentitiesToCloud,
+  type PartyIdentityInput,
+  type PartyUiSyncResult,
+} from "@/lib/land-records/parties-ui-sync";
 
 import type {
   AppLanguage,
@@ -177,6 +187,11 @@ type IdentityDisplayMode =
 interface PdfIdentityPerson {
   name: string;
   idNo: string;
+  // Client-generated stable UUID, assigned on first successful cloud
+  // sync to land_parties and persisted back locally (never regenerated
+  // on a later save) -- see src/lib/land-records/parties-ui-sync.ts.
+  // Absent for a person who has never been cloud-synced yet.
+  id?: string;
 }
 
 interface PdfIdentityFields {
@@ -1013,6 +1028,9 @@ function normalizePdfIdentities(
         typeof person?.idNo === "string"
           ? person.idNo
           : "",
+      ...(typeof person?.id === "string"
+        ? { id: person.id }
+        : {}),
     };
   };
 
@@ -1199,6 +1217,14 @@ export default function HomePage() {
   ] = useState<
     { status: "idle" } | { status: "saving" } | GeometryUiSyncResult
   >({ status: "idle" });
+
+  // Tracks the outcome of syncing the four PdfIdentityFields entries to
+  // land_parties. Not yet surfaced in the UI -- this sprint's scope is
+  // the cloud sync itself, not new UI/layout (see the sprint report).
+  const [
+    ,
+    setPartiesCloudSync,
+  ] = useState<PartyUiSyncResult[]>([]);
 
   const [
     isExportingPdf,
@@ -2166,6 +2192,82 @@ export default function HomePage() {
           drawingObjects,
         );
         setGeometryCloudSync(geometrySyncResult);
+
+        // Parties sync only after parent + geometry have settled, same
+        // ordering syncParentGeometryToCloud itself enforces via
+        // parentSyncResult.status. Each of the four fixed
+        // PdfIdentityFields slots maps to a stable CloudPartyRole; there
+        // is no "owner" slot in this form today, so that role value is
+        // never produced here. idNo is never read below -- the input
+        // type below has no field for it at all (ADR-014).
+        const partyIdentityInputs: PartyIdentityInput[] = [
+          {
+            role: "surveyor",
+            name: pdfIdentities.surveyor.name,
+            existingId: pdfIdentities.surveyor.id,
+          },
+          {
+            role: "witness",
+            name: pdfIdentities.witness.name,
+            existingId: pdfIdentities.witness.id,
+          },
+          {
+            role: "village_head",
+            name: pdfIdentities.villageHead.name,
+            existingId: pdfIdentities.villageHead.id,
+          },
+          {
+            role: "original_applicant",
+            name: pdfIdentities.applicant.name,
+            existingId: pdfIdentities.applicant.id,
+          },
+        ];
+
+        const partiesSyncResults = await syncPdfIdentitiesToCloud(
+          cloudClient,
+          parentSyncResult,
+          partyIdentityInputs,
+        );
+        setPartiesCloudSync(partiesSyncResults);
+
+        // Persist any freshly-generated party id back into local state
+        // (the existing pdfIdentities-watching auto-save effect then
+        // writes it into STORAGE_KEY on its own -- no manual
+        // localStorage write needed here) so the next save reuses the
+        // same id instead of generating a new one every time.
+        const partyFieldKeyByRole: Record<
+          CloudPartyRole,
+          keyof PdfIdentityFields | null
+        > = {
+          surveyor: "surveyor",
+          witness: "witness",
+          village_head: "villageHead",
+          original_applicant: "applicant",
+          owner: null,
+          main_heir: null,
+        };
+
+        const idsToPersist = partiesSyncResults.filter(
+          (result) => !!result.id && result.status !== "local_only",
+        );
+
+        if (idsToPersist.length > 0) {
+          setPdfIdentities((current) => {
+            let changed = false;
+            const next: PdfIdentityFields = { ...current };
+
+            for (const result of idsToPersist) {
+              const fieldKey = partyFieldKeyByRole[result.role];
+              if (!fieldKey || next[fieldKey].id === result.id) {
+                continue;
+              }
+              next[fieldKey] = { ...next[fieldKey], id: result.id };
+              changed = true;
+            }
+
+            return changed ? next : current;
+          });
+        }
 
         try {
           const supabase =
