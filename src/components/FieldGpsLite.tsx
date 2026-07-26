@@ -71,6 +71,16 @@ interface FieldGpsLiteProps {
   onPolygonGenerated?: (
     polygon: PolygonResult,
   ) => void;
+  // Reports the captured field-point list (the same `points` state
+  // that the delete-confirmation/rename UI operates on -- not
+  // `foundPoints`, which is a separate Find Point/AR navigation
+  // verification record, not a set of saved field points) up to the
+  // parent so its own save flow can sync them to the cloud. Fired on
+  // every change to `points`, including the initial restore from this
+  // component's own localStorage persistence.
+  onPointsChange?: (
+    points: FieldGpsPoint[],
+  ) => void;
 }
 
 type CaptureMode =
@@ -832,6 +842,7 @@ export default function FieldGpsLite({
   recordName,
   offlineMapNote,
   onPolygonGenerated,
+  onPointsChange,
 }: FieldGpsLiteProps) {
   const router = useRouter();
   const [
@@ -1430,6 +1441,26 @@ export default function FieldGpsLite({
     points,
     targetPoint,
     trackLog,
+  ]);
+
+  useEffect(() => {
+    // Deliberately not gated on fieldGpsRestoredRef, unlike the
+    // localStorage-persistence effect above: reporting an empty array
+    // for one render before restoration's setPoints() call lands is
+    // harmless (the parent just holds it in state until its own save
+    // flow reads it), whereas that same gate here would mean a
+    // restored-but-otherwise-untouched session never reports its
+    // points at all -- points restored from a prior visit would then
+    // silently never reach the parent's save flow.
+    if (!enabled) {
+      return;
+    }
+
+    onPointsChange?.(points);
+  }, [
+    enabled,
+    onPointsChange,
+    points,
   ]);
 
   useEffect(() => {

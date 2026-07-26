@@ -53,6 +53,9 @@ import {
 import {
   createKeyedCoordinatePoint,
 } from "@/lib/field-gps";
+import type {
+  FieldGpsPoint,
+} from "@/lib/field-gps.types";
 
 import {
   syncParentGeometryToCloud,
@@ -70,6 +73,14 @@ import {
   type PartyIdentityInput,
   type PartyUiSyncResult,
 } from "@/lib/land-records/parties-ui-sync";
+// Deep import for the same reason as parties-ui-sync above: index.ts
+// is outside this sprint's Allowed Files and is not updated to
+// re-export the new points-ui-sync module.
+import {
+  syncFieldGpsPointsToCloud,
+  type PointCaptureInput,
+  type PointUiSyncResult,
+} from "@/lib/land-records/points-ui-sync";
 
 import type {
   AppLanguage,
@@ -1226,6 +1237,22 @@ export default function HomePage() {
     setPartiesCloudSync,
   ] = useState<PartyUiSyncResult[]>([]);
 
+  // FieldGpsLite's own captured point list, reported up via
+  // onPointsChange. Not local-lots/manual-map state -- see the sprint
+  // report's investigation of FieldGpsLite's two point arrays
+  // (`points` vs. `foundPoints`) for why this is the save-worthy one.
+  const [
+    fieldGpsPoints,
+    setFieldGpsPoints,
+  ] = useState<FieldGpsPoint[]>([]);
+
+  // Tracks the outcome of syncing fieldGpsPoints to land_points. Not
+  // yet surfaced in the UI, same posture as partiesCloudSync above.
+  const [
+    ,
+    setPointsCloudSync,
+  ] = useState<PointUiSyncResult[]>([]);
+
   const [
     isExportingPdf,
     setIsExportingPdf,
@@ -2192,6 +2219,49 @@ export default function HomePage() {
           drawingObjects,
         );
         setGeometryCloudSync(geometrySyncResult);
+
+        // Points sync only after parent + geometry have settled, same
+        // ordering guarantee syncParentGeometryToCloud/
+        // syncPdfIdentitiesToCloud themselves enforce via
+        // parentSyncResult.status. Every FieldGpsLite point already
+        // carries its own stable id from capture (ADR-001) -- there is
+        // no id-generation step here, unlike parties. `pointType` is
+        // fixed to "boundary_mark" for every entry in this list: it is
+        // FieldGpsLite's general-purpose "Save Point" capture (phone
+        // GPS best-fix/averaged, keyed coordinate, or single-point
+        // CSV/GeoJSON import), the field-survey equivalent of a marked
+        // corner/reference point -- distinct from `foundPoints`
+        // (Find Point/AR Guide navigation-verification records, out of
+        // this sprint's scope) which would map to "found_point" if a
+        // future sprint wires those instead.
+        const pointCaptureInputs: PointCaptureInput[] = fieldGpsPoints.map(
+          (point) => ({
+            id: point.id,
+            pointType: "boundary_mark",
+            label: point.label,
+            latitude: point.latitude,
+            longitude: point.longitude,
+            altitude: point.altitude,
+            accuracyM: point.accuracyMeters,
+            altitudeAccuracyM: point.altitudeAccuracyMeters,
+            heading: point.heading,
+            speed: point.speed,
+            qualityGrade: point.qualityGrade,
+            captureMethod: point.captureMethod,
+            source: point.source,
+            sampleCount: point.sampleCount,
+            occupationSeconds: point.occupationSeconds,
+            note: point.note,
+            capturedAt: point.timestamp,
+          }),
+        );
+
+        const pointsSyncResults = await syncFieldGpsPointsToCloud(
+          cloudClient,
+          parentSyncResult,
+          pointCaptureInputs,
+        );
+        setPointsCloudSync(pointsSyncResults);
 
         // Parties sync only after parent + geometry have settled, same
         // ordering syncParentGeometryToCloud itself enforces via
@@ -7492,6 +7562,9 @@ export default function HomePage() {
             }
             onPolygonGenerated={
               handleFieldGpsPolygonGenerated
+            }
+            onPointsChange={
+              setFieldGpsPoints
             }
           />
         }
