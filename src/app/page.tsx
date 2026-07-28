@@ -81,6 +81,17 @@ import {
   type PointCaptureInput,
   type PointUiSyncResult,
 } from "@/lib/land-records/points-ui-sync";
+// Deep import for the same reason as parties-ui-sync/points-ui-sync
+// above: index.ts is outside this sprint's Allowed Files and is not
+// updated to re-export the new documents-ui-sync module.
+import {
+  syncPendingDocumentsToCloud,
+  type DocumentUiSyncResult,
+} from "@/lib/land-records/documents-ui-sync";
+import type { CloudDocumentType } from "@/lib/land-records/documents-validation";
+import DocumentsSection, {
+  type PendingDocumentEntry,
+} from "@/components/land-records/DocumentsSection";
 
 import type {
   AppLanguage,
@@ -1253,6 +1264,38 @@ export default function HomePage() {
     setPointsCloudSync,
   ] = useState<PointUiSyncResult[]>([]);
 
+  // Sprint documents cloud write: locally staged files awaiting upload,
+  // and the outcome of syncing them to `documents` + Storage on the
+  // next Save. UNLIKE partiesCloudSync/pointsCloudSync above, this IS
+  // surfaced in the UI (DocumentsSection.tsx) per the sprint brief.
+  // File objects cannot be persisted to localStorage, so pendingDocuments
+  // does not survive a page reload -- a known, documented limitation
+  // (see the sprint report), unlike pdfIdentities/fieldGpsPoints.
+  const [
+    pendingDocuments,
+    setPendingDocuments,
+  ] = useState<PendingDocumentEntry[]>([]);
+
+  const [
+    documentsCloudSync,
+    setDocumentsCloudSync,
+  ] = useState<DocumentUiSyncResult[]>([]);
+
+  const handleAddDocument = (entry: PendingDocumentEntry) => {
+    setPendingDocuments((current) => [...current, entry]);
+  };
+
+  const handleRemoveDocument = (id: string) => {
+    setPendingDocuments((current) => current.filter((doc) => doc.id !== id));
+    setDocumentsCloudSync((current) => current.filter((result) => result.id !== id));
+  };
+
+  const handleDocumentTypeChange = (id: string, documentType: CloudDocumentType) => {
+    setPendingDocuments((current) =>
+      current.map((doc) => (doc.id === id ? { ...doc, documentType } : doc)),
+    );
+  };
+
   const [
     isExportingPdf,
     setIsExportingPdf,
@@ -2338,6 +2381,20 @@ export default function HomePage() {
             return changed ? next : current;
           });
         }
+
+        // Documents sync only after parent + geometry + points +
+        // parties have settled -- same ordering guarantee
+        // syncPdfIdentitiesToCloud/syncFieldGpsPointsToCloud themselves
+        // enforce via parentSyncResult.status. Every pending document
+        // already carries its own stable id (assigned when added to the
+        // list in DocumentsSection.tsx) -- there is no id-generation
+        // step here, matching points rather than parties.
+        const documentsSyncResults = await syncPendingDocumentsToCloud(
+          cloudClient,
+          parentSyncResult,
+          pendingDocuments,
+        );
+        setDocumentsCloudSync(documentsSyncResults);
 
         try {
           const supabase =
@@ -8696,6 +8753,15 @@ export default function HomePage() {
                   autoComplete="off"
                 />
               </label>
+
+              <DocumentsSection
+                pendingDocuments={pendingDocuments}
+                onAdd={handleAddDocument}
+                onRemove={handleRemoveDocument}
+                onDocumentTypeChange={handleDocumentTypeChange}
+                syncResults={documentsCloudSync}
+                onFileRejected={(message) => setSaveMessage(message)}
+              />
 
               <div className="sl-output-preview">
                 <span>Output summary</span>

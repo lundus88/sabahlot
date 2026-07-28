@@ -7543,3 +7543,107 @@ select:focus-visible {
     white-space: normal;
   }
 }
+
+/* =====================================================
+   DOCUMENTS SECTION (sprint documents cloud write)
+   ===================================================== */
+
+.sl-documents-section {
+  padding: 12px;
+}
+
+.sl-documents-heading {
+  margin: 0 0 4px;
+  color: #1e293b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.sl-documents-add-button {
+  margin: 8px 0 12px;
+  padding: 9px 14px;
+  color: #0f172a;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sl-documents-add-button:hover {
+  background: #eef2f7;
+}
+
+.sl-documents-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sl-documents-list-item {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.sl-documents-list-item-main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sl-documents-list-item-main strong {
+  overflow: hidden;
+  color: #0f172a;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sl-documents-list-item-main span {
+  color: #64748b;
+  font-size: 9px;
+}
+
+.sl-documents-list-item select {
+  padding: 6px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  font-size: 10px;
+}
+
+.sl-documents-status {
+  padding: 3px 8px;
+  border-radius: 999px;
+  color: #475569;
+  background: #f1f5f9;
+  font-size: 9px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.sl-documents-status-documents_synced {
+  color: #166534;
+  background: #dcfce7;
+}
+
+.sl-documents-status-duplicate_conflict,
+.sl-documents-status-failed,
+.sl-documents-status-network_error,
+.sl-documents-status-invalid_input {
+  color: #991b1b;
+  background: #fee2e2;
+}
+
+.sl-documents-remove-button {
+  width: 30px;
+  height: 30px;
+}

@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "baseUrl": "../../..",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "jsx": "react-jsx"
+  },
+  "files": [
+    "types.ts",
+    "feature-gate.ts",
+    "validation.ts",
+    "geometry-repository.ts",
+    "documents-validation.ts",
+    "documents-repository.ts",
+    "documents-cache.ts",
+    "documents-write-coordinator.ts",
+    "documents-write.qa.ts"
+  ]
+}
