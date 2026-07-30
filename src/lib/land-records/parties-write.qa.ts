@@ -580,6 +580,7 @@ async function test17_DuplicateConflictCacheUnchanged() {
     geometries: [],
     points: [],
     parties: [],
+    documents: [],
     ownerName: null,
     originalApplicantStatus: "",
   };
@@ -787,6 +788,7 @@ function emptyCachedRecord(): CloudLandRecord {
     geometries: [],
     points: [],
     parties: [],
+    documents: [],
     ownerName: null,
     originalApplicantStatus: "",
   };

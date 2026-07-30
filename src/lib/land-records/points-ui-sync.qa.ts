@@ -42,6 +42,7 @@ function parentRecord(points: CloudLandPoint[] = []): NonNullable<ParentSyncResu
     geometries: [],
     points,
     parties: [],
+    documents: [],
     ownerName: null,
     originalApplicantStatus: "",
   };

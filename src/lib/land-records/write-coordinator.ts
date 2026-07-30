@@ -99,6 +99,7 @@ export async function createCloudLandRecord(
     geometries: [],
     points: [],
     parties: [],
+    documents: [],
   });
 
   const syncedAt = new Date().toISOString();
@@ -172,6 +173,7 @@ async function resolveDuplicateCreate(
     geometries: [],
     points: [],
     parties: [],
+    documents: [],
   });
 
   const syncedAt = new Date().toISOString();
@@ -249,6 +251,7 @@ export async function updateCloudLandRecord(
     geometries: [],
     points: [],
     parties: [],
+    documents: [],
   });
 
   const syncedAt = new Date().toISOString();
@@ -293,6 +296,7 @@ async function resolveNoRowsUpdated(
     geometries: [],
     points: [],
     parties: [],
+    documents: [],
   });
 
   // A conflict must never overwrite the last-known-good cache entry

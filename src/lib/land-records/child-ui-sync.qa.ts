@@ -58,6 +58,7 @@ function parentRecord(geometries: DrawingObject[] = []): CloudLandRecord {
     geometries,
     points: [],
     parties: [],
+    documents: [],
     ownerName: null,
     originalApplicantStatus: "",
   };
