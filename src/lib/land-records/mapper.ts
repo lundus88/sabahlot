@@ -4,6 +4,8 @@
 import type { DrawingObject } from "@/lib/drawing-types";
 import type { ApplicantStatus } from "@/lib/local-lots";
 import type {
+  CloudDocument,
+  CloudDocumentRow,
   CloudLandParty,
   CloudLandPartyRow,
   CloudLandPoint,
@@ -158,6 +160,20 @@ export function mapCloudPoint(row: CloudLandPointRow): CloudLandPoint {
     accuracyM: row.accuracy_m,
     note: row.note,
     capturedAt: row.captured_at,
+  };
+}
+
+// storage_bucket/storage_path are deliberately never surfaced here -- see
+// CloudDocument's own comment in types.ts.
+export function mapCloudDocument(row: CloudDocumentRow): CloudDocument {
+  return {
+    id: row.id,
+    documentType: row.document_type,
+    originalFilename: row.original_filename,
+    mimeType: row.mime_type,
+    sizeBytes: row.size_bytes,
+    isSensitive: row.is_sensitive,
+    createdAt: row.created_at,
   };
 }
 

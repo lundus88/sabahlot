@@ -39,6 +39,19 @@ export type CloudPointType =
   | "track_point"
   | "target_point";
 
+// Mirrors public.document_type in
+// supabase/migrations/202607110002_create_land_domain_enums.sql exactly.
+export type CloudDocumentType =
+  | "title_deed"
+  | "official_receipt"
+  | "application_letter"
+  | "plan_or_sketch"
+  | "site_photo"
+  | "pdf_plan_export"
+  | "kml_export"
+  | "dxf_export"
+  | "other";
+
 // Mirrors supabase/migrations/202607110004_create_land_records.sql exactly.
 export interface CloudLandRecordRow {
   id: string;
@@ -128,6 +141,24 @@ export interface CloudLandPartyRow {
   updated_at: string;
 }
 
+// Mirrors supabase/migrations/202607110008_create_documents.sql. Deliberately
+// excludes nothing -- unlike the domain-facing CloudDocument below, this row
+// type is the literal DB shape, including storage_bucket/storage_path (which
+// CloudDocument never surfaces directly; see that type's comment for why).
+export interface CloudDocumentRow {
+  id: string;
+  land_record_id: string | null;
+  uploaded_by: string | null;
+  document_type: CloudDocumentType;
+  storage_bucket: string;
+  storage_path: string;
+  original_filename: string;
+  mime_type: string | null;
+  size_bytes: number | null;
+  is_sensitive: boolean;
+  created_at: string;
+}
+
 export type LandRecordSyncState =
   | "idle"
   | "loading"
@@ -193,6 +224,23 @@ export interface CloudLandParty {
   relationshipToApplicant: string | null;
   contactPhone: string | null;
   contactEmail: string | null;
+}
+
+// Domain model for one document's metadata. Deliberately omits
+// storage_bucket/storage_path -- the migration's own comment ("No
+// permanent public URL is stored anywhere on this table") extends to this
+// domain type too: nothing here is a usable file location. A consumer
+// resolves the actual file via a short-lived signed URL (see
+// createDocumentSignedUrl in documents-repository.ts), never by reading a
+// path off this object.
+export interface CloudDocument {
+  id: string;
+  documentType: CloudDocumentType;
+  originalFilename: string;
+  mimeType: string | null;
+  sizeBytes: number | null;
+  isSensitive: boolean;
+  createdAt: string;
 }
 
 export interface CloudReadResult {

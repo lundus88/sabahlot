@@ -11,7 +11,7 @@ import type {
   DrawingGeometryType,
   DrawingLineStyle,
 } from "@/lib/drawing-types";
-import type { CloudPointType } from "./types";
+import type { CloudDocumentType, CloudPointType } from "./types";
 
 export type ChildErrorCode =
   | "unauthenticated"
@@ -25,13 +25,16 @@ export type ChildErrorCode =
   | "network_error"
   | "database_error";
 
-// Shared across all child tables (present sprint: geometry only).
-// Values this sprint's geometry functions can actually return:
-// local_only, saving, geometry_synced, failed, conflict, partial_sync.
-// The rest (record_synced, points_synced, parties_synced,
-// core_record_synced, points_out_of_sync) are declared here so the
-// union is stable for future sprints, but geometry code never produces
-// them -- see child-write-coordinator tests asserting this.
+// Shared across all child tables. Each child module only ever produces
+// the state(s) it owns -- e.g. geometry code never produces
+// "points_synced", points code never produces "documents_synced" -- see
+// each module's own write-coordinator tests asserting this.
+//
+// "documents_synced" (Sprint documents-cloud-write) is deliberately its
+// own state, not folded into "core_record_synced": ADR-010 reserves
+// "full_record_synced" for when parent + geometry + points + parties +
+// documents are ALL confirmed synced together, which this sprint alone
+// does not establish.
 export type ChildSyncState =
   | "local_only"
   | "saving"
@@ -39,6 +42,7 @@ export type ChildSyncState =
   | "geometry_synced"
   | "points_synced"
   | "parties_synced"
+  | "documents_synced"
   | "core_record_synced"
   | "points_out_of_sync"
   | "partial_sync"
@@ -139,5 +143,42 @@ export interface CreatePointInput extends PointWritableFields {
   // land_record (see the land_points migration's "two-branch
   // ownership" comment). null means an unlinked point, owned via
   // captured_by instead of via the parent.
+  landRecordId?: string | null;
+}
+
+// ---------------------------------------------------------------------
+// Sprint documents-cloud-write: document-specific writable fields.
+// CREATE-ONLY -- public.documents has no updated_at column (only
+// created_at), so there is deliberately no UpdateDocumentInput here,
+// mirroring the reasoning ADR-011 established for land_points (RLS
+// itself does permit UPDATE/DELETE on this table, unlike land_points --
+// see the migration -- but the application layer does not build either
+// without a safe optimistic-concurrency token; delete additionally
+// mirrors ADR-013's standing "delete is its own separate decision").
+//
+// mimeType/sizeBytes are deliberately NOT writable fields here: they are
+// always derived from the actual file Blob passed to
+// createCloudDocument (Blob.type / Blob.size), never trusted from a
+// caller-supplied field that could drift from the real uploaded bytes --
+// same "never trust caller-declared metadata that the platform can
+// derive itself" spirit as ADR-005's owner_id handling.
+// ---------------------------------------------------------------------
+export interface DocumentWritableFields {
+  documentType: CloudDocumentType;
+  originalFilename: string;
+  isSensitive?: boolean;
+}
+
+export interface CreateDocumentInput extends DocumentWritableFields {
+  // Stable child UUID, generated client-side (crypto.randomUUID(), same
+  // as every other table) and passed explicitly on INSERT -- this
+  // overrides public.documents.id's `default gen_random_uuid()` on
+  // purpose, so the ADR-001/ADR-002 stable-id-plus-23505-retry
+  // idempotency pattern applies here too, not just to tables whose
+  // column has no default at all.
+  id: string;
+  // Parent land_records.id. Nullable, mirroring land_points' two-branch
+  // ownership (see the documents migration comment): null means an
+  // unlinked document, owned via uploaded_by instead of via the parent.
   landRecordId?: string | null;
 }
