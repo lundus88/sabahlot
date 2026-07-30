@@ -60,6 +60,7 @@ import type {
 import {
   syncParentGeometryToCloud,
   syncParentLandRecordToCloud,
+  type CloudDocumentType,
   type CloudPartyRole,
   type GeometryUiSyncResult,
   type ParentSyncResult,
@@ -81,6 +82,14 @@ import {
   type PointCaptureInput,
   type PointUiSyncResult,
 } from "@/lib/land-records/points-ui-sync";
+// Deep import for the same reason as points-ui-sync/parties-ui-sync
+// above: index.ts is outside this sprint's Allowed Files and is not
+// updated to re-export the new documents-ui-sync module.
+import {
+  syncDocumentUploadsToCloud,
+  type DocumentUploadInput,
+  type DocumentUiSyncResult,
+} from "@/lib/land-records/documents-ui-sync";
 
 import type {
   AppLanguage,
@@ -210,6 +219,17 @@ interface PdfIdentityFields {
   witness: PdfIdentityPerson;
   villageHead: PdfIdentityPerson;
   applicant: PdfIdentityPerson;
+}
+
+// Sprint documents UI wiring: one locally-picked file awaiting cloud
+// sync. `id` is generated once, when the file is picked -- reused
+// verbatim on every subsequent save (ADR-001), never regenerated. Not
+// persisted to localStorage (see the documentUploads state comment).
+interface DocumentUploadItem {
+  id: string;
+  file: File;
+  documentType: CloudDocumentType;
+  isSensitive: boolean;
 }
 
 type PreviousPdfIdentityFields =
@@ -1237,6 +1257,30 @@ export default function HomePage() {
     setPartiesCloudSync,
   ] = useState<PartyUiSyncResult[]>([]);
 
+  // Sprint documents UI wiring: locally-picked files awaiting cloud
+  // sync, keyed by a client-generated id assigned at pick time
+  // (reused verbatim on every subsequent save, per ADR-001). Unlike
+  // every other save-worthy state on this page, this is deliberately
+  // NOT persisted to localStorage -- a File/Blob cannot be serialized,
+  // so an upload picked but not yet synced is lost on reload. See
+  // documents-ui-sync.ts's module comment.
+  const [
+    documentUploads,
+    setDocumentUploads,
+  ] = useState<DocumentUploadItem[]>([]);
+
+  const [
+    pendingDocumentType,
+    setPendingDocumentType,
+  ] = useState<CloudDocumentType>("site_photo");
+
+  // Tracks the outcome of syncing documentUploads to public.documents.
+  // Not yet surfaced in the UI, same posture as partiesCloudSync above.
+  const [
+    ,
+    setDocumentsCloudSync,
+  ] = useState<DocumentUiSyncResult[]>([]);
+
   // FieldGpsLite's own captured point list, reported up via
   // onPointsChange. Not local-lots/manual-map state -- see the sprint
   // report's investigation of FieldGpsLite's two point arrays
@@ -1785,6 +1829,38 @@ export default function HomePage() {
       }),
     );
     setHasUnsavedChanges(true);
+  };
+
+  // Sprint documents UI wiring: each picked file becomes its own
+  // DocumentUploadItem, tagged with whatever documentType is currently
+  // selected in the type dropdown -- not re-derived later. Resets the
+  // input's own value so picking the same file again (e.g. after
+  // removing it) fires onChange again.
+  const handleDocumentFilesSelected = (
+    event: ChangeEvent<HTMLInputElement>,
+  ) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) {
+      return;
+    }
+
+    const newItems: DocumentUploadItem[] = Array.from(files).map(
+      (file) => ({
+        id: crypto.randomUUID(),
+        file,
+        documentType: pendingDocumentType,
+        isSensitive: true,
+      }),
+    );
+
+    setDocumentUploads((current) => [...current, ...newItems]);
+    event.target.value = "";
+  };
+
+  const removeDocumentUpload = (id: string) => {
+    setDocumentUploads((current) =>
+      current.filter((item) => item.id !== id),
+    );
   };
 
   const openLotPanel =
@@ -2337,6 +2413,45 @@ export default function HomePage() {
 
             return changed ? next : current;
           });
+        }
+
+        // Documents sync only after parent + geometry have settled, same
+        // ordering syncParentGeometryToCloud/syncPdfIdentitiesToCloud
+        // themselves enforce via parentSyncResult.status. Every picked
+        // upload already carries its own stable id from pick time
+        // (ADR-001) -- there is no id-generation step here, same as
+        // points. Successfully-synced uploads are removed from local
+        // state (there is nothing else to do with them locally -- unlike
+        // points/parties, a synced file has no local field left to
+        // update); failed/local-only uploads are kept so the next save
+        // attempt retries them.
+        const documentUploadInputs: DocumentUploadInput[] = documentUploads.map(
+          (upload) => ({
+            id: upload.id,
+            documentType: upload.documentType,
+            originalFilename: upload.file.name,
+            isSensitive: upload.isSensitive,
+            file: upload.file,
+          }),
+        );
+
+        const documentsSyncResults = await syncDocumentUploadsToCloud(
+          cloudClient,
+          parentSyncResult,
+          documentUploadInputs,
+        );
+        setDocumentsCloudSync(documentsSyncResults);
+
+        const syncedDocumentIds = new Set(
+          documentsSyncResults
+            .filter((result) => result.status === "documents_synced")
+            .map((result) => result.id),
+        );
+
+        if (syncedDocumentIds.size > 0) {
+          setDocumentUploads((current) =>
+            current.filter((item) => !syncedDocumentIds.has(item.id)),
+          );
         }
 
         try {
@@ -7914,6 +8029,59 @@ export default function HomePage() {
                     ))}
                   </select>
                 </label>
+
+                <fieldset className="sl-record-checklist">
+                  <legend>Supporting documents (photo / PDF)</legend>
+                  <p className="sl-record-section-hint">
+                    Uploaded when you save, once signed in. Not saved locally --
+                    re-select the file if you leave this page before saving.
+                  </p>
+
+                  <label>
+                    <span>Document type</span>
+                    <select
+                      value={pendingDocumentType}
+                      onChange={(event) =>
+                        setPendingDocumentType(
+                          event.target.value as CloudDocumentType,
+                        )
+                      }
+                    >
+                      <option value="site_photo">Site photo</option>
+                      <option value="title_deed">Title deed</option>
+                      <option value="official_receipt">Official receipt</option>
+                      <option value="application_letter">Application letter</option>
+                      <option value="plan_or_sketch">Plan or sketch</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </label>
+
+                  <label>
+                    <span>Choose file(s)</span>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/heic,application/pdf"
+                      multiple
+                      onChange={handleDocumentFilesSelected}
+                    />
+                  </label>
+
+                  {documentUploads.length > 0 && (
+                    <ul>
+                      {documentUploads.map((item) => (
+                        <li key={item.id}>
+                          <span>{item.file.name}</span>{" "}
+                          <button
+                            type="button"
+                            onClick={() => removeDocumentUpload(item.id)}
+                          >
+                            Remove
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </fieldset>
               </div>
             </details>
 

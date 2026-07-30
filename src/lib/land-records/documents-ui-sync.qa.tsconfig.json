@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "rootDir": "../../..",
+    "baseUrl": "../../..",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "jsx": "react-jsx"
+  },
+  "files": [
+    "types.ts",
+    "mapper.ts",
+    "local-cache.ts",
+    "feature-gate.ts",
+    "validation.ts",
+    "write-coordinator.ts",
+    "parent-ui-sync.ts",
+    "child-types.ts",
+    "geometry-repository.ts",
+    "documents-validation.ts",
+    "documents-repository.ts",
+    "documents-write-coordinator.ts",
+    "documents-ui-sync.ts",
+    "documents-ui-sync.qa.ts"
+  ]
+}
