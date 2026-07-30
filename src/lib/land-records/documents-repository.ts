@@ -98,22 +98,36 @@ function looksLikeAlreadyExists(error: ChildRepositoryError, raw: unknown): bool
 
 /**
  * Uploads one file to the land-documents bucket at the caller-supplied
- * path. `upsert` is always false -- a genuine content update is out of
+ * path. `upsert` defaults to false -- a genuine content update is out of
  * scope this sprint (see child-types.ts), so an existing object at this
- * path is never silently replaced. The coordinator interprets an
- * `alreadyExists` failure as "resume/verify a prior attempt," never as
- * "retry the upload."
+ * path is never silently replaced by an ordinary first-time call. The
+ * coordinator interprets an `alreadyExists` failure (from a call made
+ * with the default `upsert: false`) as "resume/verify a prior attempt,"
+ * never as "retry the upload."
+ *
+ * The one exception is documents-write-coordinator.ts's own resume path:
+ * when a prior attempt's upload succeeded but its metadata insert never
+ * landed, the object at this path has no metadata row pointing at it yet
+ * -- nothing has ever confirmed it as a saved document. That path calls
+ * this function again with `upsert: true` so the bytes it is about to
+ * describe in the metadata insert are guaranteed to be the CURRENT
+ * call's file, not whatever an earlier, never-confirmed attempt left
+ * behind (which could differ if the caller retried the same id with a
+ * different file -- a caller-side misuse of the stable-id contract, but
+ * one this function does not otherwise have any way to detect or
+ * verify without downloading and hashing the existing object).
  */
 export async function uploadDocumentFile(
   supabase: SupabaseClient,
   path: string,
   file: Blob,
   contentType: string | null,
+  upsert = false,
 ): Promise<StorageUploadOutcome> {
   const { error } = await supabase.storage
     .from(DOCUMENTS_STORAGE_BUCKET)
     .upload(path, file, {
-      upsert: false,
+      upsert,
       ...(contentType ? { contentType } : {}),
     });
 
@@ -187,42 +201,4 @@ export async function getDocumentById(
   }
 
   return { ok: true, data: (data ?? null) as CloudDocumentRow | null };
-}
-
-export interface SignedUrlResult {
-  ok: true;
-  url: string;
-}
-export interface SignedUrlFailure {
-  ok: false;
-  error: ChildRepositoryError;
-}
-export type SignedUrlOutcome = SignedUrlResult | SignedUrlFailure;
-
-/**
- * Resolves a document's actual file location to a short-lived signed
- * URL, per the documents migration's own comment: "No permanent public
- * URL is stored anywhere on this table." `expiresInSeconds` has no
- * default here on purpose -- the caller must decide how long the URL
- * should live for its specific use case (e.g. an inline preview vs. a
- * download link) rather than inherit a value silently baked into this
- * repository.
- */
-export async function createDocumentSignedUrl(
-  supabase: SupabaseClient,
-  path: string,
-  expiresInSeconds: number,
-): Promise<SignedUrlOutcome> {
-  const { data, error } = await supabase.storage
-    .from(DOCUMENTS_STORAGE_BUCKET)
-    .createSignedUrl(path, expiresInSeconds);
-
-  if (error || !data?.signedUrl) {
-    return {
-      ok: false,
-      error: error ? toChildRepositoryError(error) : { message: "No signed URL returned." },
-    };
-  }
-
-  return { ok: true, url: data.signedUrl };
 }

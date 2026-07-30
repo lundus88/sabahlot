@@ -19,19 +19,24 @@
 //   2. Upload fails (any reason)         -> stop immediately. No insert
 //      is ever attempted for a file that didn't actually upload.
 //   3. Upload reports "already exists"   -> a previous attempt (this
-//      exact id, hence this exact path) already got the file to
-//      Storage. Look up the metadata row for this id:
+//      exact id, hence this exact path) already got A file to Storage --
+//      not necessarily THIS call's file (see case c). Look up the
+//      metadata row for this id:
 //        a. Row exists, content matches   -> verified idempotent
 //           success (no re-upload, no re-insert).
 //        b. Row exists, content differs   -> duplicate_conflict (row
 //           and the Storage object are both left untouched).
 //        c. Row does not exist yet        -> the previous attempt's
 //           upload succeeded but its insert never landed (dropped
-//           response, crash, etc.). Resume by inserting the metadata
-//           row now -- this is the one path where "upload already
-//           happened" and "insert has not happened" legitimately
-//           coexist, and it is exactly the case this design exists to
-//           handle safely.
+//           response, crash, etc.). Resume by re-uploading THIS call's
+//           file with upsert:true (guaranteeing the bytes in Storage
+//           actually match the metadata about to be inserted -- the
+//           orphaned object from the earlier attempt is safely
+//           overwritten, since nothing has ever confirmed it as a real
+//           document) and then inserting the metadata row -- this is
+//           the one path where "upload already happened" and "insert
+//           has not happened" legitimately coexist, and it is exactly
+//           the case this design exists to handle safely.
 //   4. Insert reports 23505 despite a fresh, non-"already exists"
 //      upload (a genuine race between two concurrent requests) ->
 //      resolved via the same existing-row comparison as (3a)/(3b).
@@ -155,6 +160,9 @@ export async function createCloudDocument(
         userId,
         dbPayload,
         requestedComparable,
+        path,
+        file,
+        fileMetadata.payload.mimeType,
       );
     }
 
@@ -176,6 +184,9 @@ export async function createCloudDocument(
         userId,
         dbPayload,
         requestedComparable,
+        path,
+        file,
+        fileMetadata.payload.mimeType,
       );
     }
 
@@ -202,10 +213,15 @@ export async function createCloudDocument(
  *   - Found, matching content  -> verified documents_synced.
  *   - Not found at all (Storage object exists, no row yet -- case 3c in
  *     the module comment: a previous attempt's upload succeeded but its
- *     insert never landed) -> resumes the two-phase write by inserting
- *     the metadata row now, using the SAME already-validated dbPayload
- *     the original attempt would have inserted. If that resuming insert
- *     itself somehow races into another 23505, this returns
+ *     insert never landed) -> re-uploads THIS call's `file` with
+ *     `upsert: true` first, so the bytes actually in Storage are
+ *     guaranteed to match the metadata about to be inserted (an earlier
+ *     attempt's orphaned object -- one no metadata row has ever pointed
+ *     at -- is safely overwritten rather than blindly trusted; see
+ *     uploadDocumentFile's own comment). Only then inserts the metadata
+ *     row, using the SAME already-validated dbPayload the original
+ *     attempt would have inserted. If the re-upload itself fails, or the
+ *     resuming insert somehow races into another 23505, this returns
  *     database_error rather than recursing again -- two conflicting
  *     resolution attempts in a row means something is genuinely wrong,
  *     not a simple dropped response.
@@ -217,6 +233,9 @@ async function resolveExistingDocument(
   uploadedBy: string,
   dbPayload: Record<string, unknown>,
   requestedComparable: ComparableDocumentPayload,
+  path: string,
+  file: Blob,
+  mimeType: string | null,
 ): Promise<ChildWriteResult<CloudDocument>> {
   const existing = await getDocumentById(supabase, id);
 
@@ -229,6 +248,16 @@ async function resolveExistingDocument(
   }
 
   if (!existing.data) {
+    const reuploaded = await uploadDocumentFile(supabase, path, file, mimeType, true);
+
+    if (!reuploaded.ok) {
+      return failure(
+        "failed",
+        "database_error",
+        "Could not confirm the uploaded file's content on this resume attempt; no metadata was written.",
+      );
+    }
+
     const resumed = await createDocumentRow(supabase, id, requestedLandRecordId, uploadedBy, dbPayload);
 
     if (!resumed.ok) {

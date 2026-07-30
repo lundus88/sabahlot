@@ -412,19 +412,44 @@ async function test10_OrphanedUploadResumesInsert() {
     error: { message: "The resource already exists", statusCode: "409" },
   });
   // No existing row: a previous attempt's upload succeeded but its
-  // insert never landed.
+  // insert never landed. The resume path must re-upload (upsert:true)
+  // THIS call's file before inserting, so a second upload response is
+  // needed here.
   client.selectByIdQueue.push({ data: null, error: null });
+  client.storageUploadQueue.push({ data: { path: `${USER_A}/${DOCUMENT_ID}` }, error: null });
   client.insertQueue.push({ data: baseDocumentRow(), error: null });
 
   const result = await call(client, baseDocumentInput(), fakeFile());
 
-  assert(result.ok, "expected an orphaned-upload retry to resume by inserting the metadata row");
+  assert(result.ok, "expected an orphaned-upload retry to resume by re-uploading then inserting the metadata row");
   if (result.ok) {
     assert(result.state === "documents_synced", "expected documents_synced once the resume insert succeeds");
   }
+  const uploadCalls = client.storageCalls.filter((c) => c.op === "upload");
+  assert(uploadCalls.length === 2, "expected exactly two upload attempts: the initial one, then the resume re-upload");
+  const resumeUploadOptions = uploadCalls[1]?.options as Record<string, unknown> | undefined;
+  assert(resumeUploadOptions?.upsert === true, "the resume re-upload must use upsert:true, unlike the initial upsert:false attempt");
   const insertCall = client.calls.find((c) => c.op === "insert");
   assert(insertCall !== undefined, "the resume path must actually attempt the insert");
-  console.log("Test 10 (storage object exists but no metadata row -> resumes by inserting now): PASS [executed]");
+  console.log("Test 10 (storage object exists but no metadata row -> re-uploads with upsert:true, then resumes by inserting now): PASS [executed]");
+}
+
+async function test10b_OrphanedUploadResumeReuploadFails() {
+  const client = new FakeSupabaseClient();
+  client.userId = USER_A;
+  client.storageUploadQueue.push({
+    data: null,
+    error: { message: "The resource already exists", statusCode: "409" },
+  });
+  client.selectByIdQueue.push({ data: null, error: null });
+  // The resume re-upload itself fails (e.g. network drop mid-retry).
+  client.storageUploadQueue.push({ data: null, error: { message: "network timeout" } });
+
+  const result = await call(client, baseDocumentInput(), fakeFile());
+
+  assert(!result.ok && result.code === "database_error", "expected a failed resume re-upload to surface as database_error");
+  assert(client.calls.every((c) => c.op !== "insert"), "no metadata may ever be inserted if the resume re-upload itself failed");
+  console.log("Test 10b (resume re-upload itself fails -> database_error, no metadata inserted): PASS [executed]");
 }
 
 async function test11_InsertLevelDuplicateResolvedSameWay() {
@@ -464,6 +489,9 @@ async function test13_DuplicateNotAccessibleToCurrentUser() {
   });
   // RLS hides the row entirely from a user who cannot access it.
   client.selectByIdQueue.push({ data: null, error: null });
+  // The resume re-upload itself succeeds (it's USER_B's own path/object);
+  // it's the resuming INSERT below that RLS denies.
+  client.storageUploadQueue.push({ data: { path: `${USER_B}/${DOCUMENT_ID}` }, error: null });
   client.insertQueue.push({
     data: null,
     error: { message: "new row violates row-level security policy", code: "42501" },
@@ -628,6 +656,7 @@ async function main() {
   await test8_RetrySameContentAlreadyExistsMatchingRow();
   await test9_RetryDifferentContentAlreadyExistsConflict();
   await test10_OrphanedUploadResumesInsert();
+  await test10b_OrphanedUploadResumeReuploadFails();
   await test11_InsertLevelDuplicateResolvedSameWay();
   await test12_GenericUploadFailureStopsImmediately();
   await test13_DuplicateNotAccessibleToCurrentUser();
