@@ -550,10 +550,21 @@ async function testParentUpdatePreservesCachedChildren() {
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-04-04T04:04:04.000Z",
   };
+  const document = {
+    id: "88888888-8888-4888-8888-888888888888",
+    documentType: "site_photo" as const,
+    originalFilename: "boundary-corner-1.jpg",
+    mimeType: "image/jpeg",
+    sizeBytes: 2048,
+    isSensitive: true,
+    createdAt: "2026-01-01T00:00:00.000Z",
+  };
   writeCloudCache(
     userId,
     cached.records.map((record) =>
-      record.id === RECORD_ID ? { ...record, geometries: [geometry] } : record,
+      record.id === RECORD_ID
+        ? { ...record, geometries: [geometry], documents: [document] }
+        : record,
     ),
     cached.syncedAt,
   );
@@ -573,8 +584,13 @@ async function testParentUpdatePreservesCachedChildren() {
     result.record?.geometries[0]?.updatedAt === geometry.updatedAt,
     "expected server geometry updatedAt preserved for optimistic concurrency",
   );
+  assert(
+    result.record?.documents.length === 1,
+    "expected returned cached document preserved -- a parent update must not silently reset documents to [] the same way PR #24 fixed for geometries/points/parties",
+  );
   const cachedAfter = readCloudCache(userId)?.records.find((record) => record.id === RECORD_ID);
   assert(cachedAfter?.geometries.length === 1, "expected cached child geometry preserved");
+  assert(cachedAfter?.documents.length === 1, "expected cached document preserved after a parent update");
 }
 
 async function main() {
@@ -592,7 +608,7 @@ async function main() {
   await run("Test 10 (cache reflects server data; later save updates using it)", testCacheReflectsServerDataAfterSuccess);
   await run("Test 11 (never writes outside land_records)", testNeverWritesOutsideLandRecords);
   await run("Test 12 (legacy id stays local-only)", testLegacyIdStaysLocalOnly);
-  await run("Test 13 (parent update preserves cached child rows)", testParentUpdatePreservesCachedChildren);
+  await run("Test 13 (parent update preserves cached child rows, including documents)", testParentUpdatePreservesCachedChildren);
 
   if (failures > 0) {
     console.error(`\n${failures} test(s) FAILED.`);

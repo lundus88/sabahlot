@@ -8,6 +8,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { isCloudReadEnabled } from "./feature-gate";
 import {
+  getLandDocuments,
   getLandParties,
   getLandPoints,
   getLandRecordGeometries,
@@ -84,15 +85,17 @@ export async function loadCloudLandRecords(
     const records: CloudLandRecord[] = [];
 
     for (const row of recordsResult.data) {
-      const [geometries, points, parties] = await Promise.all([
+      const [geometries, points, parties, documents] = await Promise.all([
         getLandRecordGeometries(supabase, row.id),
         getLandPoints(supabase, row.id),
         getLandParties(supabase, row.id),
+        getLandDocuments(supabase, row.id),
       ]);
 
       if (!geometries.ok) return readFromCacheOnly(userId, geometries.error);
       if (!points.ok) return readFromCacheOnly(userId, points.error);
       if (!parties.ok) return readFromCacheOnly(userId, parties.error);
+      if (!documents.ok) return readFromCacheOnly(userId, documents.error);
 
       const existingCached = readCloudCache(userId)?.records.find(
         (cached) => cached.id === row.id,
@@ -105,6 +108,7 @@ export async function loadCloudLandRecords(
             geometries: geometries.data,
             points: points.data,
             parties: parties.data,
+            documents: documents.data,
           },
           existingCached?.originalApplicantStatus ?? "",
         ),

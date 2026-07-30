@@ -16,6 +16,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type {
+  CloudDocumentRow,
   CloudLandPartyRow,
   CloudLandPointRow,
   CloudLandRecordGeometryRow,
@@ -126,6 +127,32 @@ export async function getLandParties(
   }
 
   return { ok: true, data: (data ?? []) as CloudLandPartyRow[] };
+}
+
+/**
+ * Sprint documents-read-path: fetches documents linked to one
+ * land_record. Same `.eq("land_record_id", ...)` shape as
+ * getLandPoints -- an UNLINKED document (land_record_id IS NULL,
+ * owned via uploaded_by instead) is never fetched by this function or
+ * by loadCloudLandRecords, matching how unlinked points are likewise
+ * never part of this shared read flow today. Fetching unlinked
+ * documents would need its own, separately-scoped read path (there is
+ * no "unlinked items" slot in CloudLandRecord to attach them to).
+ */
+export async function getLandDocuments(
+  supabase: SupabaseClient,
+  landRecordId: string,
+): Promise<RepositoryResult<CloudDocumentRow[]>> {
+  const { data, error } = await supabase
+    .from("documents")
+    .select("*")
+    .eq("land_record_id", landRecordId);
+
+  if (error) {
+    return { ok: false, error: toRepositoryError(error) };
+  }
+
+  return { ok: true, data: (data ?? []) as CloudDocumentRow[] };
 }
 
 // ---------------------------------------------------------------------

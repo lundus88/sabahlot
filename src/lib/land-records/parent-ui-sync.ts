@@ -126,6 +126,7 @@ export async function syncParentLandRecordToCloud(
             geometries: cached.geometries,
             points: cached.points,
             parties: cached.parties,
+            documents: cached.documents,
           }
         : result.record;
 

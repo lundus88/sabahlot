@@ -220,6 +220,7 @@ export function mapCloudRecordToDomain(
     geometries: CloudLandRecordGeometryRow[];
     points: CloudLandPointRow[];
     parties: CloudLandPartyRow[];
+    documents: CloudDocumentRow[];
   },
   existingOriginalApplicantStatus: ApplicantStatus | "" = "",
 ): CloudLandRecord {
@@ -249,6 +250,7 @@ export function mapCloudRecordToDomain(
     geometries: children.geometries.map(mapCloudGeometryToDrawingObject),
     points: children.points.map(mapCloudPoint),
     parties,
+    documents: children.documents.map(mapCloudDocument),
     ownerName: deriveOwnerName(parties),
     originalApplicantStatus: existingOriginalApplicantStatus,
   };

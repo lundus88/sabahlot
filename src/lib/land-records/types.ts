@@ -189,6 +189,12 @@ export interface CloudLandRecord {
   geometries: DrawingObject[];
   points: CloudLandPoint[];
   parties: CloudLandParty[];
+  // Sprint documents-read-path: only documents LINKED to this land
+  // record (land_record_id equal to this record's id) -- unlinked
+  // documents (owned via uploaded_by) are not part of this read flow,
+  // same as unlinked points. Always an array, defaulting to [] when
+  // none exist, matching every sibling child array here.
+  documents: CloudDocument[];
 
   // Derived, not a cloud column: full_name of the party with role
   // 'owner' if present, else 'original_applicant', else null. See

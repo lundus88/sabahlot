@@ -21,6 +21,7 @@ import {
   loadCloudLandRecords,
   mapCloudRecordToDomain,
   readCloudCache,
+  type CloudDocumentRow,
   type CloudLandPartyRow,
   type CloudLandRecordRow,
 } from "./index";
@@ -37,7 +38,8 @@ type TableName =
   | "land_records"
   | "land_record_geometries"
   | "land_points"
-  | "land_parties";
+  | "land_parties"
+  | "documents";
 
 interface FakeResponse {
   data: unknown[] | null;
@@ -87,6 +89,7 @@ class FakeSupabaseClient {
     land_record_geometries: { data: [], error: null },
     land_points: { data: [], error: null },
     land_parties: { data: [], error: null },
+    documents: { data: [], error: null },
   };
   userId: string | null = null;
 
@@ -264,6 +267,7 @@ function testMapperHandlesEmptyChildren() {
     geometries: [],
     points: [],
     parties: [],
+    documents: [],
   });
 
   assert(mapped.geometries.length === 0, "expected empty geometries array, not a throw");
@@ -328,6 +332,7 @@ function testOwnerNameDerivation() {
     geometries: [],
     points: [],
     parties,
+    documents: [],
   });
 
   assert(
@@ -362,7 +367,7 @@ function testOriginalApplicantStatusPreserved() {
 
   const mapped = mapCloudRecordToDomain(
     row,
-    { geometries: [], points: [], parties: [] },
+    { geometries: [], points: [], parties: [], documents: [] },
     "deceased",
   );
 
@@ -387,7 +392,122 @@ function testStableIdInvariant() {
   console.log("Test 10 (stable cloud id invariant): PASS");
 }
 
-// ---- 12 note ----------------------------------------------------------------
+// ---- 12: documents fetched and mapped via loadCloudLandRecords ------------
+// Sprint documents-read-path: only LINKED documents (land_record_id set)
+// are part of this flow -- see getLandDocuments's own comment for why an
+// unlinked document has no place in this fake either.
+
+function baseDocumentRowForRead(landRecordId: string): CloudDocumentRow {
+  return {
+    id: "99999999-9999-4999-8999-999999999999",
+    land_record_id: landRecordId,
+    uploaded_by: "11111111-1111-4111-8111-111111111111",
+    document_type: "site_photo",
+    storage_bucket: "land-documents",
+    storage_path: "11111111-1111-4111-8111-111111111111/99999999-9999-4999-8999-999999999999",
+    original_filename: "boundary-corner-1.jpg",
+    mime_type: "image/jpeg",
+    size_bytes: 2048,
+    is_sensitive: true,
+    created_at: "2026-01-01T00:00:00.000Z",
+  };
+}
+
+async function testDocumentsFetchedAndMapped() {
+  const client = new FakeSupabaseClient();
+  client.userId = "11111111-1111-4111-8111-111111111111";
+
+  const recordRow: CloudLandRecordRow = {
+    id: "22222222-2222-4222-8222-222222222222",
+    owner_id: client.userId,
+    record_name: "QA Record With Document",
+    lot_number: null,
+    village: null,
+    district: null,
+    region: "sabah",
+    land_case_type: null,
+    application_age: null,
+    records_available: [],
+    issue_tags: [],
+    original_applicant_status: null,
+    heirs_can_identify_location: null,
+    land_history_notes: null,
+    status: "draft",
+    created_at: "2026-01-01T00:00:00.000Z",
+    updated_at: "2026-01-01T00:00:00.000Z",
+  };
+
+  client.responses.land_records = { data: [recordRow], error: null };
+  client.responses.documents = { data: [baseDocumentRowForRead(recordRow.id)], error: null };
+
+  const result = await loadCloudLandRecords(
+    client as unknown as Parameters<typeof loadCloudLandRecords>[0],
+  );
+
+  assert(result.state === "synced", "expected synced state with a document present");
+  assert(result.records.length === 1, "expected exactly one mapped record");
+  assert(result.records[0].documents.length === 1, "expected the linked document to be fetched and mapped");
+  assert(
+    result.records[0].documents[0].originalFilename === "boundary-corner-1.jpg",
+    "expected the document's fields to round-trip through mapCloudDocument",
+  );
+  assert(
+    !("storageBucket" in result.records[0].documents[0]) && !("storagePath" in result.records[0].documents[0]),
+    "the domain-level document must never surface a raw storage path (see CloudDocument's own comment)",
+  );
+  console.log("Test 12 (documents fetched via loadCloudLandRecords and mapped into the domain record): PASS");
+}
+
+// ---- 13: a documents-fetch failure falls back to cache, same as siblings --
+
+async function testDocumentsFetchFailureFallsBackToCache() {
+  const userId = "11111111-1111-4111-8111-111111111111";
+  const client = new FakeSupabaseClient();
+  client.userId = userId;
+
+  const recordRow: CloudLandRecordRow = {
+    id: "33333333-3333-4333-8333-333333333333",
+    owner_id: userId,
+    record_name: "QA Record",
+    lot_number: null,
+    village: null,
+    district: null,
+    region: "sabah",
+    land_case_type: null,
+    application_age: null,
+    records_available: [],
+    issue_tags: [],
+    original_applicant_status: null,
+    heirs_can_identify_location: null,
+    land_history_notes: null,
+    status: "draft",
+    created_at: "2026-01-01T00:00:00.000Z",
+    updated_at: "2026-01-01T00:00:00.000Z",
+  };
+  client.responses.land_records = { data: [recordRow], error: null };
+
+  const firstResult = await loadCloudLandRecords(
+    client as unknown as Parameters<typeof loadCloudLandRecords>[0],
+  );
+  assert(firstResult.state === "synced", "expected a clean first sync to populate the cache");
+
+  client.responses.documents = {
+    data: null,
+    error: { message: "simulated documents fetch failure" },
+  };
+
+  const failResult = await loadCloudLandRecords(
+    client as unknown as Parameters<typeof loadCloudLandRecords>[0],
+  );
+  assert(
+    failResult.state === "offline",
+    "a documents-fetch failure must degrade to cache-only, exactly like a geometries/points/parties failure -- never a partial synced state",
+  );
+  assert(failResult.records.length === 1, "expected the cached record to still be returned");
+  console.log("Test 13 (documents fetch failure falls back to cache, same as geometries/points/parties): PASS");
+}
+
+// ---- 14 note ----------------------------------------------------------------
 // "Existing local workflow masih berfungsi" is covered by re-running the
 // existing, untouched src/lib/local-lots.qa.ts as part of Sprint 02B
 // verification (see final report section 9) rather than duplicated here.
@@ -401,6 +521,8 @@ async function main() {
   testOwnerNameDerivation();
   testOriginalApplicantStatusPreserved();
   testStableIdInvariant();
+  await testDocumentsFetchedAndMapped();
+  await testDocumentsFetchFailureFallsBackToCache();
   console.log("Sprint 02B land-records QA: ALL PASS");
 }
 

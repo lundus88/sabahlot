@@ -218,6 +218,7 @@ function baseCachedRecord(overrides: Partial<CloudLandRecord> = {}): CloudLandRe
     geometries: [],
     points: [],
     parties: [],
+    documents: [],
     ownerName: null,
     originalApplicantStatus: "",
     ...overrides,
