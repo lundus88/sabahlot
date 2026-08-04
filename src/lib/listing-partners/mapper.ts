@@ -5,6 +5,8 @@ import type {
   ListingPartner,
   ListingPartnerRow,
   PropertyListing,
+  PropertyListingContact,
+  PropertyListingContactRow,
   PropertyListingRow,
 } from "./types";
 
@@ -40,5 +42,16 @@ export function mapPropertyListingRow(row: PropertyListingRow): PropertyListing 
     status: row.status,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+}
+
+export function mapPropertyListingContactRow(
+  row: PropertyListingContactRow,
+): PropertyListingContact {
+  return {
+    phone: row.phone,
+    email: row.email,
+    displayName: row.display_name,
+    companyName: row.company_name,
   };
 }

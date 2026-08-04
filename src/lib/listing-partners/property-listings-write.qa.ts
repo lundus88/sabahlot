@@ -561,7 +561,15 @@ async function test21_MapPropertyListingRowRoundTrip() {
 
 async function test22_ActiveListingContactSucceeds() {
   const client = new FakeSupabaseClient();
-  client.rpcQueue.push({ data: [{ phone: "+60123456789", email: "a@example.com" }], error: null });
+  client.rpcQueue.push({
+    data: [{
+      phone: "+60123456789",
+      email: "a@example.com",
+      display_name: "Ah Chong Land Services",
+      company_name: "Ah Chong Enterprise",
+    }],
+    error: null,
+  });
 
   const result = await getActiveListingContact(
     client as unknown as Parameters<typeof getActiveListingContact>[0],
@@ -572,6 +580,14 @@ async function test22_ActiveListingContactSucceeds() {
   if (result.ok) {
     assert(result.data?.phone === "+60123456789", "expected the phone to round-trip");
     assert(result.data?.email === "a@example.com", "expected the email to round-trip");
+    assert(
+      result.data?.displayName === "Ah Chong Land Services",
+      "expected displayName to round-trip from the RPC's snake_case display_name column",
+    );
+    assert(
+      result.data?.companyName === "Ah Chong Enterprise",
+      "expected companyName to round-trip from the RPC's snake_case company_name column",
+    );
   }
   const rpcCall = client.rpcCalls[0];
   assert(rpcCall?.fn === "get_active_listing_contact", "expected the correct RPC function name");
@@ -579,7 +595,7 @@ async function test22_ActiveListingContactSucceeds() {
     (rpcCall?.args as Record<string, unknown> | undefined)?.listing_id === LISTING_ID,
     "expected listing_id to be passed through",
   );
-  console.log("Test 22 (getActiveListingContact succeeds, phone/email round-trip): PASS [executed]");
+  console.log("Test 22 (getActiveListingContact succeeds, phone/email/displayName/companyName all round-trip): PASS [executed]");
 }
 
 async function test23_NoEligibleContactReturnsNull() {
@@ -604,7 +620,15 @@ async function test23_NoEligibleContactReturnsNull() {
 async function test24_ContactCallableWithoutSession() {
   const client = new FakeSupabaseClient();
   client.userId = null; // no session at all
-  client.rpcQueue.push({ data: [{ phone: "+60123456789", email: "a@example.com" }], error: null });
+  client.rpcQueue.push({
+    data: [{
+      phone: "+60123456789",
+      email: "a@example.com",
+      display_name: "Ah Chong Land Services",
+      company_name: null,
+    }],
+    error: null,
+  });
 
   const result = await getActiveListingContact(
     client as unknown as Parameters<typeof getActiveListingContact>[0],

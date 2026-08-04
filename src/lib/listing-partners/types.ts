@@ -227,7 +227,23 @@ export type UpdatePropertyListingInput = Partial<PropertyListingWritableFields>;
 // returned by the public.get_active_listing_contact(uuid) RPC. Never
 // carries anything beyond phone/email -- no id, no ren_number, no bio --
 // see property-listings-repository.ts's getActiveListingContact.
+// Raw shape returned by the get_active_listing_contact RPC (snake_case,
+// same as every other *Row type in this file -- Postgres/PostgREST never
+// camelCases column names, RPC results included).
+export interface PropertyListingContactRow {
+  phone: string;
+  email: string;
+  display_name: string;
+  company_name: string | null;
+}
+
+// Sprint listing-partner-public-directory-ui: extended to also carry
+// displayName/companyName (see the migration's own comment) -- still
+// never anything beyond what a public listing page needs to show and
+// let a visitor act on.
 export interface PropertyListingContact {
   phone: string;
   email: string;
+  displayName: string;
+  companyName: string | null;
 }

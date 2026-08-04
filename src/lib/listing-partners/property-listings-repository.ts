@@ -9,8 +9,10 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { mapPropertyListingContactRow } from "./mapper";
 import type {
   PropertyListingContact,
+  PropertyListingContactRow,
   PropertyListingRow,
   PropertyListingWritableFields,
 } from "./types";
@@ -100,11 +102,19 @@ export async function createPropertyListingRow(
 /**
  * Sprint listing-partner-decisions-migration (ADR-027 item 1): calls the
  * public.get_active_listing_contact(uuid) SECURITY DEFINER RPC -- the
- * only path by which listing_partners.phone/email are ever reachable
+ * only path by which any listing_partners column is ever reachable
  * from a listing's own page, gated entirely server-side (listing
  * active + partner approved + partner consented, all three re-checked
  * on every call). Callable by an anonymous caller (no session required)
  * -- this function itself never checks or requires a session either.
+ * Sprint listing-partner-public-directory-ui extended the RPC's own
+ * return shape to also carry displayName/companyName -- mapped here via
+ * mapPropertyListingContactRow (RPC results are snake_case like every
+ * other Postgres/PostgREST response; a previous version of this
+ * function cast the raw row directly, which happened to work only
+ * because `phone`/`email` are spelled identically in both cases -- that
+ * would have silently produced `undefined` displayName/companyName once
+ * this sprint added them, caught before merge, not after).
  *
  * Returns `null` for every "not eligible" case (listing not found, not
  * active, partner not approved, or partner has not consented) --
@@ -123,8 +133,11 @@ export async function getActiveListingContact(
     return { ok: false, error: toRepositoryError(error) };
   }
 
-  const rows = data as PropertyListingContact[] | null;
-  return { ok: true, data: rows && rows.length > 0 ? rows[0] : null };
+  const rows = data as PropertyListingContactRow[] | null;
+  return {
+    ok: true,
+    data: rows && rows.length > 0 ? mapPropertyListingContactRow(rows[0]) : null,
+  };
 }
 
 /**
@@ -149,6 +162,33 @@ export async function listOwnPropertyListingsRow(
     .from("property_listings")
     .select(PROPERTY_LISTING_SELECT_COLUMNS)
     .eq("partner_id", partnerId)
+    .order("updated_at", { ascending: false });
+
+  if (error) {
+    return { ok: false, error: toRepositoryError(error) };
+  }
+
+  return { ok: true, data: (data ?? []) as PropertyListingRow[] };
+}
+
+/**
+ * Sprint listing-partner-public-directory-ui: lists every PUBLICLY
+ * visible property_listings row, for an anonymous (or authenticated,
+ * doesn't matter) caller. Deliberately no `.eq("status", "active")` or
+ * similar filter in this query -- `property_listings_select_public`'s
+ * RLS is what actually does the filtering (status='active' AND
+ * updated_at within 90 days AND parent partner approved), and this
+ * function relies on that entirely rather than duplicating the
+ * condition client-side (duplicating it here would risk silently
+ * drifting from the real RLS condition over time). Most-recently-updated
+ * first, same ordering convention as `listOwnPropertyListingsRow`.
+ */
+export async function listActivePropertyListingsRow(
+  supabase: SupabaseClient,
+): Promise<PropertyListingRepositoryResult<PropertyListingRow[]>> {
+  const { data, error } = await supabase
+    .from("property_listings")
+    .select(PROPERTY_LISTING_SELECT_COLUMNS)
     .order("updated_at", { ascending: false });
 
   if (error) {
