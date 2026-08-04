@@ -31,6 +31,7 @@
     "points-write-coordinator.ts",
     "documents-validation.ts",
     "documents-repository.ts",
+    "documents-cache.ts",
     "documents-write-coordinator.ts",
     "index.ts",
     "documents-write.qa.ts"

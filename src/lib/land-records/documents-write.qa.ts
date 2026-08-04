@@ -14,6 +14,11 @@
 // CREATE-ONLY: there is no updateCloudDocument/deleteCloudDocument to
 // test, and this file asserts that no such export exists.
 //
+// Sprint documents-follow-up-cache-only: Tests 25-28 added, mirroring
+// points-write.qa.ts's Tests 24-27 (successful/failed/unlinked/conflict
+// cache-update cases), now that createCloudDocument actually calls
+// upsertCachedDocument (documents-cache.ts).
+//
 // Sprint production-write-gate-phase2e-documents (ADR-024) added a second
 // gate function, isCloudWriteEnabledForDocumentsInProduction(), to this
 // module's one entry point (createCloudDocument). This script's env is
@@ -30,10 +35,13 @@ import {
   createCloudDocument,
   isStableCloudId,
   mapCloudDocument,
+  readCloudCache,
   validateCreateDocumentInput,
+  writeCloudCache,
   type ChildSyncState,
   type CloudDocument,
   type CloudDocumentRow,
+  type CloudLandRecord,
   type CreateDocumentInput,
 } from "./index";
 
@@ -657,6 +665,142 @@ async function test24_IsStableCloudIdSanityCheck() {
   console.log("Test 24 (isStableCloudId sanity check, pre-existing helper reused unmodified): PASS [executed]");
 }
 
+// ==== Cache isolation (documents-follow-up-cache-only) ========================
+
+function baseCachedRecord(overrides: Partial<CloudLandRecord> = {}): CloudLandRecord {
+  return {
+    id: LAND_RECORD_ID,
+    recordName: "Test Lot",
+    lotNumber: null,
+    village: null,
+    district: null,
+    landCaseType: "",
+    applicationAge: "",
+    recordsAvailable: [],
+    issueTags: [],
+    heirsCanIdentifyLocation: "",
+    landHistoryNotes: null,
+    status: "draft",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    geometries: [],
+    points: [],
+    parties: [],
+    documents: [],
+    ownerName: null,
+    originalApplicantStatus: "",
+    ...overrides,
+  };
+}
+
+function withCloudCacheStorage<T>(fn: () => T): T {
+  const store = new Map<string, string>();
+  (globalThis as unknown as { localStorage: Storage }).localStorage = {
+    getItem: (key: string) => store.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      store.set(key, value);
+    },
+    removeItem: (key: string) => {
+      store.delete(key);
+    },
+    clear: () => store.clear(),
+    key: () => null,
+    length: 0,
+  } as Storage;
+  (globalThis as unknown as { window: Window }).window = globalThis as unknown as Window;
+  return fn();
+}
+
+async function test25_SuccessfulCreateUpdatesOnlyCreatingUsersCache() {
+  await withCloudCacheStorage(async () => {
+    writeCloudCache(USER_A, [baseCachedRecord()], "2026-01-01T00:00:00.000Z");
+    writeCloudCache(
+      USER_B,
+      [baseCachedRecord({ id: "44444444-4444-4444-8444-444444444444" })],
+      "2026-01-01T00:00:00.000Z",
+    );
+
+    const client = new FakeSupabaseClient();
+    client.userId = USER_A;
+    client.storageUploadQueue.push({ data: { path: `${USER_A}/${DOCUMENT_ID}` }, error: null });
+    client.insertQueue.push({ data: baseDocumentRow(), error: null });
+
+    await call(client, baseDocumentInput(), fakeFile());
+
+    const cacheA = readCloudCache(USER_A);
+    const cacheB = readCloudCache(USER_B);
+    assert(
+      cacheA?.records[0]?.documents.some((d) => d.id === DOCUMENT_ID),
+      "User A's cache must contain the newly created document",
+    );
+    assert(
+      !cacheB?.records[0]?.documents.some((d) => d.id === DOCUMENT_ID),
+      "User B's cache must never be touched by User A's write",
+    );
+  });
+  console.log("Test 25 (successful create changes only the creating user's cache): PASS [executed]");
+}
+
+async function test26_CloudFailureKeepsOldCache() {
+  await withCloudCacheStorage(async () => {
+    writeCloudCache(USER_A, [baseCachedRecord()], "2026-01-01T00:00:00.000Z");
+
+    const client = new FakeSupabaseClient();
+    client.userId = USER_A;
+    client.storageUploadQueue.push({ data: null, error: { message: "network timeout" } });
+
+    await call(client, baseDocumentInput(), fakeFile());
+
+    const cache = readCloudCache(USER_A);
+    assert(
+      cache?.records[0]?.documents.length === 0,
+      "a failed cloud create must leave the existing cache unchanged",
+    );
+  });
+  console.log("Test 26 (cloud failure keeps old cache unchanged): PASS [executed]");
+}
+
+async function test27_UnlinkedDocumentCacheIsNoOp() {
+  await withCloudCacheStorage(async () => {
+    writeCloudCache(USER_A, [baseCachedRecord()], "2026-01-01T00:00:00.000Z");
+
+    const client = new FakeSupabaseClient();
+    client.userId = USER_A;
+    client.storageUploadQueue.push({ data: { path: `${USER_A}/${DOCUMENT_ID}` }, error: null });
+    client.insertQueue.push({ data: baseDocumentRow({ land_record_id: null }), error: null });
+
+    const result = await call(client, baseDocumentInput({ landRecordId: null }), fakeFile());
+
+    assert(result.ok, "expected the unlinked create itself to still succeed");
+    const cache = readCloudCache(USER_A);
+    assert(
+      cache?.records[0]?.documents.length === 0,
+      "an unlinked document has no cached parent to attach to -- this must be a documented no-op, not a crash",
+    );
+  });
+  console.log("Test 27 (unlinked document cache update is a documented no-op): PASS [executed]");
+}
+
+async function test28_ConflictDoesNotChangeCache() {
+  await withCloudCacheStorage(async () => {
+    writeCloudCache(USER_A, [baseCachedRecord()], "2026-01-01T00:00:00.000Z");
+
+    const client = new FakeSupabaseClient();
+    client.userId = USER_A;
+    client.storageUploadQueue.push({
+      data: null,
+      error: { message: "The resource already exists", statusCode: "409" },
+    });
+    client.selectByIdQueue.push({ data: baseDocumentRow({ original_filename: "different-name.jpg" }), error: null });
+
+    await call(client, baseDocumentInput(), fakeFile());
+
+    const cache = readCloudCache(USER_A);
+    assert(cache?.records[0]?.documents.length === 0, "a duplicate_conflict must never touch the cache");
+  });
+  console.log("Test 28 (duplicate conflict does not change cache): PASS [executed]");
+}
+
 async function main() {
   await test1_FreshUploadSucceeds();
   await test2_UnlinkedDocumentOwnedByUploadedBy();
@@ -683,6 +827,10 @@ async function main() {
   await test22_NeverReturnsBroaderSyncState();
   await test23_MapCloudDocumentRoundTrip();
   await test24_IsStableCloudIdSanityCheck();
+  await test25_SuccessfulCreateUpdatesOnlyCreatingUsersCache();
+  await test26_CloudFailureKeepsOldCache();
+  await test27_UnlinkedDocumentCacheIsNoOp();
+  await test28_ConflictDoesNotChangeCache();
 
   console.log("\nSprint documents-cloud-write QA: ALL PASS");
 }
