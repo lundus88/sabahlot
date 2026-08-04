@@ -292,9 +292,10 @@ Write-Section "14. Project QA commands"
 if ($SkipQa) {
   Write-Output "(-SkipQa passed -- skipped)"
 } else {
-  $qaFiles = Get-ChildItem -Path "src" -Recurse -Filter "*.qa.ts" -File -ErrorAction SilentlyContinue
+  $qaFiles = Get-ChildItem -Path "src" -Recurse -File -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -like "*.qa.ts" -or $_.Name -like "*.qa.tsx" }
   if (-not $qaFiles) {
-    Write-Output "(no *.qa.ts files found -- expected for a docs/scripts-only worktree)"
+    Write-Output "(no *.qa.ts/*.qa.tsx files found -- expected for a docs/scripts-only worktree)"
   } else {
     Write-Output "Found $($qaFiles.Count) QA script(s). Each must be compiled via its own <name>.qa.tsconfig.json and run with node -- see docs/ai/SPRINT_TEMPLATE.md."
     Write-Output "This script lists them; it does not auto-compile/run them (each has a distinct tsconfig entry-file list that must be kept in sync by hand)."
