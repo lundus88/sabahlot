@@ -144,6 +144,30 @@ export async function updateListingPartnerOwnFieldsRow(
 }
 
 /**
+ * Sprint listing-partner-admin-approval-ui: lists every listing_partners
+ * row (any status), relying entirely on the new
+ * listing_partners_select_admin RLS policy to restrict a non-admin
+ * caller to zero rows -- this function never checks or accepts a
+ * role/permission argument itself (ADR-006). Plain `created_at`
+ * descending; pending-first grouping is a client-side UI concern, not
+ * duplicated here.
+ */
+export async function listAllListingPartnersRow(
+  supabase: SupabaseClient,
+): Promise<ListingPartnerRepositoryResult<ListingPartnerRow[]>> {
+  const { data, error } = await supabase
+    .from("listing_partners")
+    .select(LISTING_PARTNER_SELECT_COLUMNS)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    return { ok: false, error: toRepositoryError(error) };
+  }
+
+  return { ok: true, data: (data ?? []) as ListingPartnerRow[] };
+}
+
+/**
  * Admin-only status transition. Never accepts an "approvedBy" value from
  * a caller -- `approvedByUserId` is always the CALLING admin's own
  * `auth.uid()`, derived server-side by the coordinator, never a

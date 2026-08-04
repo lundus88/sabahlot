@@ -1,0 +1,323 @@
+.page {
+  min-height: 100dvh;
+  padding: 24px;
+  color: #0f172a;
+  background:
+    radial-gradient(
+      circle at 16% 18%,
+      rgba(96, 165, 250, 0.34),
+      transparent 32%
+    ),
+    radial-gradient(
+      circle at 86% 78%,
+      rgba(5, 150, 105, 0.2),
+      transparent 30%
+    ),
+    linear-gradient(145deg, #dbe5ee, #f8fafc);
+}
+
+.card {
+  width: min(100%, 720px);
+  margin: 0 auto;
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  border-radius: 18px;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.2);
+  backdrop-filter: blur(22px);
+}
+
+.header,
+.brand {
+  display: flex;
+  align-items: center;
+}
+
+.header {
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.brand {
+  gap: 9px;
+}
+
+.mark {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  color: #ffffff;
+  background:
+    linear-gradient(145deg, #2563eb, #1d4ed8);
+  border-radius: 10px;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.3);
+  place-items: center;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+}
+
+.brand strong,
+.brand small {
+  display: block;
+}
+
+.brand strong {
+  font-size: 13px;
+}
+
+.brand small {
+  margin-top: 2px;
+  color: #64748b;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.mapLink {
+  padding: 8px 10px;
+  color: #334155;
+  background: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 9px;
+  font-size: 10px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.intro {
+  padding: 24px 2px 18px;
+}
+
+.eyebrow {
+  color: #2563eb;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.intro h1 {
+  margin: 8px 0 6px;
+  font-size: clamp(22px, 5vw, 28px);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+}
+
+.intro p {
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.loading,
+.empty {
+  margin: 14px 0 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.session {
+  display: grid;
+  gap: 8px;
+  padding: 15px;
+  background: #eff6ff;
+  border: 1px solid rgba(37, 99, 235, 0.16);
+  border-radius: 12px;
+}
+
+.session span {
+  color: #2563eb;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.session p {
+  margin: 0;
+  color: #334155;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.signInLink {
+  display: inline-block;
+  margin-top: 5px;
+  padding: 10px 14px;
+  color: #ffffff;
+  background: #2563eb;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 900;
+  text-align: center;
+  text-decoration: none;
+}
+
+.signInLink:hover {
+  background: #1d4ed8;
+}
+
+.partnerList {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.partnerCard {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  background: #ffffff;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 12px;
+}
+
+.partnerCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.partnerCardHeader strong {
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+
+.partnerSubName {
+  margin: -4px 0 0;
+  color: #64748b;
+  font-size: 11px;
+}
+
+.partnerMeta {
+  margin: 0;
+  color: #64748b;
+  font-size: 11px;
+}
+
+/* Status badges -- same colour language as
+   src/app/listing-partners/listing-partners.module.css's status
+   sections, compressed into a small pill for this list layout. */
+.statusPending,
+.statusApproved,
+.statusSuspended,
+.statusRejected {
+  flex-shrink: 0;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.statusPending {
+  color: #b45309;
+  background: #fffbeb;
+}
+
+.statusApproved {
+  color: #047857;
+  background: #ecfdf5;
+}
+
+.statusSuspended {
+  color: #475569;
+  background: #f1f5f9;
+}
+
+.statusRejected {
+  color: #be123c;
+  background: #fff1f2;
+}
+
+.partnerActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.partnerActions button {
+  padding: 8px 12px;
+  color: #334155;
+  background: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.partnerActions button:hover:not(:disabled) {
+  background: #eef2f7;
+}
+
+.dangerButton {
+  color: #be123c !important;
+  border-color: rgba(225, 29, 72, 0.28) !important;
+}
+
+.dangerButton:hover:not(:disabled) {
+  background: #fff1f2 !important;
+}
+
+.partnerActions button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.success,
+.error {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border-radius: 9px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.success {
+  color: #047857;
+  background: #ecfdf5;
+  border: 1px solid rgba(5, 150, 105, 0.18);
+}
+
+.error {
+  color: #be123c;
+  background: #fff1f2;
+  border: 1px solid rgba(225, 29, 72, 0.16);
+}
+
+.footer {
+  margin-top: 18px;
+  padding-top: 14px;
+  color: #94a3b8;
+  border-top: 1px solid rgba(148, 163, 184, 0.22);
+  font-size: 9px;
+  font-weight: 700;
+  text-align: center;
+}
+
+@media (max-width: 520px) {
+  .page {
+    padding: 12px;
+  }
+
+  .card {
+    padding: 15px;
+    border-radius: 15px;
+  }
+
+  .intro {
+    padding-top: 20px;
+  }
+}
