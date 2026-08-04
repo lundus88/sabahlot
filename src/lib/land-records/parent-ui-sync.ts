@@ -8,10 +8,17 @@
 // land_records ONLY. This module never reads or writes
 // land_record_geometries, land_points, land_parties, or documents, and
 // never touches src/lib/local-lots.ts or its storage key.
+//
+// Sprint production-write-gate-phase2a-land-records (ADR-020): the gate
+// check below also accepts isCloudWriteEnabledForParentInProduction(), a
+// land_records-only Production switch -- see feature-gate.ts.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { isCloudWriteEnabled } from "./feature-gate";
+import {
+  isCloudWriteEnabled,
+  isCloudWriteEnabledForParentInProduction,
+} from "./feature-gate";
 import { readCloudCache, upsertCloudCacheRecord } from "./local-cache";
 import { isStableCloudId } from "./types";
 import type { CloudLandRecord, LandRecordWritableFields, WriteErrorCode } from "./types";
@@ -91,7 +98,7 @@ export async function syncParentLandRecordToCloud(
   supabase: SupabaseClient,
   input: ParentSyncInput,
 ): Promise<ParentSyncResult> {
-  if (!isCloudWriteEnabled()) {
+  if (!isCloudWriteEnabled() && !isCloudWriteEnabledForParentInProduction()) {
     return { status: "local_only", localOnlyReason: "gate_disabled" };
   }
 

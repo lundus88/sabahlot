@@ -9,6 +9,13 @@
 // deliberately restricted to that one table so any accidental
 // geometry/points/parties/documents call would fail to compile, not
 // just fail at runtime.
+//
+// Extended by sprint production-write-gate-phase2a-land-records (ADR-020,
+// Test 7a2): proves the real call site (syncParentLandRecordToCloud, not
+// just the boolean gate functions in isolation) still resolves to
+// gate_disabled with zero network calls for sabahlot-production +
+// production NODE_ENV, since PRODUCTION_PARENT_WRITE_ENABLED_CONSTANT
+// ships false.
 
 import {
   readCloudCache,
@@ -369,6 +376,39 @@ async function testProductionStaysLocalOnlyEvenWithCorrectDevUrl() {
   }
 }
 
+// ---- 7a2: sabahlot-production URL + production NODE_ENV stays local-only
+//           -- the real call site's proof for sprint
+//           production-write-gate-phase2a-land-records (ADR-020):
+//           isCloudWriteEnabledForParentInProduction() exists and would
+//           open exactly this combination, but its own constant ships
+//           false, so this must still resolve to gate_disabled with zero
+//           network calls, not silently succeed --------------------------
+
+async function testProductionUrlAndProductionNodeEnvStaysLocalOnly() {
+  const originalEnv = process.env.NODE_ENV;
+  const originalUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  Object.assign(process.env, {
+    NODE_ENV: "production",
+    NEXT_PUBLIC_SUPABASE_URL: "https://mrkhhdfxoomkzirwgnwx.supabase.co",
+  });
+
+  try {
+    const client = new FakeSupabaseClient();
+    client.userId = nextUserId();
+
+    const result = await syncParentLandRecordToCloud(
+      client as unknown as Parameters<typeof syncParentLandRecordToCloud>[0],
+      baseInput,
+    );
+
+    assert(result.status === "local_only", "expected local_only for sabahlot-production while PRODUCTION_PARENT_WRITE_ENABLED_CONSTANT is false");
+    assert(result.localOnlyReason === "gate_disabled", "expected gate_disabled reason");
+    assert(client.calls.length === 0, "expected zero cloud calls -- the constant being false must not be bypassed by matching URL + NODE_ENV alone");
+  } finally {
+    Object.assign(process.env, { NODE_ENV: originalEnv, NEXT_PUBLIC_SUPABASE_URL: originalUrl });
+  }
+}
+
 // ---- 7b: a different project's URL stays local-only, zero cloud calls ----
 
 async function testWrongProjectUrlStaysLocalOnly() {
@@ -601,6 +641,7 @@ async function main() {
   await run("Test 5 (duplicate id, different payload -> conflict, no overwrite)", testDuplicateDifferentPayloadIsConflict);
   await run("Test 6 (stale update -> conflict, no silent overwrite)", testStaleUpdateIsConflict);
   await run("Test 7 (production stays local-only even with the correct dev URL)", testProductionStaysLocalOnlyEvenWithCorrectDevUrl);
+  await run("Test 7a2 (sabahlot-production URL + production NODE_ENV stays local-only while the constant is false)", testProductionUrlAndProductionNodeEnvStaysLocalOnly);
   await run("Test 7b (a different project's URL stays local-only, zero cloud calls)", testWrongProjectUrlStaysLocalOnly);
   await run("Test 7c (missing/empty URL stays local-only, zero cloud calls)", testMissingUrlStaysLocalOnly);
   await run("Test 8 (no session -> no_session, no network call)", testNoSessionMakesNoNetworkCall);

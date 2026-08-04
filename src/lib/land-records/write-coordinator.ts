@@ -4,6 +4,11 @@
 //
 // This module is not wired into src/app/page.tsx -- see the Sprint
 // 02C report for why and where a future sprint should connect it.
+//
+// Sprint production-write-gate-phase2a-land-records (ADR-020): the gate
+// check below also accepts isCloudWriteEnabledForParentInProduction(), a
+// land_records-only Production switch. No other module's coordinator gets
+// this -- see the comment above that function in feature-gate.ts.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -12,7 +17,10 @@ import {
   getLandRecordById,
   updateLandRecordRow,
 } from "./cloud-repository";
-import { isCloudWriteEnabled } from "./feature-gate";
+import {
+  isCloudWriteEnabled,
+  isCloudWriteEnabledForParentInProduction,
+} from "./feature-gate";
 import { mapCloudRecordToDomain, mapWritableFieldsToDbPayload } from "./mapper";
 import { upsertCloudCacheRecord } from "./local-cache";
 import { isStableCloudId } from "./types";
@@ -58,7 +66,7 @@ export async function createCloudLandRecord(
   supabase: SupabaseClient,
   input: CreateLandRecordInput,
 ): Promise<WriteResult> {
-  if (!isCloudWriteEnabled()) {
+  if (!isCloudWriteEnabled() && !isCloudWriteEnabledForParentInProduction()) {
     return failure("idle", "database_error", "Cloud write is disabled in this environment.");
   }
 
@@ -200,7 +208,7 @@ export async function updateCloudLandRecord(
   patch: UpdateLandRecordInput,
   expectedUpdatedAt: string,
 ): Promise<WriteResult> {
-  if (!isCloudWriteEnabled()) {
+  if (!isCloudWriteEnabled() && !isCloudWriteEnabledForParentInProduction()) {
     return failure("idle", "database_error", "Cloud write is disabled in this environment.");
   }
 

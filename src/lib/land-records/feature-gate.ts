@@ -116,3 +116,36 @@ export function isCloudWriteEnabled(): boolean {
     isTargetingSabahlotDevProject()
   );
 }
+
+// Sprint production-write-gate-phase2a-land-records (ADR-020): a Production
+// write path is opened PER MODULE, never as one blanket switch -- unlike
+// isCloudReadEnabled() above, isCloudWriteEnabled() is consumed identically
+// by all five write-coordinators (land_records, geometry, points, parties,
+// documents), and src/app/page.tsx's save flow already calls all five
+// unconditionally in sequence. A single Production branch added to
+// isCloudWriteEnabled() itself would therefore open all five at once the
+// moment its constant flipped, defeating the owner's module-by-module
+// rollout decision. Each module instead gets its OWN dedicated function and
+// OWN constant, called only from that module's own coordinator -- this is
+// the first one. A future phase adding e.g. geometry would add
+// isCloudWriteEnabledForGeometryInProduction() alongside this one, never
+// modify isCloudWriteEnabled() itself, and never touch this function.
+//
+// Same non-runtime-configurable contract as PRODUCTION_READ_ENABLED_CONSTANT:
+// ships false, never exported, no env var/query param override -- flipping
+// it is a deliberate, standalone, separately-approved commit.
+const PRODUCTION_PARENT_WRITE_ENABLED_CONSTANT = false;
+
+/**
+ * Production write gate for land_records ONLY. Geometry/points/parties/
+ * documents each remain closed to Production regardless of this constant --
+ * their coordinators call isCloudWriteEnabled() above, which never returns
+ * true for a production-targeted project, and do not call this function.
+ */
+export function isCloudWriteEnabledForParentInProduction(): boolean {
+  return (
+    PRODUCTION_PARENT_WRITE_ENABLED_CONSTANT &&
+    process.env.NODE_ENV === "production" &&
+    isTargetingSabahlotProductionProject()
+  );
+}

@@ -6,6 +6,19 @@
 // Uses a fake Supabase client (no network). Does not touch
 // src/lib/local-lots.ts or land-records.qa.ts -- those are re-run
 // unchanged as a separate verification step (see Sprint 02C report).
+//
+// Sprint production-write-gate-phase2a-land-records (ADR-020) added a
+// second gate function, isCloudWriteEnabledForParentInProduction(), to
+// this module's two entry points (createCloudLandRecord/
+// updateCloudLandRecord). This script's env is pinned to sabahlot-dev at
+// module load (below) for its whole run, so it only re-proves the
+// pre-existing dev branch of that OR still behaves identically
+// (regression) -- it does not additionally exercise the new production
+// branch. That branch is covered instead by feature-gate.qa.ts (Tests
+// 14-17, the gate functions in isolation) and parent-ui-sync.qa.ts (Test
+// 7a2, the real call site with a fake client proving zero network calls).
+// Not duplicated here to avoid a third copy of the same env-juggling
+// pattern for no additional coverage.
 
 import {
   createCloudLandRecord,
