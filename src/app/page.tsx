@@ -1099,6 +1099,19 @@ export default function HomePage() {
     "sabah",
   );
 
+  // Guards the language/appMode/region write-back effects below so they
+  // never fire until the deferred restore-from-storage effect has actually
+  // run once. Without this, those write effects (which also fire on the
+  // very first mount, not just on later changes) persist the hardcoded
+  // useState defaults to localStorage before the queueMicrotask-deferred
+  // restore ever gets to read the user's real prior preference -- so the
+  // restore always observes its own overwrite and silently resets every
+  // preference to default on each reload.
+  const [
+    hasRestoredPreferences,
+    setHasRestoredPreferences,
+  ] = useState(false);
+
   const [
     categoryDrawerOpen,
     setCategoryDrawerOpen,
@@ -1165,21 +1178,32 @@ export default function HomePage() {
       if (storedRegion !== region) {
         setRegion(storedRegion);
       }
+
+      setHasRestoredPreferences(true);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
+    if (!hasRestoredPreferences) {
+      return;
+    }
     setStoredLanguage(language);
-  }, [language]);
+  }, [language, hasRestoredPreferences]);
 
   useEffect(() => {
+    if (!hasRestoredPreferences) {
+      return;
+    }
     setStoredAppMode(appMode);
-  }, [appMode]);
+  }, [appMode, hasRestoredPreferences]);
 
   useEffect(() => {
+    if (!hasRestoredPreferences) {
+      return;
+    }
     setStoredRegion(region);
-  }, [region]);
+  }, [region, hasRestoredPreferences]);
 
   const [
     lotPanelOpen,

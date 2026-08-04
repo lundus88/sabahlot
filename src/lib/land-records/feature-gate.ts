@@ -30,15 +30,27 @@ const SABAHLOT_DEV_HOSTNAME = `${SABAHLOT_DEV_PROJECT_REF}.supabase.co`;
 
 // Sprint production-read-gate-phase1 (ADR-019): sabahlot-production's ref,
 // same non-secret status as the dev ref above. PRODUCTION_READ_ENABLED_CONSTANT
-// is a SEPARATE switch from CLOUD_READ_ENABLED_CONSTANT (dev) -- defaults
-// false, and flipping it is a deliberate, standalone, separately-approved
-// commit, not part of this sprint. It is intentionally never exported or
-// exposed to a runtime override (env var, query param, etc.): the only way
-// to change it is to edit this file and ship a new commit, so merging this
-// sprint's code does not by itself activate anything for a real user.
+// is a SEPARATE switch from CLOUD_READ_ENABLED_CONSTANT (dev). It is
+// intentionally never exported or exposed to a runtime override (env var,
+// query param, etc.): the only way to change it is to edit this file and
+// ship a new commit.
 const SABAHLOT_PRODUCTION_PROJECT_REF = "mrkhhdfxoomkzirwgnwx";
 const SABAHLOT_PRODUCTION_HOSTNAME = `${SABAHLOT_PRODUCTION_PROJECT_REF}.supabase.co`;
-const PRODUCTION_READ_ENABLED_CONSTANT = false;
+
+// Sprint production-read-activation-phase1 (ADR-025): flipped from its
+// shipped-false value to true, 2026-08-04, on explicit owner instruction --
+// the separate, standalone activation decision every prior ADR touching
+// this constant (019 onward) said would be required. This does NOT by
+// itself expose any data to a real user: no UI code calls
+// loadCloudLandRecords()/isCloudReadEnabled() anywhere in this app (see
+// ADR-025 and the "Land Record cloud read" row in MODULE_STATUS.md) --
+// this flip only makes the gate itself correctly open for a production
+// build whose NEXT_PUBLIC_SUPABASE_URL is genuinely sabahlot-production,
+// which also still requires an owner-only Vercel Production env change
+// this AI has not made and cannot make. All five
+// PRODUCTION_*_WRITE_ENABLED_CONSTANTs (ADR-020-024) are UNCHANGED and
+// still ship false -- this is a read-only activation.
+const PRODUCTION_READ_ENABLED_CONSTANT = true;
 
 /**
  * Fails closed: any missing, malformed, or non-matching

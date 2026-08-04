@@ -15,6 +15,14 @@
 // No other module's coordinator gets this -- see the comment above that
 // function in feature-gate.ts.
 //
+// Sprint documents-follow-up-cache-only: every confirmed-successful
+// create (first-time, resumed-after-partial-failure, and verified-
+// duplicate-retry) now also merges into the per-user local cache via
+// upsertCachedDocument (documents-cache.ts) -- the same pattern
+// geometry/points/parties writes already followed, previously missing
+// here. This does not change return values or any existing behavior;
+// it only keeps the cache current for a future UI read.
+//
 // TWO-PHASE WRITE: unlike every other child table, one call to
 // createCloudDocument is actually two independent remote operations --
 // a Storage upload, then a metadata row insert -- neither atomic with
@@ -59,6 +67,7 @@ import {
   mapDocumentFieldsToDbPayload,
   uploadDocumentFile,
 } from "./documents-repository";
+import { upsertCachedDocument } from "./documents-cache";
 import {
   isCloudWriteEnabled,
   isCloudWriteEnabledForDocumentsInProduction,
@@ -206,7 +215,11 @@ export async function createCloudDocument(
     );
   }
 
-  return { ok: true, state: "documents_synced", data: mapCloudDocument(result.data) };
+  const document = mapCloudDocument(result.data);
+  const syncedAt = new Date().toISOString();
+  upsertCachedDocument(userId, result.data.land_record_id, document, syncedAt);
+
+  return { ok: true, state: "documents_synced", data: document };
 }
 
 /**
@@ -277,7 +290,11 @@ async function resolveExistingDocument(
       );
     }
 
-    return { ok: true, state: "documents_synced", data: mapCloudDocument(resumed.data) };
+    const document = mapCloudDocument(resumed.data);
+    const syncedAt = new Date().toISOString();
+    upsertCachedDocument(uploadedBy, resumed.data.land_record_id, document, syncedAt);
+
+    return { ok: true, state: "documents_synced", data: document };
   }
 
   if (existing.data.land_record_id !== requestedLandRecordId) {
@@ -298,5 +315,9 @@ async function resolveExistingDocument(
     );
   }
 
-  return { ok: true, state: "documents_synced", data: mapCloudDocument(existing.data) };
+  const document = mapCloudDocument(existing.data);
+  const syncedAt = new Date().toISOString();
+  upsertCachedDocument(uploadedBy, existing.data.land_record_id, document, syncedAt);
+
+  return { ok: true, state: "documents_synced", data: document };
 }

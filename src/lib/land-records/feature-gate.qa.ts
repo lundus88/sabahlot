@@ -4,9 +4,10 @@
 // (xsflrehitrmobiyfbfhk), not merely NODE_ENV !== "production".
 // Extended by sprint production-read-gate-phase1 (ADR-019, Tests 8-13):
 // proves isTargetingSabahlotProductionProject() matches/fails-closed
-// correctly, and that isCloudReadEnabled() stays closed for
-// sabahlot-production as long as PRODUCTION_READ_ENABLED_CONSTANT ships
-// false -- see the comment above Test 8 for what is and isn't covered.
+// correctly, and (see Test 8, updated by ADR-025) that isCloudReadEnabled()
+// correctly opens for sabahlot-production now that
+// PRODUCTION_READ_ENABLED_CONSTANT has been activated -- see the comment
+// above Test 8 for what is and isn't covered.
 // Extended by sprint production-write-gate-phase2a-land-records (ADR-020,
 // Tests 14-17): proves isCloudWriteEnabledForParentInProduction() stays
 // closed while its constant ships false, and -- the load-bearing check for
@@ -176,32 +177,25 @@ function testNonHttpsRejected() {
   assert(!isTargetingSabahlotDevProject(), "expected a non-https URL to be rejected");
 }
 
-// ---- Sprint production-read-gate-phase1 (ADR-019) -------------------------
+// ---- Sprint production-read-gate-phase1 (ADR-019), Test 8 updated by
+//      sprint production-read-activation-phase1 (ADR-025) ------------------
 //
-// PRODUCTION_READ_ENABLED_CONSTANT is intentionally not exported and has no
-// runtime override, so its "what if it were true" branch cannot be exercised
-// here without adding a test-only hook to production gate code -- which
-// would undermine the point of it being a hardcoded, non-runtime-configurable
-// switch. That branch is DOCUMENTED, not executed: with the constant at its
-// shipped value (false), Test 8 below proves the gate stays closed even when
-// both isTargetingSabahlotProductionProject() and NODE_ENV === "production"
-// hold. isTargetingSabahlotProductionProject() itself -- the only part of
-// the new branch with real matching logic -- is fully exercised by Tests 8-14
-// below (missing/empty/malformed URL cases are covered by the extended
-// Tests 3/3b/3c above). When PRODUCTION_READ_ENABLED_CONSTANT is later
-// flipped to true in its own separate commit, isCloudReadEnabled() opening
-// under exactly those same two conditions follows directly from the
-// unchanged `&&` in its implementation, not from anything this QA script
-// could additionally prove by mocking the constant.
+// PRODUCTION_READ_ENABLED_CONSTANT was flipped to true by ADR-025
+// (2026-08-04, explicit owner activation decision). Test 8 below now
+// genuinely exercises the open gate -- no mocking needed, since the real
+// shipped value is true. isTargetingSabahlotProductionProject() itself is
+// exhaustively covered by Tests 8-13 (missing/empty/malformed URL cases are
+// covered by the extended Tests 3/3b/3c above).
 
-// ---- 8: sabahlot-production URL + production build -> gate stays closed,
-//         because PRODUCTION_READ_ENABLED_CONSTANT ships false -------------
+// ---- 8: sabahlot-production URL + production build -> read gate now
+//         OPENS, because PRODUCTION_READ_ENABLED_CONSTANT was activated to
+//         true (ADR-025) -- write gate stays closed regardless ------------
 
-function testProductionUrlStaysClosedWhileConstantIsFalse() {
+function testProductionUrlOpensReadGateNowThatConstantIsActivated() {
   setEnv({ NODE_ENV: "production", NEXT_PUBLIC_SUPABASE_URL: PRODUCTION_URL });
   assert(isTargetingSabahlotProductionProject(), "expected the production URL to be recognized as sabahlot-production");
-  assert(!isCloudReadEnabled(), "expected the read gate to stay closed for sabahlot-production while PRODUCTION_READ_ENABLED_CONSTANT is false");
-  assert(!isCloudWriteEnabled(), "expected the write gate to stay closed for sabahlot-production (write gate untouched by this sprint)");
+  assert(isCloudReadEnabled(), "expected the read gate to be OPEN for sabahlot-production now that PRODUCTION_READ_ENABLED_CONSTANT has been activated (ADR-025)");
+  assert(!isCloudWriteEnabled(), "expected the write gate to stay closed for sabahlot-production -- this is a read-only activation, write constants are all still false");
 }
 
 // ---- 9: sabahlot-production URL, but not a production build -> stays closed
@@ -632,7 +626,7 @@ run("Test 4 (production keeps the gate closed even with the correct dev URL)", t
 run("Test 5 (lookalike/substring hostnames are rejected)", testLookalikeHostnamesRejected);
 run("Test 6 (hostname comparison is case-insensitive)", testHostnameCaseInsensitive);
 run("Test 7 (non-https scheme is rejected)", testNonHttpsRejected);
-run("Test 8 (sabahlot-production URL + production build stays closed while the constant is false)", testProductionUrlStaysClosedWhileConstantIsFalse);
+run("Test 8 (sabahlot-production URL + production build OPENS the read gate -- constant activated, ADR-025)", testProductionUrlOpensReadGateNowThatConstantIsActivated);
 run("Test 9 (sabahlot-production URL outside a production build stays closed)", testProductionUrlOutsideProductionBuildStaysClosed);
 run("Test 10 (sabahlot-dev URL in a production build is never recognized as sabahlot-production)", testDevUrlNotRecognizedAsProductionEvenInProductionBuild);
 run("Test 11 (lookalike/substring production hostnames are rejected)", testProductionLookalikeHostnamesRejected);
