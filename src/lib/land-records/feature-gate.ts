@@ -28,6 +28,18 @@ const CLOUD_WRITE_ENABLED_CONSTANT = true;
 const SABAHLOT_DEV_PROJECT_REF = "xsflrehitrmobiyfbfhk";
 const SABAHLOT_DEV_HOSTNAME = `${SABAHLOT_DEV_PROJECT_REF}.supabase.co`;
 
+// Sprint production-read-gate-phase1 (ADR-019): sabahlot-production's ref,
+// same non-secret status as the dev ref above. PRODUCTION_READ_ENABLED_CONSTANT
+// is a SEPARATE switch from CLOUD_READ_ENABLED_CONSTANT (dev) -- defaults
+// false, and flipping it is a deliberate, standalone, separately-approved
+// commit, not part of this sprint. It is intentionally never exported or
+// exposed to a runtime override (env var, query param, etc.): the only way
+// to change it is to edit this file and ship a new commit, so merging this
+// sprint's code does not by itself activate anything for a real user.
+const SABAHLOT_PRODUCTION_PROJECT_REF = "mrkhhdfxoomkzirwgnwx";
+const SABAHLOT_PRODUCTION_HOSTNAME = `${SABAHLOT_PRODUCTION_PROJECT_REF}.supabase.co`;
+const PRODUCTION_READ_ENABLED_CONSTANT = false;
+
 /**
  * Fails closed: any missing, malformed, or non-matching
  * NEXT_PUBLIC_SUPABASE_URL returns false. Only a build whose configured
@@ -52,17 +64,51 @@ export function isTargetingSabahlotDevProject(): boolean {
   );
 }
 
-export function isCloudReadEnabled(): boolean {
+/**
+ * Same fail-closed matching as isTargetingSabahlotDevProject(), against
+ * sabahlot-production's hostname instead. Deliberately a standalone
+ * function (not sharing a helper with the dev version above) so the
+ * already-verified dev matching logic stays untouched by this sprint.
+ */
+export function isTargetingSabahlotProductionProject(): boolean {
+  const configuredUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!configuredUrl) return false;
+
+  let parsed: URL;
+  try {
+    parsed = new URL(configuredUrl);
+  } catch {
+    return false;
+  }
+
   return (
-    CLOUD_READ_ENABLED_CONSTANT &&
-    process.env.NODE_ENV !== "production" &&
-    isTargetingSabahlotDevProject()
+    parsed.protocol === "https:" &&
+    parsed.hostname.toLowerCase() === SABAHLOT_PRODUCTION_HOSTNAME
   );
+}
+
+// Dev and Production are mutually exclusive branches, each with its own
+// enable constant and its own NODE_ENV requirement (dev: anything but
+// production; production: exactly production) -- a build cannot satisfy
+// both isTargetingSabahlotDevProject() and isTargetingSabahlotProductionProject()
+// at once, since the two hostnames differ.
+export function isCloudReadEnabled(): boolean {
+  if (isTargetingSabahlotDevProject()) {
+    return CLOUD_READ_ENABLED_CONSTANT && process.env.NODE_ENV !== "production";
+  }
+  if (isTargetingSabahlotProductionProject()) {
+    return PRODUCTION_READ_ENABLED_CONSTANT && process.env.NODE_ENV === "production";
+  }
+  return false;
 }
 
 // Both read and write gates require the exact sabahlot-dev project. Keeping
 // their enable constants separate still allows either capability to be
 // disabled independently without weakening the environment boundary.
+//
+// Write gate is untouched by the production-read-gate-phase1 sprint --
+// sabahlot-production is not accepted here under any NODE_ENV, so Production
+// stays write-disabled regardless of the read-gate change above.
 export function isCloudWriteEnabled(): boolean {
   return (
     CLOUD_WRITE_ENABLED_CONSTANT &&

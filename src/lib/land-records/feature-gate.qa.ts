@@ -2,6 +2,11 @@
 // isCloudWriteEnabled() actually fails closed unless
 // NEXT_PUBLIC_SUPABASE_URL points at the sabahlot-dev project
 // (xsflrehitrmobiyfbfhk), not merely NODE_ENV !== "production".
+// Extended by sprint production-read-gate-phase1 (ADR-019, Tests 8-13):
+// proves isTargetingSabahlotProductionProject() matches/fails-closed
+// correctly, and that isCloudReadEnabled() stays closed for
+// sabahlot-production as long as PRODUCTION_READ_ENABLED_CONSTANT ships
+// false -- see the comment above Test 8 for what is and isn't covered.
 // Run via:
 //   npx tsc -p src/lib/land-records/feature-gate.qa.tsconfig.json --outDir <tmp>
 //   node <tmp>/feature-gate.qa.js
@@ -13,6 +18,7 @@ import {
   isCloudReadEnabled,
   isCloudWriteEnabled,
   isTargetingSabahlotDevProject,
+  isTargetingSabahlotProductionProject,
 } from "./feature-gate";
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -44,6 +50,7 @@ function run(name: string, fn: () => void) {
 }
 
 const DEV_URL = "https://xsflrehitrmobiyfbfhk.supabase.co";
+const PRODUCTION_URL = "https://mrkhhdfxoomkzirwgnwx.supabase.co";
 
 // ---- 1: correct sabahlot-dev URL, non-production -> gate opens -----------
 
@@ -71,6 +78,7 @@ function testOtherProjectUrlStaysClosed() {
 function testMissingUrlStaysClosed() {
   setEnv({ NODE_ENV: "development", NEXT_PUBLIC_SUPABASE_URL: undefined });
   assert(!isTargetingSabahlotDevProject(), "expected a missing URL to fail closed");
+  assert(!isTargetingSabahlotProductionProject(), "expected a missing URL to fail closed for the production matcher too");
   assert(!isCloudReadEnabled(), "expected the read gate to stay closed with no configured URL");
   assert(!isCloudWriteEnabled(), "expected the write gate to stay closed with no configured URL");
 }
@@ -80,6 +88,7 @@ function testMissingUrlStaysClosed() {
 function testEmptyUrlStaysClosed() {
   setEnv({ NODE_ENV: "development", NEXT_PUBLIC_SUPABASE_URL: "" });
   assert(!isTargetingSabahlotDevProject(), "expected an empty URL to fail closed");
+  assert(!isTargetingSabahlotProductionProject(), "expected an empty URL to fail closed for the production matcher too");
   assert(!isCloudReadEnabled(), "expected the read gate to stay closed with an empty URL");
   assert(!isCloudWriteEnabled(), "expected the write gate to stay closed with an empty URL");
 }
@@ -89,6 +98,7 @@ function testEmptyUrlStaysClosed() {
 function testMalformedUrlStaysClosed() {
   setEnv({ NODE_ENV: "development", NEXT_PUBLIC_SUPABASE_URL: "not a url at all" });
   assert(!isTargetingSabahlotDevProject(), "expected a malformed URL to fail closed, not throw");
+  assert(!isTargetingSabahlotProductionProject(), "expected a malformed URL to fail closed for the production matcher too, not throw");
   assert(!isCloudReadEnabled(), "expected the read gate to stay closed with a malformed URL");
   assert(!isCloudWriteEnabled(), "expected the write gate to stay closed with a malformed URL");
 }
@@ -129,6 +139,80 @@ function testNonHttpsRejected() {
   assert(!isTargetingSabahlotDevProject(), "expected a non-https URL to be rejected");
 }
 
+// ---- Sprint production-read-gate-phase1 (ADR-019) -------------------------
+//
+// PRODUCTION_READ_ENABLED_CONSTANT is intentionally not exported and has no
+// runtime override, so its "what if it were true" branch cannot be exercised
+// here without adding a test-only hook to production gate code -- which
+// would undermine the point of it being a hardcoded, non-runtime-configurable
+// switch. That branch is DOCUMENTED, not executed: with the constant at its
+// shipped value (false), Test 8 below proves the gate stays closed even when
+// both isTargetingSabahlotProductionProject() and NODE_ENV === "production"
+// hold. isTargetingSabahlotProductionProject() itself -- the only part of
+// the new branch with real matching logic -- is fully exercised by Tests 8-14
+// below (missing/empty/malformed URL cases are covered by the extended
+// Tests 3/3b/3c above). When PRODUCTION_READ_ENABLED_CONSTANT is later
+// flipped to true in its own separate commit, isCloudReadEnabled() opening
+// under exactly those same two conditions follows directly from the
+// unchanged `&&` in its implementation, not from anything this QA script
+// could additionally prove by mocking the constant.
+
+// ---- 8: sabahlot-production URL + production build -> gate stays closed,
+//         because PRODUCTION_READ_ENABLED_CONSTANT ships false -------------
+
+function testProductionUrlStaysClosedWhileConstantIsFalse() {
+  setEnv({ NODE_ENV: "production", NEXT_PUBLIC_SUPABASE_URL: PRODUCTION_URL });
+  assert(isTargetingSabahlotProductionProject(), "expected the production URL to be recognized as sabahlot-production");
+  assert(!isCloudReadEnabled(), "expected the read gate to stay closed for sabahlot-production while PRODUCTION_READ_ENABLED_CONSTANT is false");
+  assert(!isCloudWriteEnabled(), "expected the write gate to stay closed for sabahlot-production (write gate untouched by this sprint)");
+}
+
+// ---- 9: sabahlot-production URL, but not a production build -> stays closed
+
+function testProductionUrlOutsideProductionBuildStaysClosed() {
+  setEnv({ NODE_ENV: "development", NEXT_PUBLIC_SUPABASE_URL: PRODUCTION_URL });
+  assert(isTargetingSabahlotProductionProject(), "expected the production URL to be recognized as sabahlot-production regardless of NODE_ENV");
+  assert(!isCloudReadEnabled(), "expected the read gate to stay closed for sabahlot-production outside a production build");
+  assert(!isCloudWriteEnabled(), "expected the write gate to stay closed for sabahlot-production outside a production build");
+}
+
+// ---- 10: sabahlot-dev URL in a production build -> not recognized as
+//          sabahlot-production either (the two matchers are disjoint) -----
+
+function testDevUrlNotRecognizedAsProductionEvenInProductionBuild() {
+  setEnv({ NODE_ENV: "production", NEXT_PUBLIC_SUPABASE_URL: DEV_URL });
+  assert(!isTargetingSabahlotProductionProject(), "expected the dev URL to never be recognized as sabahlot-production");
+  assert(!isCloudReadEnabled(), "expected the read gate to stay closed (dev URL + production build never opens either branch)");
+  assert(!isCloudWriteEnabled(), "expected the write gate to stay closed (dev URL + production build never opens either branch)");
+}
+
+// ---- 11: substring / lookalike production hostnames must not bypass ------
+
+function testProductionLookalikeHostnamesRejected() {
+  setEnv({ NODE_ENV: "production", NEXT_PUBLIC_SUPABASE_URL: "https://evilmrkhhdfxoomkzirwgnwxevil.supabase.co" });
+  assert(!isTargetingSabahlotProductionProject(), "expected a hostname that merely contains the production ref as a substring to be rejected");
+
+  setEnv({ NODE_ENV: "production", NEXT_PUBLIC_SUPABASE_URL: `https://${"mrkhhdfxoomkzirwgnwx"}.supabase.co.evil.com` });
+  assert(!isTargetingSabahlotProductionProject(), "expected a suffix-appended lookalike production hostname to be rejected");
+
+  setEnv({ NODE_ENV: "production", NEXT_PUBLIC_SUPABASE_URL: `https://evil.com/${"mrkhhdfxoomkzirwgnwx"}.supabase.co` });
+  assert(!isTargetingSabahlotProductionProject(), "expected the production project ref appearing only in the path to be rejected");
+}
+
+// ---- 12: production hostname comparison is case-insensitive --------------
+
+function testProductionHostnameCaseInsensitive() {
+  setEnv({ NODE_ENV: "production", NEXT_PUBLIC_SUPABASE_URL: "https://MRKHHDFXOOMKZIRWGNWX.supabase.co" });
+  assert(isTargetingSabahlotProductionProject(), "expected production hostname comparison to be case-insensitive");
+}
+
+// ---- 13: non-https scheme is rejected for the production hostname too ----
+
+function testProductionNonHttpsRejected() {
+  setEnv({ NODE_ENV: "production", NEXT_PUBLIC_SUPABASE_URL: "http://mrkhhdfxoomkzirwgnwx.supabase.co" });
+  assert(!isTargetingSabahlotProductionProject(), "expected a non-https production URL to be rejected");
+}
+
 run("Test 1 (sabahlot-dev URL opens the gate in development)", testDevUrlOpensGateInDevelopment);
 run("Test 2 (a different project's URL keeps the gate closed)", testOtherProjectUrlStaysClosed);
 run("Test 3 (missing URL keeps the gate closed)", testMissingUrlStaysClosed);
@@ -138,6 +222,12 @@ run("Test 4 (production keeps the gate closed even with the correct dev URL)", t
 run("Test 5 (lookalike/substring hostnames are rejected)", testLookalikeHostnamesRejected);
 run("Test 6 (hostname comparison is case-insensitive)", testHostnameCaseInsensitive);
 run("Test 7 (non-https scheme is rejected)", testNonHttpsRejected);
+run("Test 8 (sabahlot-production URL + production build stays closed while the constant is false)", testProductionUrlStaysClosedWhileConstantIsFalse);
+run("Test 9 (sabahlot-production URL outside a production build stays closed)", testProductionUrlOutsideProductionBuildStaysClosed);
+run("Test 10 (sabahlot-dev URL in a production build is never recognized as sabahlot-production)", testDevUrlNotRecognizedAsProductionEvenInProductionBuild);
+run("Test 11 (lookalike/substring production hostnames are rejected)", testProductionLookalikeHostnamesRejected);
+run("Test 12 (production hostname comparison is case-insensitive)", testProductionHostnameCaseInsensitive);
+run("Test 13 (non-https scheme is rejected for the production hostname)", testProductionNonHttpsRejected);
 
 setEnv({ NODE_ENV: originalNodeEnv, NEXT_PUBLIC_SUPABASE_URL: originalSupabaseUrl });
 
