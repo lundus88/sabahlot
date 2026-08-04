@@ -149,3 +149,29 @@ export function isCloudWriteEnabledForParentInProduction(): boolean {
     isTargetingSabahlotProductionProject()
   );
 }
+
+// Sprint production-write-gate-phase2b-geometry (ADR-021): same per-module
+// pattern as ADR-020 above, for geometry this time. Own function, own
+// constant, called only from geometry-write-coordinator.ts's two gate
+// call-sites (create/update) -- never from isCloudWriteEnabled() itself,
+// never from land_records/points/parties/documents. child-ui-sync.ts (the
+// UI wiring for geometry) has no gate check of its own -- it calls straight
+// into geometry-write-coordinator.ts, so it needed no change for this
+// sprint and inherits this behavior automatically.
+//
+// Same non-runtime-configurable contract as the constants above: ships
+// false, never exported, no env var/query param override.
+const PRODUCTION_GEOMETRY_WRITE_ENABLED_CONSTANT = false;
+
+/**
+ * Production write gate for geometry ONLY. land_records/points/parties/
+ * documents each remain unaffected by this constant -- their coordinators
+ * never call this function.
+ */
+export function isCloudWriteEnabledForGeometryInProduction(): boolean {
+  return (
+    PRODUCTION_GEOMETRY_WRITE_ENABLED_CONSTANT &&
+    process.env.NODE_ENV === "production" &&
+    isTargetingSabahlotProductionProject()
+  );
+}
