@@ -230,3 +230,31 @@ export function isCloudWriteEnabledForPartiesInProduction(): boolean {
     isTargetingSabahlotProductionProject()
   );
 }
+
+// Sprint production-write-gate-phase2e-documents (ADR-024): same per-module
+// pattern as ADR-020/021/022/023, for documents this time -- the fifth and
+// last module in the phased Production write rollout. Own function, own
+// constant, called only from documents-write-coordinator.ts's ONE gate
+// call-site (createCloudDocument -- create-only, no update/delete
+// coordinator exists) -- never from isCloudWriteEnabled()
+// itself, never from land_records/geometry/points/parties.
+// documents-ui-sync.ts (the UI wiring for documents) has no gate check of
+// its own, same as points'/geometry's UI wiring -- it calls straight into
+// documents-write-coordinator.ts, so it needed no change.
+//
+// Same non-runtime-configurable contract as the constants above: ships
+// false, never exported, no env var/query param override.
+const PRODUCTION_DOCUMENTS_WRITE_ENABLED_CONSTANT = false;
+
+/**
+ * Production write gate for documents ONLY. land_records/geometry/points/
+ * parties each remain unaffected by this constant -- their coordinators
+ * never call this function.
+ */
+export function isCloudWriteEnabledForDocumentsInProduction(): boolean {
+  return (
+    PRODUCTION_DOCUMENTS_WRITE_ENABLED_CONSTANT &&
+    process.env.NODE_ENV === "production" &&
+    isTargetingSabahlotProductionProject()
+  );
+}

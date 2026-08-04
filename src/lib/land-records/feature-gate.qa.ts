@@ -26,6 +26,11 @@
 // (two call-sites, like land_records/geometry); Test 29 cross-checks all
 // four per-module gates confirmed so far pairwise. See the comment above
 // Test 26.
+// Extended by sprint production-write-gate-phase2e-documents (ADR-024,
+// Tests 30-33): same shape for isCloudWriteEnabledForDocumentsInProduction()
+// (one call-site, like points) -- the fifth and LAST module. Test 33
+// completes the full pairwise cross-check across all five per-module
+// gates. See the comment above Test 30.
 // Run via:
 //   npx tsc -p src/lib/land-records/feature-gate.qa.tsconfig.json --outDir <tmp>
 //   node <tmp>/feature-gate.qa.js
@@ -39,6 +44,7 @@ import * as path from "node:path";
 import {
   isCloudReadEnabled,
   isCloudWriteEnabled,
+  isCloudWriteEnabledForDocumentsInProduction,
   isCloudWriteEnabledForGeometryInProduction,
   isCloudWriteEnabledForParentInProduction,
   isCloudWriteEnabledForPartiesInProduction,
@@ -140,6 +146,7 @@ function testProductionStaysClosedEvenWithDevUrl() {
   assert(!isCloudWriteEnabledForGeometryInProduction(), "expected the geometry-in-production gate to stay closed for the dev URL (wrong hostname)");
   assert(!isCloudWriteEnabledForPointsInProduction(), "expected the points-in-production gate to stay closed for the dev URL (wrong hostname)");
   assert(!isCloudWriteEnabledForPartiesInProduction(), "expected the parties-in-production gate to stay closed for the dev URL (wrong hostname)");
+  assert(!isCloudWriteEnabledForDocumentsInProduction(), "expected the documents-in-production gate to stay closed for the dev URL (wrong hostname)");
 }
 
 // ---- 5: substring / lookalike hostnames must not bypass the check --------
@@ -218,6 +225,7 @@ function testDevUrlNotRecognizedAsProductionEvenInProductionBuild() {
   assert(!isCloudWriteEnabledForGeometryInProduction(), "expected the geometry-in-production gate to stay closed for the dev URL even in a production build");
   assert(!isCloudWriteEnabledForPointsInProduction(), "expected the points-in-production gate to stay closed for the dev URL even in a production build");
   assert(!isCloudWriteEnabledForPartiesInProduction(), "expected the parties-in-production gate to stay closed for the dev URL even in a production build");
+  assert(!isCloudWriteEnabledForDocumentsInProduction(), "expected the documents-in-production gate to stay closed for the dev URL even in a production build");
 }
 
 // ---- 11: substring / lookalike production hostnames must not bypass ------
@@ -533,6 +541,88 @@ function testOtherCoordinatorsNeverReferencePartiesInProductionGate() {
   );
 }
 
+// ---- Sprint production-write-gate-phase2e-documents (ADR-024) -------------
+//
+// Same shape as Tests 22-25 (single call-site, like points), for documents
+// this time -- the fifth and LAST module in the phased Production write
+// rollout. Test 33 is the final load-bearing static check: it completes
+// the full pairwise cross-check matrix across all five modules
+// (land_records, geometry, points, parties, documents) -- every module's
+// coordinator confirmed to reference only its own Production gate function,
+// never any other module's.
+
+// ---- 30: sabahlot-production URL + production build -> documents write
+//          stays closed, because PRODUCTION_DOCUMENTS_WRITE_ENABLED_CONSTANT
+//          ships false ------------------------------------------------------
+
+function testDocumentsWriteInProductionStaysClosedWhileConstantIsFalse() {
+  setEnv({ NODE_ENV: "production", NEXT_PUBLIC_SUPABASE_URL: PRODUCTION_URL });
+  assert(!isCloudWriteEnabledForDocumentsInProduction(), "expected the documents-in-production write gate to stay closed while its constant is false");
+  assert(!isCloudWriteEnabled(), "expected the dev write gate to stay closed for sabahlot-production regardless");
+}
+
+// ---- 31: sabahlot-production URL, but not a production build -> stays closed
+
+function testDocumentsWriteInProductionOutsideProductionBuildStaysClosed() {
+  setEnv({ NODE_ENV: "development", NEXT_PUBLIC_SUPABASE_URL: PRODUCTION_URL });
+  assert(!isCloudWriteEnabledForDocumentsInProduction(), "expected the documents-in-production write gate to stay closed outside a production build");
+}
+
+// ---- 32: a different (non-dev, non-production) project's URL never opens
+//          the documents-in-production gate, even in a production build --
+
+function testDocumentsWriteInProductionRejectsOtherProjectUrl() {
+  setEnv({ NODE_ENV: "production", NEXT_PUBLIC_SUPABASE_URL: "https://someotherproject.supabase.co" });
+  assert(!isCloudWriteEnabledForDocumentsInProduction(), "expected the documents-in-production write gate to stay closed for an unrelated project URL");
+}
+
+// ---- 33: static check -- no other module's write-coordinator ever
+//          references isCloudWriteEnabledForDocumentsInProduction, AND
+//          documents-write-coordinator.ts never references the
+//          land_records/geometry/points/parties functions from
+//          ADR-020/021/022/023. Completes the full pairwise cross-check
+//          across all five per-module gates. -------------------------------
+
+function testOtherCoordinatorsNeverReferenceDocumentsInProductionGate() {
+  const otherCoordinatorFiles = [
+    "write-coordinator.ts",
+    "geometry-write-coordinator.ts",
+    "points-write-coordinator.ts",
+    "parties-write-coordinator.ts",
+  ];
+  for (const file of otherCoordinatorFiles) {
+    const source = fs.readFileSync(
+      path.join(process.cwd(), "src/lib/land-records", file),
+      "utf8",
+    );
+    assert(
+      !source.includes("isCloudWriteEnabledForDocumentsInProduction"),
+      `${file} must never reference isCloudWriteEnabledForDocumentsInProduction -- Production write for this module is out of scope until its own dedicated phase`,
+    );
+  }
+
+  const documentsSource = fs.readFileSync(
+    path.join(process.cwd(), "src/lib/land-records/documents-write-coordinator.ts"),
+    "utf8",
+  );
+  assert(
+    !documentsSource.includes("isCloudWriteEnabledForParentInProduction"),
+    "documents-write-coordinator.ts must never reference isCloudWriteEnabledForParentInProduction -- each module's Production gate stays strictly its own",
+  );
+  assert(
+    !documentsSource.includes("isCloudWriteEnabledForGeometryInProduction"),
+    "documents-write-coordinator.ts must never reference isCloudWriteEnabledForGeometryInProduction -- each module's Production gate stays strictly its own",
+  );
+  assert(
+    !documentsSource.includes("isCloudWriteEnabledForPointsInProduction"),
+    "documents-write-coordinator.ts must never reference isCloudWriteEnabledForPointsInProduction -- each module's Production gate stays strictly its own",
+  );
+  assert(
+    !documentsSource.includes("isCloudWriteEnabledForPartiesInProduction"),
+    "documents-write-coordinator.ts must never reference isCloudWriteEnabledForPartiesInProduction -- each module's Production gate stays strictly its own",
+  );
+}
+
 run("Test 1 (sabahlot-dev URL opens the gate in development)", testDevUrlOpensGateInDevelopment);
 run("Test 2 (a different project's URL keeps the gate closed)", testOtherProjectUrlStaysClosed);
 run("Test 3 (missing URL keeps the gate closed)", testMissingUrlStaysClosed);
@@ -564,6 +654,10 @@ run("Test 26 (parties write in production stays closed while the constant is fal
 run("Test 27 (parties write in production stays closed outside a production build)", testPartiesWriteInProductionOutsideProductionBuildStaysClosed);
 run("Test 28 (parties write in production rejects an unrelated project URL)", testPartiesWriteInProductionRejectsOtherProjectUrl);
 run("Test 29 (no other coordinator references the parties-in-production gate, and parties never references the other three)", testOtherCoordinatorsNeverReferencePartiesInProductionGate);
+run("Test 30 (documents write in production stays closed while the constant is false)", testDocumentsWriteInProductionStaysClosedWhileConstantIsFalse);
+run("Test 31 (documents write in production stays closed outside a production build)", testDocumentsWriteInProductionOutsideProductionBuildStaysClosed);
+run("Test 32 (documents write in production rejects an unrelated project URL)", testDocumentsWriteInProductionRejectsOtherProjectUrl);
+run("Test 33 (no other coordinator references the documents-in-production gate, and documents never references the other four -- completes the full 5-module cross-check)", testOtherCoordinatorsNeverReferenceDocumentsInProductionGate);
 
 setEnv({ NODE_ENV: originalNodeEnv, NEXT_PUBLIC_SUPABASE_URL: originalSupabaseUrl });
 

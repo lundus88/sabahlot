@@ -9,6 +9,12 @@
 // UI -- same deferred-wiring posture every other child table's backend
 // sprint left for its own later UI-wiring sprint.
 //
+// Sprint production-write-gate-phase2e-documents (ADR-024): the gate check
+// below also accepts isCloudWriteEnabledForDocumentsInProduction(), a
+// documents-only Production switch -- the fifth and last per-module gate.
+// No other module's coordinator gets this -- see the comment above that
+// function in feature-gate.ts.
+//
 // TWO-PHASE WRITE: unlike every other child table, one call to
 // createCloudDocument is actually two independent remote operations --
 // a Storage upload, then a metadata row insert -- neither atomic with
@@ -53,7 +59,10 @@ import {
   mapDocumentFieldsToDbPayload,
   uploadDocumentFile,
 } from "./documents-repository";
-import { isCloudWriteEnabled } from "./feature-gate";
+import {
+  isCloudWriteEnabled,
+  isCloudWriteEnabledForDocumentsInProduction,
+} from "./feature-gate";
 import { mapCloudDocument } from "./mapper";
 import { isStableCloudId } from "./types";
 import type { CloudDocument } from "./types";
@@ -101,7 +110,7 @@ export async function createCloudDocument(
   input: CreateDocumentInput,
   file: Blob,
 ): Promise<ChildWriteResult<CloudDocument>> {
-  if (!isCloudWriteEnabled()) {
+  if (!isCloudWriteEnabled() && !isCloudWriteEnabledForDocumentsInProduction()) {
     return failure("local_only", "database_error", "Cloud write is disabled in this environment.");
   }
 

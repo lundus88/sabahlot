@@ -13,6 +13,18 @@
 //
 // CREATE-ONLY: there is no updateCloudDocument/deleteCloudDocument to
 // test, and this file asserts that no such export exists.
+//
+// Sprint production-write-gate-phase2e-documents (ADR-024) added a second
+// gate function, isCloudWriteEnabledForDocumentsInProduction(), to this
+// module's one entry point (createCloudDocument). This script's env is
+// pinned to sabahlot-dev at module load (below) for its whole run, same
+// as geometry-write.qa.ts/points-write.qa.ts/parties-write.qa.ts, so it
+// only re-proves the pre-existing dev branch is unchanged (regression) --
+// the new production branch is covered instead by feature-gate.qa.ts
+// (Tests 30-33). Not duplicated here for the same reason as the other
+// coordinator QA files: documents-ui-sync.ts (documents' UI wiring) has no
+// gate check of its own and no pre-existing per-test env-override pattern
+// to extend.
 
 import {
   createCloudDocument,
