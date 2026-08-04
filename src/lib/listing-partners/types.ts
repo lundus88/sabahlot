@@ -82,6 +82,7 @@ export type WriteErrorCode =
   | "not_found_or_forbidden"
   | "not_authorized_or_not_found"
   | "duplicate_conflict"
+  | "partner_not_approved"
   | "network_error"
   | "database_error";
 
@@ -91,6 +92,9 @@ export type WriteSyncState =
   | "partner_created"
   | "partner_updated"
   | "partner_status_updated"
+  | "listing_created"
+  | "listing_updated"
+  | "listing_deleted"
   | "failed"
   | "conflict";
 
@@ -126,3 +130,95 @@ export interface ValidationFailure {
 }
 
 export type ValidationResult<TPayload> = ValidationSuccess<TPayload> | ValidationFailure;
+
+// ---------------------------------------------------------------------
+// property_listings. Standalone from land_records (ADR-026 point 3),
+// but owned by (foreign-keyed to) listing_partners -- part of the same
+// module/domain, unlike listing_partners' relationship to land_records.
+// Mirrors supabase/migrations/202608040001_create_listing_partner.sql
+// exactly.
+// ---------------------------------------------------------------------
+
+export type PropertyListingStatus =
+  | "draft"
+  | "pending_review"
+  | "active"
+  | "under_offer"
+  | "sold"
+  | "leased"
+  | "expired"
+  | "removed";
+
+export type PropertyListingType = "for_sale" | "for_lease";
+
+// Mirrors public.region_id (supabase/migrations/202607110002_create_land_domain_enums.sql).
+// Defined locally rather than imported from land-records/types.ts --
+// same standalone-module posture as the rest of this file; region_id is
+// a small, stable, already-shipped enum unlikely to drift, and this
+// avoids adding a second cross-module import beyond the one already
+// justified in feature-gate.ts.
+export type PropertyListingRegion = "sabah" | "sarawak" | "peninsular";
+
+// Raw DB row shape (snake_case), as returned by Supabase.
+export interface PropertyListingRow {
+  id: string;
+  partner_id: string;
+  title: string;
+  description: string | null;
+  listing_type: PropertyListingType;
+  price: number | null;
+  district: string | null;
+  village: string | null;
+  region: PropertyListingRegion | null;
+  status: PropertyListingStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+// Domain shape (camelCase), what the rest of the app consumes.
+export interface PropertyListing {
+  id: string;
+  partnerId: string;
+  title: string;
+  description: string | null;
+  listingType: PropertyListingType;
+  price: number | null;
+  district: string | null;
+  village: string | null;
+  region: PropertyListingRegion | null;
+  status: PropertyListingStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Fields a partner may write about one of their own listings. Unlike
+// listing_partners.status (admin-only, ADR-026 point 2),
+// property_listings.status IS an ordinary partner-writable field here --
+// the schema/RLS (sprint-listing-partner-schema) gives the owning
+// approved partner full UPDATE rights on every column, with no separate
+// admin-only status policy or trigger for this table. `partnerId` is
+// deliberately absent -- always the caller's own auth.uid(), never
+// client-supplied (see property-listings-write-coordinator.ts).
+export interface PropertyListingWritableFields {
+  title: string;
+  description?: string | null;
+  listingType: PropertyListingType;
+  price?: number | null;
+  district?: string | null;
+  village?: string | null;
+  region?: PropertyListingRegion | null;
+  status?: PropertyListingStatus;
+}
+
+// `id` IS required and client-generated here (ADR-001 pattern, unlike
+// ListingPartnerWritableFields/CreateListingPartnerInput above where
+// `id` is always auth.uid()) -- a property_listings row has no
+// auth.users identity of its own to be keyed to, so this table follows
+// the same stable-client-id-for-idempotent-retry convention every
+// land-records child table already uses, not the listing_partners
+// exception.
+export interface CreatePropertyListingInput extends PropertyListingWritableFields {
+  id: string;
+}
+
+export type UpdatePropertyListingInput = Partial<PropertyListingWritableFields>;
