@@ -23,6 +23,11 @@
 // parties (a land record legitimately has multiple parties: owner,
 // applicant, heir, surveyor, witness, village head), so no
 // listPartiesForLandRecord-equivalent pre-check exists here.
+//
+// Sprint production-write-gate-phase2d-parties (ADR-023): the two gate
+// checks below also accept isCloudWriteEnabledForPartiesInProduction(), a
+// parties-only Production switch. No other module's coordinator gets this
+// -- see the comment above that function in feature-gate.ts.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -32,7 +37,10 @@ import {
   mapPartyFieldsToDbPayload,
   updatePartyRow,
 } from "./parties-repository";
-import { isCloudWriteEnabled } from "./feature-gate";
+import {
+  isCloudWriteEnabled,
+  isCloudWriteEnabledForPartiesInProduction,
+} from "./feature-gate";
 import { mapCloudParty } from "./mapper";
 import { upsertCachedParty } from "./parties-cache";
 import { isStableCloudId } from "./types";
@@ -78,7 +86,7 @@ export async function createCloudParty(
   supabase: SupabaseClient,
   input: CreatePartyInput,
 ): Promise<ChildWriteResult<CloudLandParty>> {
-  if (!isCloudWriteEnabled()) {
+  if (!isCloudWriteEnabled() && !isCloudWriteEnabledForPartiesInProduction()) {
     return failure("local_only", "database_error", "Cloud write is disabled in this environment.");
   }
 
@@ -198,7 +206,7 @@ export async function updateCloudParty(
   patch: UpdatePartyInput,
   expectedUpdatedAt: string,
 ): Promise<ChildWriteResult<CloudLandParty>> {
-  if (!isCloudWriteEnabled()) {
+  if (!isCloudWriteEnabled() && !isCloudWriteEnabledForPartiesInProduction()) {
     return failure("local_only", "database_error", "Cloud write is disabled in this environment.");
   }
 

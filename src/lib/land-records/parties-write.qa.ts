@@ -10,6 +10,17 @@
 // unchanged as a separate regression step (see the sprint report), not
 // modified by this sprint.
 //
+// Sprint production-write-gate-phase2d-parties (ADR-023) added a second
+// gate function, isCloudWriteEnabledForPartiesInProduction(), to this
+// module's two entry points (createCloudParty/updateCloudParty). This
+// script's env is pinned to sabahlot-dev at module load (below) for its
+// whole run, same as geometry-write.qa.ts/points-write.qa.ts, so it only
+// re-proves the pre-existing dev branch is unchanged (regression) -- the
+// new production branch is covered instead by feature-gate.qa.ts (Tests
+// 26-29). Not duplicated here for the same reason as the other coordinator
+// QA files: parties-ui-sync.ts (parties' UI wiring) has no gate check of
+// its own and no pre-existing per-test env-override pattern to extend.
+//
 // Imports directly from the sibling parties-*.ts / existing shared
 // files rather than through "./index" -- index.ts is a shared,
 // Foundation/Integration-owned file outside this sprint's Allowed

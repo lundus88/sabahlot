@@ -201,3 +201,32 @@ export function isCloudWriteEnabledForPointsInProduction(): boolean {
     isTargetingSabahlotProductionProject()
   );
 }
+
+// Sprint production-write-gate-phase2d-parties (ADR-023): same per-module
+// pattern as ADR-020/021/022, for parties this time. Own function, own
+// constant, called only from parties-write-coordinator.ts's TWO gate
+// call-sites (createCloudParty/updateCloudParty -- backend supports both,
+// same shape as land_records/geometry) -- never from isCloudWriteEnabled()
+// itself, never from land_records/geometry/points/documents.
+// parties-ui-sync.ts (the UI wiring for parties) has no gate check of its
+// own, same as geometry's/points' UI wiring -- it calls straight into
+// parties-write-coordinator.ts, so it needed no change. ADR-014
+// (id_number never sent) is entirely unaffected -- this sprint touches
+// gate logic only, never the payload allowlist.
+//
+// Same non-runtime-configurable contract as the constants above: ships
+// false, never exported, no env var/query param override.
+const PRODUCTION_PARTIES_WRITE_ENABLED_CONSTANT = false;
+
+/**
+ * Production write gate for parties ONLY. land_records/geometry/points/
+ * documents each remain unaffected by this constant -- their coordinators
+ * never call this function.
+ */
+export function isCloudWriteEnabledForPartiesInProduction(): boolean {
+  return (
+    PRODUCTION_PARTIES_WRITE_ENABLED_CONSTANT &&
+    process.env.NODE_ENV === "production" &&
+    isTargetingSabahlotProductionProject()
+  );
+}
