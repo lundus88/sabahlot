@@ -4,6 +4,11 @@
 //
 // Not wired into src/app/page.tsx -- see the Sprint 02D-1A report for
 // why and where a future sprint should connect it.
+//
+// Sprint production-write-gate-phase2b-geometry (ADR-021): the two gate
+// checks below also accept isCloudWriteEnabledForGeometryInProduction(), a
+// geometry-only Production switch. No other module's coordinator gets
+// this -- see the comment above that function in feature-gate.ts.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -14,7 +19,10 @@ import {
   mapGeometryFieldsToDbPayload,
   updateGeometryRow,
 } from "./geometry-repository";
-import { isCloudWriteEnabled } from "./feature-gate";
+import {
+  isCloudWriteEnabled,
+  isCloudWriteEnabledForGeometryInProduction,
+} from "./feature-gate";
 import { mapCloudGeometryToDrawingObject } from "./mapper";
 import { upsertCachedGeometry } from "./geometry-cache";
 import { isStableCloudId } from "./types";
@@ -65,7 +73,7 @@ export async function createCloudGeometry(
   supabase: SupabaseClient,
   input: CreateGeometryInput,
 ): Promise<ChildWriteResult<DrawingObject>> {
-  if (!isCloudWriteEnabled()) {
+  if (!isCloudWriteEnabled() && !isCloudWriteEnabledForGeometryInProduction()) {
     return failure("local_only", "database_error", "Cloud write is disabled in this environment.");
   }
 
@@ -200,7 +208,7 @@ export async function updateCloudGeometry(
   patch: UpdateGeometryInput,
   expectedUpdatedAt: string,
 ): Promise<ChildWriteResult<DrawingObject>> {
-  if (!isCloudWriteEnabled()) {
+  if (!isCloudWriteEnabled() && !isCloudWriteEnabledForGeometryInProduction()) {
     return failure("local_only", "database_error", "Cloud write is disabled in this environment.");
   }
 

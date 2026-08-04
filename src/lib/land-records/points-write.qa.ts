@@ -8,6 +8,18 @@
 // or geometry-write.qa.ts -- those are re-run unchanged as a separate
 // regression step, not modified by this sprint.
 //
+// Sprint production-write-gate-phase2c-points (ADR-022) added a second
+// gate function, isCloudWriteEnabledForPointsInProduction(), to this
+// module's one entry point (createCloudPoint). This script's env is
+// pinned to sabahlot-dev at module load (below) for its whole run, same
+// as geometry-write.qa.ts/land-records-write.qa.ts, so it only re-proves
+// the pre-existing dev branch is unchanged (regression) -- the new
+// production branch is covered instead by feature-gate.qa.ts (Tests
+// 22-25). Not duplicated here for the same reason as the other two
+// coordinator QA files: points-ui-sync.ts (points' UI wiring) has no gate
+// check of its own and no pre-existing per-test env-override pattern to
+// extend.
+//
 // CREATE-ONLY (ADR-011): there is no updateCloudPoint to test, and this
 // file asserts that no such export exists. Delete is separately
 // deferred (ADR-013) -- asserted the same way.

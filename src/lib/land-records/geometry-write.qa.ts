@@ -7,6 +7,21 @@
 // not touch local-lots.ts, land-records.qa.ts, or
 // land-records-write.qa.ts -- those are re-run unchanged as a separate
 // verification step (see the Sprint 02D-1A report).
+//
+// Sprint production-write-gate-phase2b-geometry (ADR-021) added a second
+// gate function, isCloudWriteEnabledForGeometryInProduction(), to this
+// module's two entry points (createCloudGeometry/updateCloudGeometry). This
+// script's env is pinned to sabahlot-dev at module load (below) for its
+// whole run, exactly like land-records-write.qa.ts, so it only re-proves
+// the pre-existing dev branch of that OR still behaves identically
+// (regression) -- it does not additionally exercise the new production
+// branch. That branch is covered instead by feature-gate.qa.ts (Tests
+// 18-21, the gate function in isolation plus the load-bearing static
+// checks). Not duplicated here for the same reason land-records-write.qa.ts
+// didn't gain one either: child-ui-sync.ts (geometry's UI wiring) has no
+// gate check of its own and no existing per-test env-override pattern to
+// extend, so introducing one just for this sprint would be a bigger,
+// less-precedented change than the coverage warrants.
 
 import {
   createCloudGeometry,
