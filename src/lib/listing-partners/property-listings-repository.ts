@@ -128,6 +128,37 @@ export async function getActiveListingContact(
 }
 
 /**
+ * Sprint listing-partner-my-listings-ui: lists every property_listings
+ * row belonging to the given partner, any status included (RLS's
+ * `property_listings_select_own` is what actually scopes this to rows
+ * the caller may see -- `partnerId` should always be the caller's own
+ * id, but this function does not and cannot enforce that itself, same
+ * as every other read function in this file). Most-recently-updated
+ * first, matching `listLandRecordsForCurrentUser`'s existing ordering
+ * convention in `land-records/cloud-repository.ts`.
+ *
+ * No coordinator wrapper -- reads in this codebase are called directly
+ * from the UI with a session-derived id, mirroring how
+ * `getListingPartnerById` is already used from `page.tsx`.
+ */
+export async function listOwnPropertyListingsRow(
+  supabase: SupabaseClient,
+  partnerId: string,
+): Promise<PropertyListingRepositoryResult<PropertyListingRow[]>> {
+  const { data, error } = await supabase
+    .from("property_listings")
+    .select(PROPERTY_LISTING_SELECT_COLUMNS)
+    .eq("partner_id", partnerId)
+    .order("updated_at", { ascending: false });
+
+  if (error) {
+    return { ok: false, error: toRepositoryError(error) };
+  }
+
+  return { ok: true, data: (data ?? []) as PropertyListingRow[] };
+}
+
+/**
  * Looks up one property_listings row by id, scoped by RLS to rows the
  * caller may see (their own, of any status, or any public active one).
  * Used to (a) resolve a 23505 duplicate-create retry, and (b) diagnose

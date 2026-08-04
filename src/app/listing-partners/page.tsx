@@ -24,10 +24,10 @@ import styles from "./listing-partners.module.css";
 
 // Sprint listing-partner-profile-ui: plain-language copy for each
 // ListingPartnerStatus, never a raw status string shown to the user.
-// No "manage my listings" link/action appears for `approved` in this
-// sprint -- that UI doesn't exist yet (a future sprint), and
-// property_listings writes require `approved` anyway per the schema/RLS,
-// so nothing to link to would work yet regardless.
+// Sprint listing-partner-my-listings-ui: the "Manage my listings" link
+// (rendered below, only for `approved`) now points to a real page,
+// /listing-partners/listings -- deferred when this file was first
+// written, since that route didn't exist yet.
 const STATUS_COPY: Record<ListingPartnerStatus, { label: string; body: string }> = {
   pending: {
     label: "Menunggu kelulusan",
@@ -623,6 +623,15 @@ export default function ListingPartnersPage() {
               <p>
                 {STATUS_COPY[partner.status].body}
               </p>
+
+              {partner.status === "approved" && (
+                <Link
+                  href="/listing-partners/listings"
+                  className={styles.manageListingsLink}
+                >
+                  Urus listing saya
+                </Link>
+              )}
             </section>
 
             <form

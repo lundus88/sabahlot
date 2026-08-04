@@ -1,11 +1,6 @@
 .page {
-  position: fixed;
-  inset: 0;
-  display: grid;
   min-height: 100dvh;
   padding: 24px;
-  overflow: auto;
-  place-items: center;
   color: #0f172a;
   background:
     radial-gradient(
@@ -21,19 +16,9 @@
     linear-gradient(145deg, #dbe5ee, #f8fafc);
 }
 
-.glow {
-  position: fixed;
-  width: min(520px, 80vw);
-  height: min(520px, 80vw);
-  border-radius: 50%;
-  background: rgba(37, 99, 235, 0.12);
-  filter: blur(70px);
-  pointer-events: none;
-}
-
 .card {
-  position: relative;
-  width: min(100%, 480px);
+  width: min(100%, 640px);
+  margin: 0 auto;
   padding: 18px;
   background: rgba(255, 255, 255, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.86);
@@ -129,7 +114,8 @@
   line-height: 1.6;
 }
 
-.loading {
+.loading,
+.empty {
   margin: 14px 0 0;
   color: #64748b;
   font-size: 12px;
@@ -176,111 +162,31 @@
   background: #1d4ed8;
 }
 
-/* Status banner -- one shared shape, three color variants. Never a raw
-   status string on its own: STATUS_COPY in page.tsx always supplies a
-   label + explanatory body for whichever of these classes is applied. */
-.statusPending,
-.statusApproved,
-.statusSuspended,
-.statusRejected {
-  display: grid;
-  gap: 6px;
-  padding: 15px;
-  border-radius: 12px;
-}
-
-.statusPending span,
-.statusApproved span,
-.statusSuspended span,
-.statusRejected span {
-  font-size: 9px;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.statusPending p,
-.statusApproved p,
-.statusSuspended p,
-.statusRejected p {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.6;
-}
-
-.statusPending {
-  background: #fffbeb;
-  border: 1px solid rgba(217, 119, 6, 0.2);
-}
-
-.statusPending span {
-  color: #b45309;
-}
-
-.statusPending p {
-  color: #92400e;
-}
-
-.statusApproved {
-  background: #ecfdf5;
-  border: 1px solid rgba(5, 150, 105, 0.18);
-}
-
-.statusApproved span {
-  color: #047857;
-}
-
-.statusApproved p {
-  color: #065f46;
-}
-
-.manageListingsLink {
-  display: inline-block;
-  width: fit-content;
-  margin-top: 4px;
-  padding: 8px 12px;
+.addButton {
+  width: 100%;
+  min-height: 42px;
+  margin-top: 16px;
   color: #ffffff;
-  background: #047857;
-  border-radius: 8px;
-  font-size: 10px;
-  font-weight: 800;
-  text-decoration: none;
+  background: #2563eb;
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 900;
 }
 
-.manageListingsLink:hover {
-  background: #065f46;
-}
-
-.statusSuspended {
-  background: #f1f5f9;
-  border: 1px solid rgba(100, 116, 139, 0.24);
-}
-
-.statusSuspended span {
-  color: #475569;
-}
-
-.statusSuspended p {
-  color: #334155;
-}
-
-.statusRejected {
-  background: #fff1f2;
-  border: 1px solid rgba(225, 29, 72, 0.16);
-}
-
-.statusRejected span {
-  color: #be123c;
-}
-
-.statusRejected p {
-  color: #9f1239;
+.addButton:hover {
+  background: #1d4ed8;
 }
 
 .form {
   display: grid;
   gap: 13px;
   margin-top: 16px;
+  padding: 16px;
+  background: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 12px;
 }
 
 .form label {
@@ -295,6 +201,7 @@
 }
 
 .form input,
+.form select,
 .form textarea {
   width: 100%;
   padding: 0 12px;
@@ -306,7 +213,8 @@
   font: inherit;
 }
 
-.form input {
+.form input,
+.form select {
   min-height: 42px;
 }
 
@@ -316,39 +224,20 @@
 }
 
 .form input:focus,
+.form select:focus,
 .form textarea:focus {
   border-color: #2563eb;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
-.consentRow {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 10px !important;
-  align-items: start;
-  padding: 12px;
-  background: #f8fafc;
-  border: 1px solid rgba(148, 163, 184, 0.28);
-  border-radius: 10px;
+.formActions {
+  display: flex;
+  gap: 10px;
 }
 
-.consentRow input {
-  width: 16px;
-  height: 16px;
-  margin-top: 2px;
-}
-
-.consentRow span {
-  color: #334155 !important;
-  font-size: 11px !important;
-  font-weight: 500 !important;
-  line-height: 1.55;
-}
-
-.form > button {
+.formActions button {
+  flex: 1;
   min-height: 42px;
-  color: #ffffff;
-  background: #2563eb;
   border: 0;
   border-radius: 10px;
   cursor: pointer;
@@ -356,13 +245,110 @@
   font-weight: 900;
 }
 
-.form > button:hover:not(:disabled) {
+.formActions button[type="submit"] {
+  color: #ffffff;
+  background: #2563eb;
+}
+
+.formActions button[type="submit"]:hover:not(:disabled) {
   background: #1d4ed8;
 }
 
-.form > button:disabled {
+.cancelButton {
+  color: #334155;
+  background: #e2e8f0;
+}
+
+.cancelButton:hover:not(:disabled) {
+  background: #cbd5e1;
+}
+
+.formActions button:disabled {
   cursor: wait;
   opacity: 0.68;
+}
+
+.listingList {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.listingCard {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  background: #ffffff;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 12px;
+}
+
+.listingCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.listingCardHeader strong {
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+
+.statusBadge {
+  flex-shrink: 0;
+  padding: 4px 8px;
+  color: #334155;
+  background: #f1f5f9;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.listingMeta {
+  margin: 0;
+  color: #64748b;
+  font-size: 11px;
+}
+
+.listingActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.listingActions button {
+  padding: 8px 12px;
+  color: #334155;
+  background: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.listingActions button:hover:not(:disabled) {
+  background: #eef2f7;
+}
+
+.deleteButton {
+  color: #be123c !important;
+  border-color: rgba(225, 29, 72, 0.28) !important;
+}
+
+.deleteButton:hover:not(:disabled) {
+  background: #fff1f2 !important;
+}
+
+.listingActions button:disabled {
+  cursor: wait;
+  opacity: 0.6;
 }
 
 .success,
@@ -400,16 +386,18 @@
 @media (max-width: 520px) {
   .page {
     padding: 12px;
-    place-items: start center;
   }
 
   .card {
-    margin: 12px 0;
     padding: 15px;
     border-radius: 15px;
   }
 
   .intro {
     padding-top: 20px;
+  }
+
+  .formActions {
+    flex-direction: column;
   }
 }
