@@ -17,6 +17,10 @@
 // Tests 18-21): same shape for isCloudWriteEnabledForGeometryInProduction();
 // Test 21 additionally checks the two per-module gates never reference each
 // other, in either direction. See the comment above Test 18.
+// Extended by sprint production-write-gate-phase2c-points (ADR-022,
+// Tests 22-25): same shape for isCloudWriteEnabledForPointsInProduction();
+// Test 25 cross-checks all three per-module gates so far pairwise. See the
+// comment above Test 22.
 // Run via:
 //   npx tsc -p src/lib/land-records/feature-gate.qa.tsconfig.json --outDir <tmp>
 //   node <tmp>/feature-gate.qa.js
@@ -32,6 +36,7 @@ import {
   isCloudWriteEnabled,
   isCloudWriteEnabledForGeometryInProduction,
   isCloudWriteEnabledForParentInProduction,
+  isCloudWriteEnabledForPointsInProduction,
   isTargetingSabahlotDevProject,
   isTargetingSabahlotProductionProject,
 } from "./feature-gate";
@@ -127,6 +132,7 @@ function testProductionStaysClosedEvenWithDevUrl() {
   assert(!isCloudWriteEnabled(), "expected the write gate to stay closed in production regardless of URL");
   assert(!isCloudWriteEnabledForParentInProduction(), "expected the parent-in-production gate to stay closed for the dev URL (wrong hostname)");
   assert(!isCloudWriteEnabledForGeometryInProduction(), "expected the geometry-in-production gate to stay closed for the dev URL (wrong hostname)");
+  assert(!isCloudWriteEnabledForPointsInProduction(), "expected the points-in-production gate to stay closed for the dev URL (wrong hostname)");
 }
 
 // ---- 5: substring / lookalike hostnames must not bypass the check --------
@@ -203,6 +209,7 @@ function testDevUrlNotRecognizedAsProductionEvenInProductionBuild() {
   assert(!isCloudWriteEnabled(), "expected the write gate to stay closed (dev URL + production build never opens either branch)");
   assert(!isCloudWriteEnabledForParentInProduction(), "expected the parent-in-production gate to stay closed for the dev URL even in a production build");
   assert(!isCloudWriteEnabledForGeometryInProduction(), "expected the geometry-in-production gate to stay closed for the dev URL even in a production build");
+  assert(!isCloudWriteEnabledForPointsInProduction(), "expected the points-in-production gate to stay closed for the dev URL even in a production build");
 }
 
 // ---- 11: substring / lookalike production hostnames must not bypass ------
@@ -370,6 +377,78 @@ function testOtherCoordinatorsNeverReferenceGeometryInProductionGate() {
   );
 }
 
+// ---- Sprint production-write-gate-phase2c-points (ADR-022) ----------------
+//
+// Same shape as Tests 14-17/18-21, for points this time. Only one gate
+// call-site exists in points-write-coordinator.ts (create-only, ADR-011),
+// so Tests 22-24 mirror the pattern exactly. Test 25 is the load-bearing
+// static check, extended to cross-check all three per-module gates
+// pairwise so far (land_records, geometry, points), not just points against
+// the other two.
+
+// ---- 22: sabahlot-production URL + production build -> points write stays
+//          closed, because PRODUCTION_POINTS_WRITE_ENABLED_CONSTANT ships
+//          false ------------------------------------------------------------
+
+function testPointsWriteInProductionStaysClosedWhileConstantIsFalse() {
+  setEnv({ NODE_ENV: "production", NEXT_PUBLIC_SUPABASE_URL: PRODUCTION_URL });
+  assert(!isCloudWriteEnabledForPointsInProduction(), "expected the points-in-production write gate to stay closed while its constant is false");
+  assert(!isCloudWriteEnabled(), "expected the dev write gate to stay closed for sabahlot-production regardless");
+}
+
+// ---- 23: sabahlot-production URL, but not a production build -> stays closed
+
+function testPointsWriteInProductionOutsideProductionBuildStaysClosed() {
+  setEnv({ NODE_ENV: "development", NEXT_PUBLIC_SUPABASE_URL: PRODUCTION_URL });
+  assert(!isCloudWriteEnabledForPointsInProduction(), "expected the points-in-production write gate to stay closed outside a production build");
+}
+
+// ---- 24: a different (non-dev, non-production) project's URL never opens
+//          the points-in-production gate, even in a production build -----
+
+function testPointsWriteInProductionRejectsOtherProjectUrl() {
+  setEnv({ NODE_ENV: "production", NEXT_PUBLIC_SUPABASE_URL: "https://someotherproject.supabase.co" });
+  assert(!isCloudWriteEnabledForPointsInProduction(), "expected the points-in-production write gate to stay closed for an unrelated project URL");
+}
+
+// ---- 25: static check -- no other module's write-coordinator ever
+//          references isCloudWriteEnabledForPointsInProduction, AND
+//          points-write-coordinator.ts never references the land_records
+//          or geometry functions from ADR-020/021. Cross-checks all three
+//          per-module gates pairwise, not just points against the others. -
+
+function testOtherCoordinatorsNeverReferencePointsInProductionGate() {
+  const otherCoordinatorFiles = [
+    "write-coordinator.ts",
+    "geometry-write-coordinator.ts",
+    "parties-write-coordinator.ts",
+    "documents-write-coordinator.ts",
+  ];
+  for (const file of otherCoordinatorFiles) {
+    const source = fs.readFileSync(
+      path.join(process.cwd(), "src/lib/land-records", file),
+      "utf8",
+    );
+    assert(
+      !source.includes("isCloudWriteEnabledForPointsInProduction"),
+      `${file} must never reference isCloudWriteEnabledForPointsInProduction -- Production write for this module is out of scope until its own dedicated phase`,
+    );
+  }
+
+  const pointsSource = fs.readFileSync(
+    path.join(process.cwd(), "src/lib/land-records/points-write-coordinator.ts"),
+    "utf8",
+  );
+  assert(
+    !pointsSource.includes("isCloudWriteEnabledForParentInProduction"),
+    "points-write-coordinator.ts must never reference isCloudWriteEnabledForParentInProduction -- each module's Production gate stays strictly its own",
+  );
+  assert(
+    !pointsSource.includes("isCloudWriteEnabledForGeometryInProduction"),
+    "points-write-coordinator.ts must never reference isCloudWriteEnabledForGeometryInProduction -- each module's Production gate stays strictly its own",
+  );
+}
+
 run("Test 1 (sabahlot-dev URL opens the gate in development)", testDevUrlOpensGateInDevelopment);
 run("Test 2 (a different project's URL keeps the gate closed)", testOtherProjectUrlStaysClosed);
 run("Test 3 (missing URL keeps the gate closed)", testMissingUrlStaysClosed);
@@ -393,6 +472,10 @@ run("Test 18 (geometry write in production stays closed while the constant is fa
 run("Test 19 (geometry write in production stays closed outside a production build)", testGeometryWriteInProductionOutsideProductionBuildStaysClosed);
 run("Test 20 (geometry write in production rejects an unrelated project URL)", testGeometryWriteInProductionRejectsOtherProjectUrl);
 run("Test 21 (no other coordinator references the geometry-in-production gate, and geometry never references land_records')", testOtherCoordinatorsNeverReferenceGeometryInProductionGate);
+run("Test 22 (points write in production stays closed while the constant is false)", testPointsWriteInProductionStaysClosedWhileConstantIsFalse);
+run("Test 23 (points write in production stays closed outside a production build)", testPointsWriteInProductionOutsideProductionBuildStaysClosed);
+run("Test 24 (points write in production rejects an unrelated project URL)", testPointsWriteInProductionRejectsOtherProjectUrl);
+run("Test 25 (no other coordinator references the points-in-production gate, and points never references land_records'/geometry's)", testOtherCoordinatorsNeverReferencePointsInProductionGate);
 
 setEnv({ NODE_ENV: originalNodeEnv, NEXT_PUBLIC_SUPABASE_URL: originalSupabaseUrl });
 

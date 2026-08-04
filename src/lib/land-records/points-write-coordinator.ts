@@ -13,6 +13,11 @@
 // Not wired into src/app/page.tsx or any UI -- same deferred-wiring
 // posture Sprint 02D-1A left for geometry.
 //
+// Sprint production-write-gate-phase2c-points (ADR-022): the gate check
+// below also accepts isCloudWriteEnabledForPointsInProduction(), a
+// points-only Production switch. No other module's coordinator gets this
+// -- see the comment above that function in feature-gate.ts.
+//
 // "Read Point from cloud" / "Load existing Points" already exist and
 // are UNMODIFIED by this sprint: getLandPoints (cloud-repository.ts,
 // Sprint 02B) and loadCloudLandRecords (index.ts, Sprint 02B) already
@@ -24,7 +29,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { createPointRow, getPointById, mapPointFieldsToDbPayload } from "./points-repository";
-import { isCloudWriteEnabled } from "./feature-gate";
+import {
+  isCloudWriteEnabled,
+  isCloudWriteEnabledForPointsInProduction,
+} from "./feature-gate";
 import { mapCloudPoint } from "./mapper";
 import { upsertCachedPoint } from "./points-cache";
 import { isStableCloudId } from "./types";
@@ -69,7 +77,7 @@ export async function createCloudPoint(
   supabase: SupabaseClient,
   input: CreatePointInput,
 ): Promise<ChildWriteResult<CloudLandPoint>> {
-  if (!isCloudWriteEnabled()) {
+  if (!isCloudWriteEnabled() && !isCloudWriteEnabledForPointsInProduction()) {
     return failure("local_only", "database_error", "Cloud write is disabled in this environment.");
   }
 

@@ -175,3 +175,29 @@ export function isCloudWriteEnabledForGeometryInProduction(): boolean {
     isTargetingSabahlotProductionProject()
   );
 }
+
+// Sprint production-write-gate-phase2c-points (ADR-022): same per-module
+// pattern as ADR-020/021, for points this time. Own function, own constant,
+// called only from points-write-coordinator.ts's ONE gate call-site
+// (createCloudPoint -- create-only per ADR-011, no update/delete exist) --
+// never from isCloudWriteEnabled() itself, never from land_records/
+// geometry/parties/documents. points-ui-sync.ts (the UI wiring for points)
+// has no gate check of its own, same as geometry's child-ui-sync.ts -- it
+// calls straight into points-write-coordinator.ts, so it needed no change.
+//
+// Same non-runtime-configurable contract as the constants above: ships
+// false, never exported, no env var/query param override.
+const PRODUCTION_POINTS_WRITE_ENABLED_CONSTANT = false;
+
+/**
+ * Production write gate for points ONLY. land_records/geometry/parties/
+ * documents each remain unaffected by this constant -- their coordinators
+ * never call this function.
+ */
+export function isCloudWriteEnabledForPointsInProduction(): boolean {
+  return (
+    PRODUCTION_POINTS_WRITE_ENABLED_CONSTANT &&
+    process.env.NODE_ENV === "production" &&
+    isTargetingSabahlotProductionProject()
+  );
+}
