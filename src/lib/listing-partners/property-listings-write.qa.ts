@@ -17,6 +17,7 @@ import {
   deletePropertyListing,
   updatePropertyListing,
 } from "./property-listings-write-coordinator";
+import { getActiveListingContact } from "./property-listings-repository";
 import { validateCreatePropertyListingInput } from "./property-listings-validation";
 import { mapPropertyListingRow } from "./mapper";
 import { isStableCloudId } from "../land-records/types";
@@ -138,6 +139,8 @@ class FakeSupabaseClient {
   listQueue: FakeResponse[] = [];
   lastUpdateEqCalls: Array<{ column: string; value: unknown }> = [];
   lastDeleteEqCalls: Array<{ column: string; value: unknown }> = [];
+  rpcCalls: Array<{ fn: string; args?: unknown }> = [];
+  rpcQueue: FakeResponse[] = [];
   userId: string | null = null;
 
   auth = {
@@ -146,6 +149,13 @@ class FakeSupabaseClient {
       error: null,
     }),
   };
+
+  rpc(fn: string, args?: unknown) {
+    this.rpcCalls.push({ fn, args });
+    return Promise.resolve(
+      this.rpcQueue.shift() ?? { data: null, error: { message: "no rpc response configured" } },
+    );
+  }
 
   from(table: TableName) {
     return {
@@ -547,6 +557,64 @@ async function test21_MapPropertyListingRowRoundTrip() {
   console.log("Test 21 (mapPropertyListingRow round-trip): PASS [executed]");
 }
 
+// ==== Contact reveal RPC (ADR-027 item 1) ====================================
+
+async function test22_ActiveListingContactSucceeds() {
+  const client = new FakeSupabaseClient();
+  client.rpcQueue.push({ data: [{ phone: "+60123456789", email: "a@example.com" }], error: null });
+
+  const result = await getActiveListingContact(
+    client as unknown as Parameters<typeof getActiveListingContact>[0],
+    LISTING_ID,
+  );
+
+  assert(result.ok, "expected a successful RPC call to succeed");
+  if (result.ok) {
+    assert(result.data?.phone === "+60123456789", "expected the phone to round-trip");
+    assert(result.data?.email === "a@example.com", "expected the email to round-trip");
+  }
+  const rpcCall = client.rpcCalls[0];
+  assert(rpcCall?.fn === "get_active_listing_contact", "expected the correct RPC function name");
+  assert(
+    (rpcCall?.args as Record<string, unknown> | undefined)?.listing_id === LISTING_ID,
+    "expected listing_id to be passed through",
+  );
+  console.log("Test 22 (getActiveListingContact succeeds, phone/email round-trip): PASS [executed]");
+}
+
+async function test23_NoEligibleContactReturnsNull() {
+  const client = new FakeSupabaseClient();
+  client.rpcQueue.push({ data: [], error: null });
+
+  const result = await getActiveListingContact(
+    client as unknown as Parameters<typeof getActiveListingContact>[0],
+    LISTING_ID,
+  );
+
+  assert(result.ok, "expected a zero-row RPC response to still be a successful call");
+  if (result.ok) {
+    assert(
+      result.data === null,
+      "expected null when no row is eligible (not active / partner not approved / no consent / not found -- all indistinguishable here)",
+    );
+  }
+  console.log("Test 23 (zero-row RPC response maps to null, not an error): PASS [executed]");
+}
+
+async function test24_ContactCallableWithoutSession() {
+  const client = new FakeSupabaseClient();
+  client.userId = null; // no session at all
+  client.rpcQueue.push({ data: [{ phone: "+60123456789", email: "a@example.com" }], error: null });
+
+  const result = await getActiveListingContact(
+    client as unknown as Parameters<typeof getActiveListingContact>[0],
+    LISTING_ID,
+  );
+
+  assert(result.ok, "getActiveListingContact must be callable without any session, matching the RPC's anon grant");
+  console.log("Test 24 (contact reveal is callable without a session, matching its anon grant): PASS [executed]");
+}
+
 async function main() {
   await test1_ApprovedPartnerCreateSucceeds();
   await test2_PendingPartnerCreateRejectedBeforeInsert();
@@ -569,6 +637,9 @@ async function main() {
   await test19_DeleteZeroRowsMappedToNotFoundOrForbidden();
   await test20_NoWriteToListingPartnersTable();
   await test21_MapPropertyListingRowRoundTrip();
+  await test22_ActiveListingContactSucceeds();
+  await test23_NoEligibleContactReturnsNull();
+  await test24_ContactCallableWithoutSession();
 
   console.log("\nSprint property-listings-backend QA: ALL PASS");
 }

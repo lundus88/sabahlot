@@ -9,7 +9,11 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import type { PropertyListingRow, PropertyListingWritableFields } from "./types";
+import type {
+  PropertyListingContact,
+  PropertyListingRow,
+  PropertyListingWritableFields,
+} from "./types";
 
 export interface PropertyListingRepositoryError {
   code?: string;
@@ -91,6 +95,36 @@ export async function createPropertyListingRow(
   }
 
   return { ok: true, data: data as PropertyListingRow };
+}
+
+/**
+ * Sprint listing-partner-decisions-migration (ADR-027 item 1): calls the
+ * public.get_active_listing_contact(uuid) SECURITY DEFINER RPC -- the
+ * only path by which listing_partners.phone/email are ever reachable
+ * from a listing's own page, gated entirely server-side (listing
+ * active + partner approved + partner consented, all three re-checked
+ * on every call). Callable by an anonymous caller (no session required)
+ * -- this function itself never checks or requires a session either.
+ *
+ * Returns `null` for every "not eligible" case (listing not found, not
+ * active, partner not approved, or partner has not consented) --
+ * indistinguishable from each other by design (see the migration's own
+ * comment and ADR-027).
+ */
+export async function getActiveListingContact(
+  supabase: SupabaseClient,
+  listingId: string,
+): Promise<PropertyListingRepositoryResult<PropertyListingContact | null>> {
+  const { data, error } = await supabase.rpc("get_active_listing_contact", {
+    listing_id: listingId,
+  });
+
+  if (error) {
+    return { ok: false, error: toRepositoryError(error) };
+  }
+
+  const rows = data as PropertyListingContact[] | null;
+  return { ok: true, data: rows && rows.length > 0 ? rows[0] : null };
 }
 
 /**

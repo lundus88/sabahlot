@@ -222,3 +222,12 @@ export interface CreatePropertyListingInput extends PropertyListingWritableField
 }
 
 export type UpdatePropertyListingInput = Partial<PropertyListingWritableFields>;
+
+// Sprint listing-partner-decisions-migration (ADR-027 item 1): the shape
+// returned by the public.get_active_listing_contact(uuid) RPC. Never
+// carries anything beyond phone/email -- no id, no ren_number, no bio --
+// see property-listings-repository.ts's getActiveListingContact.
+export interface PropertyListingContact {
+  phone: string;
+  email: string;
+}
