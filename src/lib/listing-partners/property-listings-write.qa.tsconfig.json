@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "rootDir": "../../..",
+    "baseUrl": "../../..",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "jsx": "react-jsx"
+  },
+  "files": [
+    "../land-records/feature-gate.ts",
+    "../land-records/types.ts",
+    "../drawing-types.ts",
+    "types.ts",
+    "mapper.ts",
+    "feature-gate.ts",
+    "listing-partners-validation.ts",
+    "listing-partners-repository.ts",
+    "listing-partners-write-coordinator.ts",
+    "property-listings-validation.ts",
+    "property-listings-repository.ts",
+    "property-listings-write-coordinator.ts",
+    "property-listings-write.qa.ts"
+  ]
+}

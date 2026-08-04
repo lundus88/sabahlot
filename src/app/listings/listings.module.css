@@ -1,0 +1,266 @@
+.page {
+  min-height: 100dvh;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px;
+  color: #0f172a;
+  background:
+    radial-gradient(
+      circle at 16% 18%,
+      rgba(96, 165, 250, 0.2),
+      transparent 32%
+    ),
+    radial-gradient(
+      circle at 86% 78%,
+      rgba(5, 150, 105, 0.14),
+      transparent 30%
+    );
+}
+
+.header,
+.brand {
+  display: flex;
+  align-items: center;
+}
+
+.header {
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.brand {
+  gap: 9px;
+}
+
+.mark {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  color: #ffffff;
+  background:
+    linear-gradient(145deg, #2563eb, #1d4ed8);
+  border-radius: 10px;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.3);
+  place-items: center;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+}
+
+.brand strong,
+.brand small {
+  display: block;
+}
+
+.brand strong {
+  font-size: 13px;
+}
+
+.brand small {
+  margin-top: 2px;
+  color: #64748b;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.mapLink {
+  padding: 8px 10px;
+  color: #334155;
+  background: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 9px;
+  font-size: 10px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.intro {
+  padding: 24px 2px 18px;
+}
+
+.eyebrow {
+  display: block;
+  color: #2563eb;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.intro h1 {
+  margin: 8px 0 6px;
+  font-size: clamp(22px, 5vw, 30px);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.intro p {
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.loading,
+.empty {
+  margin: 14px 0 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.error {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  color: #be123c;
+  background: #fff1f2;
+  border: 1px solid rgba(225, 29, 72, 0.16);
+  border-radius: 9px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+/* ---- Directory grid ---- */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+  color: inherit;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 14px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+  text-decoration: none;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.card:hover {
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.14);
+  transform: translateY(-2px);
+}
+
+.card strong {
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+
+.typeBadge {
+  width: fit-content;
+  padding: 4px 8px;
+  color: #2563eb;
+  background: #eff6ff;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.cardMeta {
+  margin: 0;
+  color: #64748b;
+  font-size: 11px;
+}
+
+/* ---- Listing detail ---- */
+
+.price {
+  margin: 4px 0 0;
+  color: #047857;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.location {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.description {
+  margin: 12px 0 0;
+  color: #334155;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.contactSection {
+  margin-top: 8px;
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 14px;
+}
+
+.revealButton {
+  width: 100%;
+  min-height: 44px;
+  color: #ffffff;
+  background: #047857;
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.revealButton:hover {
+  background: #065f46;
+}
+
+.contactCard {
+  display: grid;
+  gap: 4px;
+}
+
+.contactCard strong {
+  font-size: 14px;
+}
+
+.contactSubName {
+  color: #64748b;
+  font-size: 11px;
+}
+
+.contactCard a {
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.contactCard a:hover {
+  text-decoration: underline;
+}
+
+.footer {
+  margin-top: 24px;
+  padding-top: 14px;
+  color: #94a3b8;
+  border-top: 1px solid rgba(148, 163, 184, 0.22);
+  font-size: 9px;
+  font-weight: 700;
+  text-align: center;
+}
+
+@media (max-width: 520px) {
+  .page {
+    padding: 12px;
+  }
+}
