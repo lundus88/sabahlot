@@ -48,7 +48,8 @@ SabahLot is a preliminary land-record and field-survey assistance tool for Sabah
 ### Not started
 - Documents / Supabase Storage (deliberately deferred to its own sprint)
 - Service Request backend (UI is currently a stub)
-- Admin dashboard, Quotation, Payment, RMR/SPNB — no work has begun; not scheduled
+- Admin dashboard — brief written (`sprint-admin-dashboard`), not started
+- **Quotation, Payment, RMR/SPNB — explicitly deferred by the owner 2026-08-05** ("tiada keperluan buat masa ni"). Do not start any of these without a fresh, explicit owner request — this is stronger than "not scheduled," it's an active decision not to pursue them right now.
 (Listing Partner moved out of "Not started" 2026-08-04 -- schema/RLS now live on `sabahlot-dev`, see the "Partial" section below and ADR-026.)
 
 See `docs/ai/MODULE_STATUS.md` for the full per-module table.
