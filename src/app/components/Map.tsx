@@ -3089,7 +3089,7 @@ export default function Map({
       language
     ];
 
-  const brandLabel = useAppBrandLabel("SabahLot Alpha");
+  const brandLabel = useAppBrandLabel("SabahLot Beta");
 
   const coordinatePairsToCoordinates = (
     points: CoordinatePair[],

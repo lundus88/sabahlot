@@ -69,10 +69,10 @@ interface AppTextShape {
 
 export const APP_TEXT: Record<AppLanguage, AppTextShape> = {
   en: {
-    brand: "SabahLot Alpha",
+    brand: "SabahLot Beta",
     menuButton: "Open menu",
     searchPlaceholder: "Search land location / coordinate",
-    controlledBetaBadge: "Controlled Alpha",
+    controlledBetaBadge: "Controlled Beta",
     regionPickerTitle: "Region",
     languagePickerTitle: "Language",
     modules: {
@@ -145,10 +145,10 @@ export const APP_TEXT: Record<AppLanguage, AppTextShape> = {
     },
   },
   ms: {
-    brand: "SabahLot Alpha",
+    brand: "SabahLot Beta",
     menuButton: "Buka menu",
     searchPlaceholder: "Cari lokasi tanah / koordinat",
-    controlledBetaBadge: "Alpha Terkawal",
+    controlledBetaBadge: "Beta Terkawal",
     regionPickerTitle: "Wilayah",
     languagePickerTitle: "Bahasa",
     modules: {
@@ -221,10 +221,10 @@ export const APP_TEXT: Record<AppLanguage, AppTextShape> = {
     },
   },
   zh: {
-    brand: "SabahLot Alpha",
+    brand: "SabahLot Beta",
     menuButton: "打开菜单",
     searchPlaceholder: "搜索地块位置 / 坐标",
-    controlledBetaBadge: "受控内测版",
+    controlledBetaBadge: "受控测试版",
     regionPickerTitle: "地区",
     languagePickerTitle: "语言",
     modules: {
