@@ -40,9 +40,11 @@ export * from "./points-validation";
 export * from "./points-repository";
 export * from "./points-cache";
 export * from "./points-write-coordinator";
+export * from "./points-ui-sync";
 export * from "./documents-validation";
 export * from "./documents-repository";
 export * from "./documents-write-coordinator";
+export * from "./documents-ui-sync";
 export {
   isCloudReadEnabled,
   isCloudWriteEnabled,
