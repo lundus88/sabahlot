@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { AppLanguage } from "@/lib/i18n/appLanguageStorage";
 import { getAppText } from "@/lib/i18n/appText";
@@ -22,9 +22,27 @@ export default function LanguageSwitcher({
 }) {
   const text = getAppText(language);
   const [compactOpen, setCompactOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!compactOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setCompactOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () =>
+      document.removeEventListener("pointerdown", handlePointerDown);
+  }, [compactOpen]);
 
   return (
     <div
+      ref={rootRef}
       className={`sl-language-switcher ${
         compactOpen ? "is-compact-open" : ""
       }`}
