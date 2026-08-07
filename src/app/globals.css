@@ -2295,6 +2295,156 @@ select:focus-visible {
   font-weight: 700;
 }
 
+.sl-wizard {
+  display: grid;
+  gap: 14px;
+
+  margin-top: 18px;
+}
+
+.sl-wizard-progress {
+  display: grid;
+  gap: 6px;
+}
+
+.sl-wizard-progress-track {
+  height: 6px;
+
+  overflow: hidden;
+
+  background: #e2e8f0;
+  border-radius: 999px;
+}
+
+.sl-wizard-progress-fill {
+  height: 100%;
+
+  background: var(--sl-primary);
+  border-radius: 999px;
+
+  transition: width 0.2s ease;
+}
+
+.sl-wizard-progress-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  color: #475569;
+
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.sl-wizard-step {
+  padding: 12px;
+}
+
+.sl-wizard-step-title {
+  margin: 0 0 10px;
+
+  color: #1e293b;
+
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.sl-wizard-expert-hint {
+  padding: 0 0 8px;
+  font-style: normal;
+}
+
+.sl-wizard-review-heading {
+  margin: 0;
+
+  color: #1e293b;
+
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.sl-wizard-review-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.sl-wizard-review-list > div {
+  display: grid;
+  gap: 2px;
+  padding: 8px 9px;
+
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.sl-wizard-review-list dt {
+  margin: 0;
+
+  color: #64748b;
+
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+.sl-wizard-review-list dd {
+  margin: 0;
+
+  color: #1e293b;
+
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.sl-wizard-disclaimer-repeat {
+  padding: 0;
+}
+
+.sl-wizard-nav {
+  display: flex;
+  gap: 10px;
+}
+
+.sl-wizard-nav button {
+  flex: 1 1 auto;
+  min-height: 42px;
+
+  border-radius: 10px;
+
+  font-size: 13px;
+  font-weight: 800;
+
+  cursor: pointer;
+}
+
+.sl-wizard-nav-back {
+  color: #1e293b;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+}
+
+.sl-wizard-nav-back:hover {
+  background: #f8fafc;
+}
+
+.sl-wizard-nav-next {
+  color: #ffffff;
+  background: var(--sl-primary);
+  border: 0;
+}
+
+.sl-wizard-nav-next:hover {
+  background: var(--sl-primary-dark);
+}
+
+.sl-wizard-nav-next:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .sl-drawing-summary {
   margin-top: 20px;
   padding-top: 16px;
@@ -5369,7 +5519,10 @@ select:focus-visible {
   .sl-dashed-line-options span,
   .sl-dashed-line-options small,
   .sl-field-point-options span,
-  .sl-field-point-options small {
+  .sl-field-point-options small,
+  .sl-wizard-progress-label,
+  .sl-wizard-review-list dt,
+  .sl-wizard-review-list dd {
     font-size: 13px;
     line-height: 1.4;
   }
@@ -5383,6 +5536,7 @@ select:focus-visible {
   .sl-object-list-heading,
   .sl-object-list-heading > span,
   .sl-object-main span,
+  .sl-wizard-step-title,
   .sl-settings-heading p,
   .sl-status-message,
   .sl-location-status,
@@ -5419,7 +5573,8 @@ select:focus-visible {
   .sl-progressive-menu button,
   .sl-context-button,
   .sl-dock-button,
-  .sl-drawer-footer button {
+  .sl-drawer-footer button,
+  .sl-wizard-nav button {
     min-height: 44px;
     font-size: 14px;
     line-height: 1.25;
