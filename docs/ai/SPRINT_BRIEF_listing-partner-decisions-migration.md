@@ -27,7 +27,7 @@ standing convention. Development happens on the session's designated
 branch per the active CCR harness instructions, not a fresh sprint branch.
 
 ## Allowed files
-- `supabase/migrations/202608040002_listing_partner_contact_and_expiry.sql` (new)
+- `supabase/migrations/20260804142918_listing_partner_contact_and_expiry.sql` (new)
 - `docs/ai/ARCHITECTURE_DECISIONS.md` — flip ADR-027's Status line once
   applied and verified
 - `docs/ai/PROJECT_STATE.md`, `docs/ai/MODULE_STATUS.md` — status update
@@ -41,7 +41,7 @@ branch per the active CCR harness instructions, not a fresh sprint branch.
   `sabahlot-dev`)
 
 ## Forbidden files
-- Any existing migration file (append-only; `202608040001_create_listing_partner.sql`
+- Any existing migration file (append-only; `20260804133614_create_listing_partner.sql`
   is not edited, only superseded additively by the new file)
 - Any UI file
 - `.env*`, `package.json`, `package-lock.json`, Vercel config

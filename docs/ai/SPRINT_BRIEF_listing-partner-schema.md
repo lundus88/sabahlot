@@ -37,11 +37,13 @@ below) or any Admin Dashboard UI.
   this repo is always to branch from current `main`, not from a docs branch)
 
 ## Allowed files
-- `supabase/migrations/202608040001_create_listing_partner.sql` (new file
-  only — exact filename chosen to sort after the existing highest migration,
+- `supabase/migrations/20260804133614_create_listing_partner.sql` (new file
+  only — originally created as `202608040001_create_listing_partner.sql`,
+  chosen at brief-writing time to sort after the existing highest migration,
   `202607110012_harden_security_definer_privileges.sql`, and to avoid
-  colliding with same-day numbering; verify no `202608...` migration already
-  exists before creating it)
+  colliding with same-day numbering; renamed 2026-08-07 to match the version
+  `apply_migration` actually recorded in `sabahlot-dev`'s `schema_migrations`
+  at apply time — see `PROJECT_STATE.md`'s forty-third-pass entry)
 - `docs/ai/PROJECT_STATE.md`, `docs/ai/MODULE_STATUS.md` (status update only,
   at the end of the sprint — same convention as every other merged sprint)
 - `docs/ai/ARCHITECTURE_DECISIONS.md` — only to flip ADR-026's Status line
