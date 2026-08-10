@@ -9,6 +9,7 @@ import {
 import {
   createClient,
 } from "@/lib/supabase/client";
+import { useAdminGuard } from "@/lib/admin/use-admin-guard";
 import {
   listAllListingPartnersRow,
   mapListingPartnerRow,
@@ -56,25 +57,12 @@ function messageForStatusChangeFailure(): string {
 }
 
 export default function ListingPartnersAdminPage() {
-  const [
+  const {
     sessionChecked,
-    setSessionChecked,
-  ] = useState(false);
-
-  const [
     currentUserId,
-    setCurrentUserId,
-  ] = useState<string | null>(null);
-
-  const [
     roleChecked,
-    setRoleChecked,
-  ] = useState(false);
-
-  const [
     isAdmin,
-    setIsAdmin,
-  ] = useState(false);
+  } = useAdminGuard();
 
   const [
     partnersLoading,
@@ -100,121 +88,6 @@ export default function ListingPartnersAdminPage() {
     errorMessage,
     setErrorMessage,
   ] = useState("");
-
-  // Session check -- same pattern as the other 3 Listing Partner pages.
-  useEffect(() => {
-    const supabase =
-      createClient();
-
-    let active =
-      true;
-
-    const loadUser =
-      async () => {
-        const {
-          data,
-        } =
-          await supabase.auth.getUser();
-
-        if (active) {
-          setCurrentUserId(
-            data.user?.id ?? null,
-          );
-
-          if (
-            !data.user?.id
-          ) {
-            setRoleChecked(true);
-            setPartnersLoading(false);
-          }
-
-          setSessionChecked(true);
-        }
-      };
-
-    void loadUser();
-
-    const {
-      data: {
-        subscription,
-      },
-    } =
-      supabase.auth.onAuthStateChange(
-        (
-          _event,
-          session,
-        ) => {
-          setCurrentUserId(
-            session?.user.id ?? null,
-          );
-
-          if (
-            !session?.user.id
-          ) {
-            setIsAdmin(false);
-            setRoleChecked(true);
-            setPartners([]);
-            setPartnersLoading(false);
-          }
-        },
-      );
-
-    return () => {
-      active =
-        false;
-
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  // Design decision 2: a page-local, narrow read of the caller's own
-  // `profiles.role` -- purely a UX gate so a non-admin sees a clear
-  // message instead of a confusingly-empty table. RLS
-  // (listing_partners_select_admin) is the real enforcement boundary
-  // regardless of what this check concludes.
-  useEffect(() => {
-    if (
-      !currentUserId
-    ) {
-      return;
-    }
-
-    let active =
-      true;
-
-    const loadRole =
-      async () => {
-        const supabase =
-          createClient();
-
-        const {
-          data,
-        } =
-          await supabase
-            .from("profiles")
-            .select("role")
-            .eq("id", currentUserId)
-            .maybeSingle();
-
-        if (
-          !active
-        ) {
-          return;
-        }
-
-        setIsAdmin(
-          data?.role === "admin",
-        );
-        setRoleChecked(true);
-      };
-
-    void loadRole();
-
-    return () => {
-      active =
-        false;
-    };
-  }, [currentUserId]);
 
   // Once confirmed admin, load every listing_partners row.
   useEffect(() => {

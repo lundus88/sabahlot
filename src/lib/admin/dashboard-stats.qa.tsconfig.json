@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "rootDir": "../../..",
+    "baseUrl": "../../..",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "jsx": "react-jsx"
+  },
+  "files": [
+    "../listing-partners/types.ts",
+    "../region/regionStorage.ts",
+    "../i18n/appLanguageStorage.ts",
+    "dashboard-stats-repository.ts",
+    "dashboard-stats.qa.ts"
+  ]
+}
