@@ -1,6 +1,6 @@
 // Sprint listing-partner-backend: listing_partners payload allowlisting
 // and validation. Mirrors
-// supabase/migrations/202608040001_create_listing_partner.sql's CHECK
+// supabase/migrations/20260804133614_create_listing_partner.sql's CHECK
 // constraints exactly (non-empty displayName/phone/email) -- this is a
 // client-side pre-check, not the actual authorization/validation
 // boundary (that's RLS + the DB's own CHECK constraints).

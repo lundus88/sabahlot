@@ -1,6 +1,6 @@
 // Sprint property-listings-backend: property_listings payload
 // allowlisting and validation. Mirrors
-// supabase/migrations/202608040001_create_listing_partner.sql's CHECK
+// supabase/migrations/20260804133614_create_listing_partner.sql's CHECK
 // constraint exactly (non-empty title) -- this is a client-side
 // pre-check, not the actual authorization/validation boundary (that's
 // RLS + the DB's own CHECK constraint).

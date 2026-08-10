@@ -6,7 +6,7 @@
 // ChildWriteResult, which that file's own header comment scopes to rows
 // with a land_records parent-ownership dimension this module doesn't have.
 //
-// Mirrors supabase/migrations/202608040001_create_listing_partner.sql
+// Mirrors supabase/migrations/20260804133614_create_listing_partner.sql
 // exactly.
 
 export type ListingPartnerStatus =
@@ -135,7 +135,7 @@ export type ValidationResult<TPayload> = ValidationSuccess<TPayload> | Validatio
 // property_listings. Standalone from land_records (ADR-026 point 3),
 // but owned by (foreign-keyed to) listing_partners -- part of the same
 // module/domain, unlike listing_partners' relationship to land_records.
-// Mirrors supabase/migrations/202608040001_create_listing_partner.sql
+// Mirrors supabase/migrations/20260804133614_create_listing_partner.sql
 // exactly.
 // ---------------------------------------------------------------------
 
