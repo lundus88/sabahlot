@@ -75,6 +75,7 @@ import {
   syncPdfIdentitiesToCloud,
   type PartyIdentityInput,
   type PartyUiSyncResult,
+  type PartyUiSyncStatus,
 } from "@/lib/land-records/parties-ui-sync";
 // Deep import for the same reason as parties-ui-sync above: index.ts
 // is outside this sprint's Allowed Files and is not updated to
@@ -452,6 +453,24 @@ export const PAGE_TEXT = {
     geometryCloudSyncFailed:
       "Boundary cloud sync failed. Your local boundary is safe.",
 
+    partiesCloudSyncSaving:
+      "Syncing parties to cloud...",
+
+    partiesCloudSyncSynced:
+      "Parties synced to cloud.",
+
+    partiesCloudSyncLocalOnly:
+      "Parties kept locally because the parent land record was not synced.",
+
+    partiesCloudSyncInvalidInput:
+      "Party cloud sync skipped: some fields are not valid for cloud sync.",
+
+    partiesCloudSyncDuplicateConflict:
+      "Party cloud sync skipped: a different cloud record already exists for one of the parties.",
+
+    partiesCloudSyncFailed:
+      "Party cloud sync failed. Your local copy is safe and will retry on the next save.",
+
     polygonRequired:
       "Please draw a land area before saving this preliminary record.",
 
@@ -766,6 +785,24 @@ export const PAGE_TEXT = {
     geometryCloudSyncFailed:
       "Penyegerakan sempadan gagal. Sempadan pada peranti ini selamat.",
 
+    partiesCloudSyncSaving:
+      "Menyegerakkan pihak berkaitan ke awan...",
+
+    partiesCloudSyncSynced:
+      "Pihak berkaitan disegerakkan ke awan.",
+
+    partiesCloudSyncLocalOnly:
+      "Pihak berkaitan kekal pada peranti kerana rekod tanah induk belum disegerakkan.",
+
+    partiesCloudSyncInvalidInput:
+      "Penyegerakan pihak berkaitan dilangkau: sesetengah medan tidak sah untuk penyegerakan awan.",
+
+    partiesCloudSyncDuplicateConflict:
+      "Penyegerakan pihak berkaitan dilangkau: rekod awan berbeza sudah wujud untuk salah satu pihak berkaitan.",
+
+    partiesCloudSyncFailed:
+      "Penyegerakan pihak berkaitan gagal. Salinan pada peranti ini selamat dan akan dicuba semula pada simpanan seterusnya.",
+
     polygonRequired:
       "Sila lukis kawasan tanah sebelum menyimpan rekod awal ini.",
 
@@ -1079,6 +1116,24 @@ export const PAGE_TEXT = {
 
     geometryCloudSyncFailed:
       "边界云端同步失败。本设备上的边界数据安全。",
+
+    partiesCloudSyncSaving:
+      "正在同步相关人士到云端...",
+
+    partiesCloudSyncSynced:
+      "相关人士已同步到云端。",
+
+    partiesCloudSyncLocalOnly:
+      "由于土地记录尚未同步,相关人士仅保存在本设备。",
+
+    partiesCloudSyncInvalidInput:
+      "部分字段不适用于云端同步,已跳过相关人士的云端同步。",
+
+    partiesCloudSyncDuplicateConflict:
+      "已跳过相关人士的云端同步:其中一位相关人士已存在不同的云端记录。",
+
+    partiesCloudSyncFailed:
+      "相关人士云端同步失败。本设备副本安全,将在下次保存时重试。",
 
     polygonRequired:
       "保存此初步记录前,请先绘制土地范围。",
@@ -1588,12 +1643,20 @@ export default function HomePage() {
   >({ status: "idle" });
 
   // Tracks the outcome of syncing the four PdfIdentityFields entries to
-  // land_parties. Not yet surfaced in the UI -- this sprint's scope is
-  // the cloud sync itself, not new UI/layout (see the sprint report).
+  // land_parties. Surfaced in the UI as a single aggregate message
+  // (Housekeeping, 2026-08-07) -- unlike parentCloudSync/geometryCloudSync,
+  // syncPdfIdentitiesToCloud produces one PartyUiSyncResult per identity
+  // (up to 4), not a single result, so there is no 1:1 status to mirror.
+  // partiesCloudSyncWorstStatus() below picks one representative status
+  // (worst-wins) across the whole array for a single rendered message.
   const [
-    ,
+    partiesCloudSync,
     setPartiesCloudSync,
-  ] = useState<PartyUiSyncResult[]>([]);
+  ] = useState<
+    | { status: "idle" }
+    | { status: "saving" }
+    | { status: "settled"; results: PartyUiSyncResult[] }
+  >({ status: "idle" });
 
   // Sprint documents UI wiring: locally-picked files awaiting cloud
   // sync, keyed by a client-generated id assigned at pick time
@@ -2221,6 +2284,19 @@ export default function HomePage() {
           {geometryCloudSyncMessage()}
         </p>
       )}
+
+      {partiesCloudSyncMessage() && (
+        <p
+          className={`sl-parent-cloud-sync-message sl-parent-cloud-sync-message--${
+            partiesCloudSync.status === "settled"
+              ? partiesCloudSyncWorstStatus()
+              : partiesCloudSync.status
+          }`}
+          role="status"
+        >
+          {partiesCloudSyncMessage()}
+        </p>
+      )}
     </>
   );
 
@@ -2653,6 +2729,7 @@ export default function HomePage() {
         // its own state so a partial save cannot look fully synchronized.
         setParentCloudSync({ status: "saving" });
         setGeometryCloudSync({ status: "idle" });
+        setPartiesCloudSync({ status: "idle" });
         const cloudClient = createClient();
         let parentSyncResult: ParentSyncResult;
 
@@ -2779,12 +2856,13 @@ export default function HomePage() {
           },
         ];
 
+        setPartiesCloudSync({ status: "saving" });
         const partiesSyncResults = await syncPdfIdentitiesToCloud(
           cloudClient,
           parentSyncResult,
           partyIdentityInputs,
         );
-        setPartiesCloudSync(partiesSyncResults);
+        setPartiesCloudSync({ status: "settled", results: partiesSyncResults });
 
         // Persist any freshly-generated party id back into local state
         // (the existing pdfIdentities-watching auto-save effect then
@@ -8017,6 +8095,52 @@ export default function HomePage() {
       case "failed":
       case "network_error":
         return text.geometryCloudSyncFailed;
+      default:
+        return null;
+    }
+  };
+
+  // Ordered worst-to-best: syncPdfIdentitiesToCloud returns one result per
+  // PdfIdentityFields entry (up to 4), so a single message picks the one
+  // representative status across the whole array rather than trying to
+  // render up to 4 separate lines (Housekeeping, 2026-08-07).
+  const PARTIES_STATUS_PRIORITY: PartyUiSyncStatus[] = [
+    "network_error",
+    "failed",
+    "duplicate_conflict",
+    "invalid_input",
+    "local_only",
+    "parties_synced",
+  ];
+
+  const partiesCloudSyncWorstStatus = (): PartyUiSyncStatus | null => {
+    if (partiesCloudSync.status !== "settled" || partiesCloudSync.results.length === 0) {
+      return null;
+    }
+    const { results } = partiesCloudSync;
+    return (
+      PARTIES_STATUS_PRIORITY.find((status) =>
+        results.some((result) => result.status === status),
+      ) ?? null
+    );
+  };
+
+  const partiesCloudSyncMessage = (): string | null => {
+    if (partiesCloudSync.status === "idle") return null;
+    if (partiesCloudSync.status === "saving") return text.partiesCloudSyncSaving;
+
+    switch (partiesCloudSyncWorstStatus()) {
+      case "network_error":
+      case "failed":
+        return text.partiesCloudSyncFailed;
+      case "duplicate_conflict":
+        return text.partiesCloudSyncDuplicateConflict;
+      case "invalid_input":
+        return text.partiesCloudSyncInvalidInput;
+      case "local_only":
+        return text.partiesCloudSyncLocalOnly;
+      case "parties_synced":
+        return text.partiesCloudSyncSynced;
       default:
         return null;
     }
