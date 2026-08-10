@@ -186,6 +186,8 @@ export function mapCloudParty(row: CloudLandPartyRow): CloudLandParty {
     relationshipToApplicant: row.relationship_to_applicant,
     contactPhone: row.contact_phone,
     contactEmail: row.contact_email,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 }
 

@@ -839,6 +839,8 @@ async function test26_SuccessfulUpdateChangesOnlyUserACache() {
         relationshipToApplicant: null,
         contactPhone: null,
         contactEmail: null,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
       },
     ],
   };
@@ -935,7 +937,22 @@ async function test30_MapCloudPartyRoundTrip() {
   assert(mapped.id === row.id, "expected id round-trip");
   assert(mapped.fullName === row.full_name, "expected fullName round-trip");
   assert(mapped.idNumber === row.id_number, "expected idNumber to be read back from an existing row (read direction, unaffected by this sprint's write-side exclusion)");
+  assert(mapped.createdAt === row.created_at, "expected createdAt round-trip");
+  assert(mapped.updatedAt === row.updated_at, "expected updatedAt round-trip");
   console.log("Test 30 (mapCloudParty read-direction round-trip, unaffected by this sprint): PASS [executed]");
+}
+
+async function test31_MapCloudPartyUpdatedAtCreatedAtPresent() {
+  const row = basePartyRow({
+    created_at: "2026-01-01T00:00:00.000Z",
+    updated_at: "2026-03-15T10:30:00.000Z",
+  });
+  const mapped = mapCloudParty(row);
+  assert(
+    mapped.createdAt === "2026-01-01T00:00:00.000Z" && mapped.updatedAt === "2026-03-15T10:30:00.000Z",
+    "expected createdAt/updatedAt to be distinct, independently-sourced fields, not aliases of each other",
+  );
+  console.log("Test 31 (createdAt/updatedAt distinct and independently round-tripped, Housekeeping 2026-08-07): PASS [executed]");
 }
 
 // ==== Run ====================================================================
@@ -971,8 +988,9 @@ async function main() {
   await test28_PartySuccessProducesPartiesSynced();
   await test29_NoOtherTableWriteOccurs();
   await test30_MapCloudPartyRoundTrip();
+  await test31_MapCloudPartyUpdatedAtCreatedAtPresent();
 
-  console.log("Parties write QA: PASS (30/30)");
+  console.log("Parties write QA: PASS (31/31)");
 }
 
 main().catch((error) => {

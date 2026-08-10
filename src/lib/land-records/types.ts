@@ -230,6 +230,12 @@ export interface CloudLandParty {
   relationshipToApplicant: string | null;
   contactPhone: string | null;
   contactEmail: string | null;
+  // Added 2026-08-07 (Housekeeping) so a future UI-wiring sprint can pass
+  // updatedAt as updateCloudParty()'s expectedUpdatedAt token instead of
+  // parties' current re-CREATE-on-every-save workaround. Adding these
+  // fields alone does not wire updateCloudParty into any UI path.
+  createdAt: string;
+  updatedAt: string;
 }
 
 // Domain model for one document's metadata. Deliberately omits

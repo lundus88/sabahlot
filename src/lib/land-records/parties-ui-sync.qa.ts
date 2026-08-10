@@ -56,6 +56,8 @@ function partyRow(overrides: Partial<CloudLandParty> = {}): CloudLandParty {
     relationshipToApplicant: null,
     contactPhone: null,
     contactEmail: null,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
     ...overrides,
   };
 }
