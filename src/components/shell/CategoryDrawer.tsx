@@ -48,6 +48,12 @@ const MODULE_ICON_PATHS: Record<ModuleId, ReactNode> = {
     </>
   ),
   feedback: <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z" />,
+  account: (
+    <>
+      <circle cx="12" cy="8" r="3.5" />
+      <path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6" />
+    </>
+  ),
   advanced_mode: (
     <>
       <path d="M4 6h10M4 18h6" />

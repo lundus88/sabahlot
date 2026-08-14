@@ -2421,6 +2421,12 @@ export default function HomePage() {
         openFeedback(getAppText(language).modules.feedback.label);
         break;
 
+      case "account":
+        if (typeof window !== "undefined") {
+          window.location.assign("/auth");
+        }
+        break;
+
       default:
         break;
     }

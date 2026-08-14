@@ -9,6 +9,7 @@ export type ModuleId =
   | "service_request"
   | "help_guide"
   | "feedback"
+  | "account"
   | "advanced_mode";
 
 export const MODULE_ORDER: readonly ModuleId[] = [
@@ -20,6 +21,7 @@ export const MODULE_ORDER: readonly ModuleId[] = [
   "service_request",
   "help_guide",
   "feedback",
+  "account",
   "advanced_mode",
 ];
 
@@ -108,6 +110,10 @@ export const APP_TEXT: Record<AppLanguage, AppTextShape> = {
         label: "Feedback",
         description: "Report an issue or share feedback",
       },
+      account: {
+        label: "Log In / Sign Up",
+        description: "Sign in to sync your records to the cloud",
+      },
       advanced_mode: {
         label: "Advanced / Surveyor Mode",
         description: "Show technical survey tools",
@@ -184,6 +190,10 @@ export const APP_TEXT: Record<AppLanguage, AppTextShape> = {
         label: "Maklum Balas",
         description: "Laporkan isu atau kongsi maklum balas",
       },
+      account: {
+        label: "Log Masuk / Daftar",
+        description: "Log masuk untuk menyegerakkan rekod anda ke awan",
+      },
       advanced_mode: {
         label: "Mod Lanjutan / Juruukur",
         description: "Tunjukkan alat ukur teknikal",
@@ -259,6 +269,10 @@ export const APP_TEXT: Record<AppLanguage, AppTextShape> = {
       feedback: {
         label: "反馈",
         description: "报告问题或分享反馈",
+      },
+      account: {
+        label: "登录 / 注册",
+        description: "登录以将您的记录同步到云端",
       },
       advanced_mode: {
         label: "高级/测量员模式",
