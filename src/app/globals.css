@@ -169,7 +169,7 @@ select:focus-visible {
 .sl-field-gps-stack {
   position: absolute;
   right: 12px;
-  bottom: 82px;
+  bottom: 234px;
   z-index: 1130;
   display: grid;
   gap: 8px;
