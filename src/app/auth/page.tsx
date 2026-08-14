@@ -15,7 +15,8 @@ import styles from "./auth.module.css";
 
 type AuthMode =
   | "login"
-  | "signup";
+  | "signup"
+  | "forgot";
 
 function callbackUrl() {
   return `${window.location.origin}/auth/callback`;
@@ -256,6 +257,42 @@ export default function AuthPage() {
       setBusy(false);
     };
 
+  const submitForgotPassword =
+    async (
+      event:
+        FormEvent<HTMLFormElement>,
+    ) => {
+      event.preventDefault();
+      clearFeedback();
+      setBusy(true);
+
+      const supabase =
+        createClient();
+
+      const {
+        error,
+      } =
+        await supabase.auth.resetPasswordForEmail(
+          email,
+          {
+            redirectTo:
+              callbackUrl(),
+          },
+        );
+
+      if (error) {
+        setErrorMessage(
+          error.message,
+        );
+      } else {
+        setMessage(
+          "Jika akaun wujud untuk e-mel ini, pautan reset kata laluan telah dihantar. Semak inbox (dan folder spam) anda.",
+        );
+      }
+
+      setBusy(false);
+    };
+
   const signOut =
     async () => {
       clearFeedback();
@@ -356,6 +393,55 @@ export default function AuthPage() {
                 : "Log keluar"}
             </button>
           </section>
+        ) : mode === "forgot" ? (
+          <>
+            <form
+              className={styles.form}
+              onSubmit={
+                submitForgotPassword
+              }
+            >
+              <label>
+                <span>
+                  Alamat email
+                </span>
+
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(
+                    event,
+                  ) =>
+                    setEmail(
+                      event.target.value,
+                    )
+                  }
+                  autoComplete="email"
+                  required
+                />
+              </label>
+
+              <button
+                type="submit"
+                disabled={busy}
+              >
+                {busy
+                  ? "Memproses..."
+                  : "Hantar pautan reset"}
+              </button>
+            </form>
+
+            <button
+              type="button"
+              className={styles.forgotLink}
+              onClick={() => {
+                clearFeedback();
+                setMode("login");
+              }}
+            >
+              Kembali ke log masuk
+            </button>
+          </>
         ) : (
           <>
             <button
@@ -512,6 +598,19 @@ export default function AuthPage() {
                     : "Log masuk"}
               </button>
             </form>
+
+            {mode === "login" && (
+              <button
+                type="button"
+                className={styles.forgotLink}
+                onClick={() => {
+                  clearFeedback();
+                  setMode("forgot");
+                }}
+              >
+                Lupa kata laluan?
+              </button>
+            )}
           </>
         )}
 

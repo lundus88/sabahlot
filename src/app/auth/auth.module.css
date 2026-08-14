@@ -280,6 +280,24 @@
   opacity: 0.68;
 }
 
+.forgotLink {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  padding: 4px;
+  color: #2563eb;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.forgotLink:hover {
+  text-decoration: underline;
+}
+
 .session {
   display: grid;
   gap: 8px;
