@@ -38,11 +38,6 @@ export async function GET(
       "code",
     );
 
-  const type =
-    requestUrl.searchParams.get(
-      "type",
-    );
-
   if (!code) {
     return redirectToAuthError(
       requestUrl,
@@ -70,9 +65,7 @@ export async function GET(
 
     const successUrl =
       new URL(
-        type === "recovery"
-          ? "/auth/reset-password"
-          : "/",
+        "/",
         requestUrl.origin,
       );
 

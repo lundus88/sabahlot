@@ -22,6 +22,10 @@ function callbackUrl() {
   return `${window.location.origin}/auth/callback`;
 }
 
+function resetPasswordUrl() {
+  return `${window.location.origin}/auth/reset-password`;
+}
+
 export default function AuthPage() {
   const [
     mode,
@@ -276,7 +280,7 @@ export default function AuthPage() {
           email,
           {
             redirectTo:
-              callbackUrl(),
+              resetPasswordUrl(),
           },
         );
 
