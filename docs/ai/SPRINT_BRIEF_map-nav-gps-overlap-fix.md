@@ -133,20 +133,91 @@ what anyone intended — nobody currently knows without checking, since the
 one comment that claims to document it is wrong.
 
 Options:
-1. **Leave mobile untouched this sprint** (default/recommended for this
-   brief) — the owner never reported a mobile-specific complaint, and
-   `≤768px` is a materially different, larger-blast-radius cleanup (6
-   conflicting blocks vs. this sprint's 4). Fix desktop only now; file the
-   mobile cleanup as its own future sprint.
+1. Leave mobile untouched this sprint — deferred, superseded below.
 2. **Expand this sprint to also consolidate the mobile blocks** and correct
-   or remove the stale comment — larger, riskier (touches 6 breakpoint
-   blocks instead of dozens of lines), but closes the whole class of bug
-   in one pass rather than leaving known-stale documentation in place.
+   or remove the stale comment.
 
-This brief is written for option 1. If the owner prefers option 2, the
-"Allowed files" section above needs to be expanded before implementation
-starts, and acceptance criterion 4 would need to change from "pixel-
-identical" to "matches an explicitly agreed new mobile layout."
+**Decision (owner, this session): option 2.** Desktop fix (above) already
+shipped as `7b6ccf5`. This is a follow-up pass, same sprint ID, scope now
+expanded per below.
+
+### Expanded scope: mobile (`≤768px`) cleanup
+
+Investigation (Explore agent catalog, see this session's transcript)
+established that `.sl-map-navigation`'s real, currently-winning mobile rule
+is the block at line ~7876 (`@media (max-width: 768px)`, comment: "MOBILE
+LAYOUT CONTRACT ... Keep this block last so older sprint overrides cannot
+win the cascade") — `top: 50% !important; right: var(--sl-mobile-edge)
+!important; bottom: auto !important; transform: translateY(-50%)
+!important; z-index: 1092 !important;`. This block's own `!important` +
+last-source-position deliberately and successfully overrides five earlier
+blocks (lines ~5423, ~5870, ~6085, ~6272, ~6428), all of which are dead
+code — the comment at ~6428 claiming to be "the final-winning mobile
+offset" is false and actively misleading.
+
+**Expanded Allowed files** (adds to the desktop list above, same file):
+- `.sl-map-navigation` dead blocks to remove/simplify: lines ~5423-5426,
+  ~5870-5873, ~6085-6087, ~6272-6276, ~6428-6438 (including its stale
+  comment) — all superseded by ~7876-7882, which stays as the single
+  source of truth
+- `.sl-field-gps-stack` mobile rules, for a **newly found second overlap**
+  in the 641-768px width band: base mobile rule ~640-651 (`position:
+  fixed; top: calc(env(safe-area-inset-top)+58px); right/left: 8px;
+  bottom: calc(env(safe-area-inset-bottom)+86px)` — spans nearly full
+  viewport height/width) and its near-duplicate at ~2837-2847 (`@media
+  (max-width: 760px)`, byte-identical body) — the near-duplicate should be
+  removed as redundant, not fixed twice. In this 641-768px band, this
+  full-height band can overlap `.sl-map-navigation`'s vertically-centered,
+  right-edge position from ~7876, since field-gps-stack's `right: 8px`
+  reaches the same right edge nav occupies. The ≤640px case already
+  neutralizes this via `.sl-mobile-top-control-stack .sl-field-gps-stack {
+  position: static !important; ... }` at ~6506-6519, confirmed unaffected.
+
+**Expanded acceptance criteria** (in addition to the desktop ones already
+met):
+7. At mobile widths 768px, 700px, and 641px (the newly-identified risk
+   band), `.sl-map-navigation` and `.sl-field-gps-stack` bounding boxes do
+   not intersect.
+8. At ≤640px, behavior is unchanged (the `position: static` override at
+   ~6506 already prevents overlap there and is not touched).
+9. The stale "final-winning" comment at ~6428 is removed along with the
+   dead rule block it described.
+10. `.sl-map-navigation`'s rendered position at 768px/700px/641px after
+    cleanup is pixel-identical to before cleanup (proving the dead-block
+    removal was truly dead, not a silent behavior change) — verify via
+    before/after `getBoundingClientRect()` comparison, not just "build
+    succeeds."
+
+## Implementation findings (mobile pass, same session)
+Live browser testing (with `.sl-field-gps-stack` actually mounted, by
+switching to Advanced/Surveyor mode) found the 641-768px overlap was not
+just visual: `document.elementFromPoint()` at the topmost zoom button's
+coordinates returned `.sl-field-gps-stack`, not the button — a real
+click-swallowing bug, caused by `.sl-field-gps-stack`'s computed
+`pointer-events` being `auto` (not the base rule's `none`) at that width.
+Root cause: a rule at (then) lines 7838-7842,
+`.sl-mobile-top-control-stack .sl-field-gps-stack, ... { pointer-events:
+auto !important; }`, sat inside the `@media (max-width: 768px)` "MOBILE
+LAYOUT CONTRACT" block but was only ever needed for the `≤640px` case
+(where `.sl-mobile-top-control-stack` becomes a real flex container) — in
+the 641-768px gap it force-enabled pointer events on the GPS stack's full
+near-viewport-height invisible box, intercepting clicks meant for
+`.sl-map-navigation` underneath. Confirmed via a live before/after test
+(CSS override injected, then removed) that removing this block fixes the
+click-through at 768/700/641px and does not affect the toggle button's
+own clickability (it has its own independent `pointer-events: auto` at
+line ~202) at any width including ≤640px. Removed that block instead of
+narrowing its media query, since it was fully redundant once confirmed.
+
+Also removed, per the "Expanded scope" section above: the 6 dead
+`.sl-map-navigation` position blocks (~5423, ~5870, ~6085, ~6272, the
+`@media (max-width:768px) and (max-height:640px)` duplicate at ~6292, and
+~6428 with its false "final-winning" comment) — all provably superseded
+by the ~7876 block via later source order + `!important`. Verified via
+live `getBoundingClientRect()` before/after at 768/700/641px: identical
+pixel values, confirming these were genuinely dead, not a silent
+behavior change. Net diff: 41 lines removed, 0 added, in
+`src/app/globals.css` only.
 
 ## Required report
 Structure per `docs/ai/SPRINT_TEMPLATE.md`: Repository state → Files →

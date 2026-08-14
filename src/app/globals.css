@@ -5419,11 +5419,6 @@ select:focus-visible {
     width: auto;
     max-height: min(40dvh, calc(100dvh - 184px));
   }
-
-  .sl-map-navigation {
-    right: 8px;
-    bottom: 92px;
-  }
 }
 
 /* Mobile map controls: keep the map as the dominant surface. */
@@ -5867,11 +5862,6 @@ select:focus-visible {
     overscroll-behavior: contain;
   }
 
-  .sl-map-navigation {
-    right: 8px;
-    bottom: calc(78px + env(safe-area-inset-bottom));
-  }
-
   .sl-map-status {
     right: 8px;
     bottom: calc(76px + env(safe-area-inset-bottom));
@@ -6082,10 +6072,6 @@ select:focus-visible {
     bottom: calc(env(safe-area-inset-bottom) + 76px);
   }
 
-  .sl-map-navigation {
-    bottom: calc(env(safe-area-inset-bottom) + 78px);
-  }
-
   .sl-dashed-line-options,
   .sl-field-point-options,
   .sl-settings-card {
@@ -6269,12 +6255,6 @@ select:focus-visible {
     z-index: 1087;
   }
 
-  .sl-map-navigation {
-    right: 8px !important;
-    bottom: calc(env(safe-area-inset-bottom) + 164px) !important;
-    z-index: 1092;
-  }
-
   .sl-tool-flyout {
     bottom: calc(env(safe-area-inset-bottom) + 86px) !important;
   }
@@ -6287,10 +6267,6 @@ select:focus-visible {
 @media (max-width: 768px) and (max-height: 640px) {
   .sl-floating-summary-card {
     display: none !important;
-  }
-
-  .sl-map-navigation {
-    bottom: calc(env(safe-area-inset-bottom) + 86px) !important;
   }
 }
 
@@ -6425,17 +6401,6 @@ select:focus-visible {
     max-height: 66px;
   }
 
-  /* Final-winning mobile offset for .sl-map-navigation (last matching
-     max-width:768px rule in cascade order). Was 140px, leaving only ~14px
-     of clearance above .sl-floating-summary-card's resolved top edge
-     (bottom:74px + max-height:52px = 126px) at every width in the
-     360-640px range that both share -- below a safe touch/visual gap.
-     156px restores a ~30px gap without moving the card. */
-  .sl-map-navigation {
-    right: 8px !important;
-    bottom: calc(env(safe-area-inset-bottom) + 156px) !important;
-    z-index: 1092 !important;
-  }
 }
 
 @media (max-width: 768px) and (max-height: 640px) {
@@ -7833,12 +7798,6 @@ select:focus-visible {
     width: calc(100vw - 24px) !important;
     min-height: var(--sl-mobile-secondary-height) !important;
     height: var(--sl-mobile-secondary-height) !important;
-  }
-
-  .sl-mobile-top-control-stack .sl-field-gps-stack,
-  .sl-mobile-top-control-stack .sl-field-gps-panel,
-  .sl-mobile-top-control-stack .sl-field-gps-toggle {
-    pointer-events: auto !important;
   }
 
   .sl-public-beta-label {
