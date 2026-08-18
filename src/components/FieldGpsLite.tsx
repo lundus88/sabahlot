@@ -3037,10 +3037,7 @@ export default function FieldGpsLite({
           );
         }}
       >
-        <span className="sl-field-gps-toggle-label-full">
-          Handheld GPS
-        </span>
-        <span className="sl-field-gps-toggle-label-short">
+        <span className="sl-field-gps-toggle-label">
           GPS
         </span>
       </button>
