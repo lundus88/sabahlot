@@ -6415,10 +6415,6 @@ select:focus-visible {
   display: contents;
 }
 
-.sl-field-gps-toggle-label-short {
-  display: none;
-}
-
 @media (max-width: 640px) {
   .sl-mobile-top-control-stack {
     position: absolute;
@@ -6507,14 +6503,6 @@ select:focus-visible {
     white-space: nowrap;
     backdrop-filter: blur(18px) saturate(1.06);
     -webkit-backdrop-filter: blur(18px) saturate(1.06);
-  }
-
-  .sl-field-gps-toggle-label-full {
-    display: none;
-  }
-
-  .sl-field-gps-toggle-label-short {
-    display: inline;
   }
 
   .sl-mobile-top-control-stack .sl-field-gps-card {
