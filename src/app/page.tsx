@@ -84,6 +84,7 @@ import {
   syncFieldGpsPointsToCloud,
   type PointCaptureInput,
   type PointUiSyncResult,
+  type PointUiSyncStatus,
 } from "@/lib/land-records/points-ui-sync";
 // Deep import for the same reason as points-ui-sync/parties-ui-sync
 // above: index.ts is outside this sprint's Allowed Files and is not
@@ -92,6 +93,7 @@ import {
   syncDocumentUploadsToCloud,
   type DocumentUploadInput,
   type DocumentUiSyncResult,
+  type DocumentUiSyncStatus,
 } from "@/lib/land-records/documents-ui-sync";
 
 import type {
@@ -471,6 +473,42 @@ export const PAGE_TEXT = {
     partiesCloudSyncFailed:
       "Party cloud sync failed. Your local copy is safe and will retry on the next save.",
 
+    pointsCloudSyncSaving:
+      "Syncing points to cloud...",
+
+    pointsCloudSyncSynced:
+      "Points synced to cloud.",
+
+    pointsCloudSyncLocalOnly:
+      "Points kept locally because the parent land record was not synced.",
+
+    pointsCloudSyncInvalidInput:
+      "Point cloud sync skipped: some fields are not valid for cloud sync.",
+
+    pointsCloudSyncOutOfSync:
+      "A point was edited after it was already synced. Cloud sync skipped to avoid overwriting the cloud copy.",
+
+    pointsCloudSyncFailed:
+      "Point cloud sync failed. Your local copy is safe and will retry on the next save.",
+
+    documentsCloudSyncSaving:
+      "Syncing documents to cloud...",
+
+    documentsCloudSyncSynced:
+      "Documents synced to cloud.",
+
+    documentsCloudSyncLocalOnly:
+      "Documents kept locally because the parent land record was not synced.",
+
+    documentsCloudSyncInvalidInput:
+      "Document cloud sync skipped: some fields are not valid for cloud sync.",
+
+    documentsCloudSyncDuplicateConflict:
+      "Document cloud sync skipped: a different cloud record already exists for one of the uploads.",
+
+    documentsCloudSyncFailed:
+      "Document cloud sync failed. Your local copy is safe and will retry on the next save.",
+
     polygonRequired:
       "Please draw a land area before saving this preliminary record.",
 
@@ -803,6 +841,42 @@ export const PAGE_TEXT = {
     partiesCloudSyncFailed:
       "Penyegerakan pihak berkaitan gagal. Salinan pada peranti ini selamat dan akan dicuba semula pada simpanan seterusnya.",
 
+    pointsCloudSyncSaving:
+      "Menyegerakkan titik ke awan...",
+
+    pointsCloudSyncSynced:
+      "Titik disegerakkan ke awan.",
+
+    pointsCloudSyncLocalOnly:
+      "Titik kekal pada peranti kerana rekod tanah induk belum disegerakkan.",
+
+    pointsCloudSyncInvalidInput:
+      "Penyegerakan titik dilangkau: sesetengah medan tidak sah untuk penyegerakan awan.",
+
+    pointsCloudSyncOutOfSync:
+      "Satu titik telah diubah selepas ia disegerakkan. Penyegerakan awan dilangkau untuk elak menimpa salinan awan.",
+
+    pointsCloudSyncFailed:
+      "Penyegerakan titik gagal. Salinan pada peranti ini selamat dan akan dicuba semula pada simpanan seterusnya.",
+
+    documentsCloudSyncSaving:
+      "Menyegerakkan dokumen ke awan...",
+
+    documentsCloudSyncSynced:
+      "Dokumen disegerakkan ke awan.",
+
+    documentsCloudSyncLocalOnly:
+      "Dokumen kekal pada peranti kerana rekod tanah induk belum disegerakkan.",
+
+    documentsCloudSyncInvalidInput:
+      "Penyegerakan dokumen dilangkau: sesetengah medan tidak sah untuk penyegerakan awan.",
+
+    documentsCloudSyncDuplicateConflict:
+      "Penyegerakan dokumen dilangkau: rekod awan berbeza sudah wujud untuk salah satu muat naik.",
+
+    documentsCloudSyncFailed:
+      "Penyegerakan dokumen gagal. Salinan pada peranti ini selamat dan akan dicuba semula pada simpanan seterusnya.",
+
     polygonRequired:
       "Sila lukis kawasan tanah sebelum menyimpan rekod awal ini.",
 
@@ -1134,6 +1208,42 @@ export const PAGE_TEXT = {
 
     partiesCloudSyncFailed:
       "相关人士云端同步失败。本设备副本安全,将在下次保存时重试。",
+
+    pointsCloudSyncSaving:
+      "正在同步点位到云端...",
+
+    pointsCloudSyncSynced:
+      "点位已同步到云端。",
+
+    pointsCloudSyncLocalOnly:
+      "由于土地记录尚未同步,点位仅保存在本设备。",
+
+    pointsCloudSyncInvalidInput:
+      "部分字段不适用于云端同步,已跳过点位的云端同步。",
+
+    pointsCloudSyncOutOfSync:
+      "某个点位在同步后被修改。为避免覆盖云端副本,已跳过云端同步。",
+
+    pointsCloudSyncFailed:
+      "点位云端同步失败。本设备副本安全,将在下次保存时重试。",
+
+    documentsCloudSyncSaving:
+      "正在同步文件到云端...",
+
+    documentsCloudSyncSynced:
+      "文件已同步到云端。",
+
+    documentsCloudSyncLocalOnly:
+      "由于土地记录尚未同步,文件仅保存在本设备。",
+
+    documentsCloudSyncInvalidInput:
+      "部分字段不适用于云端同步,已跳过文件的云端同步。",
+
+    documentsCloudSyncDuplicateConflict:
+      "已跳过文件的云端同步:其中一份上传已存在不同的云端记录。",
+
+    documentsCloudSyncFailed:
+      "文件云端同步失败。本设备副本安全,将在下次保存时重试。",
 
     polygonRequired:
       "保存此初步记录前,请先绘制土地范围。",
@@ -1676,11 +1786,16 @@ export default function HomePage() {
   ] = useState<CloudDocumentType>("site_photo");
 
   // Tracks the outcome of syncing documentUploads to public.documents.
-  // Not yet surfaced in the UI, same posture as partiesCloudSync above.
+  // Surfaced in the UI as a single aggregate message (Tier 1 backlog
+  // item, 2026-08-18), same worst-status-wins shape as partiesCloudSync.
   const [
-    ,
+    documentsCloudSync,
     setDocumentsCloudSync,
-  ] = useState<DocumentUiSyncResult[]>([]);
+  ] = useState<
+    | { status: "idle" }
+    | { status: "saving" }
+    | { status: "settled"; results: DocumentUiSyncResult[] }
+  >({ status: "idle" });
 
   // FieldGpsLite's own captured point list, reported up via
   // onPointsChange. Not local-lots/manual-map state -- see the sprint
@@ -1691,12 +1806,17 @@ export default function HomePage() {
     setFieldGpsPoints,
   ] = useState<FieldGpsPoint[]>([]);
 
-  // Tracks the outcome of syncing fieldGpsPoints to land_points. Not
-  // yet surfaced in the UI, same posture as partiesCloudSync above.
+  // Tracks the outcome of syncing fieldGpsPoints to land_points.
+  // Surfaced in the UI as a single aggregate message (Tier 1 backlog
+  // item, 2026-08-18), same worst-status-wins shape as partiesCloudSync.
   const [
-    ,
+    pointsCloudSync,
     setPointsCloudSync,
-  ] = useState<PointUiSyncResult[]>([]);
+  ] = useState<
+    | { status: "idle" }
+    | { status: "saving" }
+    | { status: "settled"; results: PointUiSyncResult[] }
+  >({ status: "idle" });
 
   const [
     isExportingPdf,
@@ -2297,6 +2417,32 @@ export default function HomePage() {
           {partiesCloudSyncMessage()}
         </p>
       )}
+
+      {pointsCloudSyncMessage() && (
+        <p
+          className={`sl-parent-cloud-sync-message sl-parent-cloud-sync-message--${
+            pointsCloudSync.status === "settled"
+              ? pointsCloudSyncWorstStatus()
+              : pointsCloudSync.status
+          }`}
+          role="status"
+        >
+          {pointsCloudSyncMessage()}
+        </p>
+      )}
+
+      {documentsCloudSyncMessage() && (
+        <p
+          className={`sl-parent-cloud-sync-message sl-parent-cloud-sync-message--${
+            documentsCloudSync.status === "settled"
+              ? documentsCloudSyncWorstStatus()
+              : documentsCloudSync.status
+          }`}
+          role="status"
+        >
+          {documentsCloudSyncMessage()}
+        </p>
+      )}
     </>
   );
 
@@ -2736,6 +2882,8 @@ export default function HomePage() {
         setParentCloudSync({ status: "saving" });
         setGeometryCloudSync({ status: "idle" });
         setPartiesCloudSync({ status: "idle" });
+        setPointsCloudSync({ status: "idle" });
+        setDocumentsCloudSync({ status: "idle" });
         const cloudClient = createClient();
         let parentSyncResult: ParentSyncResult;
 
@@ -2825,12 +2973,13 @@ export default function HomePage() {
           }),
         );
 
+        setPointsCloudSync({ status: "saving" });
         const pointsSyncResults = await syncFieldGpsPointsToCloud(
           cloudClient,
           parentSyncResult,
           pointCaptureInputs,
         );
-        setPointsCloudSync(pointsSyncResults);
+        setPointsCloudSync({ status: "settled", results: pointsSyncResults });
 
         // Parties sync only after parent + geometry have settled, same
         // ordering syncParentGeometryToCloud itself enforces via
@@ -2929,12 +3078,13 @@ export default function HomePage() {
           }),
         );
 
+        setDocumentsCloudSync({ status: "saving" });
         const documentsSyncResults = await syncDocumentUploadsToCloud(
           cloudClient,
           parentSyncResult,
           documentUploadInputs,
         );
-        setDocumentsCloudSync(documentsSyncResults);
+        setDocumentsCloudSync({ status: "settled", results: documentsSyncResults });
 
         const syncedDocumentIds = new Set(
           documentsSyncResults
@@ -8147,6 +8297,98 @@ export default function HomePage() {
         return text.partiesCloudSyncLocalOnly;
       case "parties_synced":
         return text.partiesCloudSyncSynced;
+      default:
+        return null;
+    }
+  };
+
+  // Same worst-status-wins shape as parties above: syncFieldGpsPointsToCloud
+  // returns one result per captured point (an arbitrary-length list), so a
+  // single message picks one representative status rather than rendering a
+  // line per point. "points_out_of_sync" (ADR-011 -- create-only, an
+  // already-synced point edited locally never silently overwrites the
+  // cloud copy) sits where parties' "duplicate_conflict" does.
+  const POINTS_STATUS_PRIORITY: PointUiSyncStatus[] = [
+    "network_error",
+    "failed",
+    "points_out_of_sync",
+    "invalid_input",
+    "local_only",
+    "points_synced",
+  ];
+
+  const pointsCloudSyncWorstStatus = (): PointUiSyncStatus | null => {
+    if (pointsCloudSync.status !== "settled" || pointsCloudSync.results.length === 0) {
+      return null;
+    }
+    const { results } = pointsCloudSync;
+    return (
+      POINTS_STATUS_PRIORITY.find((status) =>
+        results.some((result) => result.status === status),
+      ) ?? null
+    );
+  };
+
+  const pointsCloudSyncMessage = (): string | null => {
+    if (pointsCloudSync.status === "idle") return null;
+    if (pointsCloudSync.status === "saving") return text.pointsCloudSyncSaving;
+
+    switch (pointsCloudSyncWorstStatus()) {
+      case "network_error":
+      case "failed":
+        return text.pointsCloudSyncFailed;
+      case "points_out_of_sync":
+        return text.pointsCloudSyncOutOfSync;
+      case "invalid_input":
+        return text.pointsCloudSyncInvalidInput;
+      case "local_only":
+        return text.pointsCloudSyncLocalOnly;
+      case "points_synced":
+        return text.pointsCloudSyncSynced;
+      default:
+        return null;
+    }
+  };
+
+  // Same worst-status-wins shape as parties/points above: one result per
+  // picked upload (an arbitrary-length list).
+  const DOCUMENTS_STATUS_PRIORITY: DocumentUiSyncStatus[] = [
+    "network_error",
+    "failed",
+    "duplicate_conflict",
+    "invalid_input",
+    "local_only",
+    "documents_synced",
+  ];
+
+  const documentsCloudSyncWorstStatus = (): DocumentUiSyncStatus | null => {
+    if (documentsCloudSync.status !== "settled" || documentsCloudSync.results.length === 0) {
+      return null;
+    }
+    const { results } = documentsCloudSync;
+    return (
+      DOCUMENTS_STATUS_PRIORITY.find((status) =>
+        results.some((result) => result.status === status),
+      ) ?? null
+    );
+  };
+
+  const documentsCloudSyncMessage = (): string | null => {
+    if (documentsCloudSync.status === "idle") return null;
+    if (documentsCloudSync.status === "saving") return text.documentsCloudSyncSaving;
+
+    switch (documentsCloudSyncWorstStatus()) {
+      case "network_error":
+      case "failed":
+        return text.documentsCloudSyncFailed;
+      case "duplicate_conflict":
+        return text.documentsCloudSyncDuplicateConflict;
+      case "invalid_input":
+        return text.documentsCloudSyncInvalidInput;
+      case "local_only":
+        return text.documentsCloudSyncLocalOnly;
+      case "documents_synced":
+        return text.documentsCloudSyncSynced;
       default:
         return null;
     }

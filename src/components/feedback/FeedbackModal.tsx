@@ -7,6 +7,8 @@ import {
   type FeedbackEntryInput,
   type FeedbackIssueType,
 } from "@/lib/feedback/feedbackStorage";
+import { syncFeedbackToCloud } from "@/lib/feedback/feedback-cloud-sync";
+import { createClient } from "@/lib/supabase/client";
 import {
   REGION_DEFINITIONS,
   REGION_ORDER,
@@ -92,6 +94,19 @@ export default function FeedbackModal({
     saveFeedbackEntry(form);
     setSubmitted(true);
     onSaved?.();
+
+    // Fire-and-forget: cloud sync is best-effort alongside the local save
+    // above, never a condition for it. syncFeedbackToCloud() itself never
+    // throws; createClient() can (missing env config), so that alone is
+    // guarded here. No retry queue -- a failed attempt is simply not
+    // retried (see docs/ai/SPRINT_BRIEF_feedback-cloud-sync.md, Design
+    // decision 4).
+    try {
+      void syncFeedbackToCloud(createClient(), form);
+    } catch {
+      // Local save already succeeded above; a missing cloud config must
+      // not surface as a feedback-submission failure to the user.
+    }
   };
 
   return (
