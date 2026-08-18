@@ -226,6 +226,21 @@ select:focus-visible {
   gap: 8px;
 }
 
+/* The card's own overflow:auto scrolling (needed to fit its content within
+   the constrained mobile max-height) can leave the title/Close button
+   scrolled out of view once the user taps a lower action button and the
+   browser scrolls that button into view -- on narrow phones this reads as
+   "the GPS panel did nothing" even though it's open. Keeping just the
+   outer heading (title + Close) pinned to the top of the scroll area, not
+   the section headings deeper in the card, fixes that without touching
+   the panel's height budget. */
+.sl-field-gps-card > .sl-field-gps-heading {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.97);
+}
+
 .sl-field-gps-heading span,
 .sl-field-gps-status-row strong {
   font-size: 13px;
@@ -6474,6 +6489,14 @@ select:focus-visible {
     flex: 0 0 auto;
     width: auto !important;
     max-height: none;
+    /* The un-nested .sl-field-gps-stack rule above (max-width: 768px) sets
+       overflow-y: auto for its own full-panel layout. Once pinned into
+       this row (sized to just the toggle button), that inherited overflow
+       clips the entire dropdown card -- it renders with correct geometry
+       but is invisible and un-hit-testable, since the card is positioned
+       to overflow below this now-tiny box. Must stay visible here so the
+       card can render outside it. */
+    overflow: visible !important;
     margin-left: auto;
     justify-content: flex-end;
     pointer-events: none;
