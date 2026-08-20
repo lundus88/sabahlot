@@ -8,6 +8,8 @@ import {
   readGpsTargetMemory,
   saveGpsTargetMemory,
 } from "@/utils/gpsTargetMemory";
+import { appendFoundPointToFieldGpsStorage } from "@/utils/foundPointMemory";
+import { getGpsQualityGrade } from "@/lib/gps-quality";
 import { useAppBrandLabel } from "@/lib/branding/appBrandLabel";
 import styles from "./ar-stakeout.module.css";
 
@@ -681,7 +683,34 @@ export default function ArStakeoutPage() {
 
     setSavedPoints((items) => [record, ...items].slice(0, 10));
     setNote("");
-    setFieldMessage("Found point saved locally as preliminary record.");
+
+    // Bug fix 2026-08-18: this page has no shared React state with
+    // FieldGpsLite (the main map's own found-point list) -- without this,
+    // savedPoints above is the ONLY copy, and it is pure in-memory state
+    // that is destroyed the moment the user navigates back to the map,
+    // silently losing every point captured here. Persist into
+    // FieldGpsLite's own storage so it survives that navigation and shows
+    // up in the map's Field GPS panel, same as the target point already
+    // does via gpsTargetMemory.
+    const persisted = appendFoundPointToFieldGpsStorage({
+      targetName: target.name,
+      targetLatitude: target.latitude,
+      targetLongitude: target.longitude,
+      foundLatitude: gps.latitude,
+      foundLongitude: gps.longitude,
+      distanceDifferenceMeters: metrics.distance,
+      bearingDegrees: metrics.bearing,
+      accuracyMeters: gps.accuracy,
+      gpsQualityGrade: getGpsQualityGrade(gps.accuracy),
+      gpsSignalLabel: signal.label,
+      note,
+    });
+
+    setFieldMessage(
+      persisted
+        ? "Found point saved -- will still be here when you go back to the map."
+        : "Found point saved on this screen, but could not be saved to this device's storage.",
+    );
   }
 
   useEffect(() => {
