@@ -5016,21 +5016,50 @@ export default function Map({
               className: string,
               offsetSign: 1 | -1,
             ) => {
+              const offsetSteps =
+                [1, 1.6, 2.2, 2.8];
+              const candidateOffsets =
+                offsetSteps.map(
+                  (step) =>
+                    centreOffset *
+                    step *
+                    offsetSign,
+                );
+              const candidateBoxes =
+                candidateOffsets.map(
+                  (candidateOffset) =>
+                    rotatedBox(
+                      centreX +
+                        normalX *
+                          candidateOffset,
+                      centreY +
+                        normalY *
+                          candidateOffset,
+                      labelWidth,
+                      labelHeight,
+                      angle,
+                    ),
+                );
+              const selectedIndex =
+                candidateBoxes.findIndex(
+                  (candidateBox) =>
+                    canUseBox(
+                      candidateBox,
+                      occupied,
+                    ),
+                );
+              const useIndex =
+                selectedIndex === -1
+                  ? 0
+                  : selectedIndex;
               const labelOffset =
-                centreOffset *
-                offsetSign;
+                candidateOffsets[
+                  useIndex
+                ];
             const box =
-              rotatedBox(
-                centreX +
-                  normalX *
-                    labelOffset,
-                centreY +
-                  normalY *
-                    labelOffset,
-                labelWidth,
-                labelHeight,
-                angle,
-              );
+              candidateBoxes[
+                useIndex
+              ];
 
               occupied.push(
                 box,

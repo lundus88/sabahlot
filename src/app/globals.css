@@ -7531,6 +7531,12 @@ select:focus-visible {
   gap: 8px;
 
   cursor: default;
+  background: #ffffff;
+  border-style: dashed;
+}
+
+.sl-ncr-action-field:hover {
+  background: #ffffff;
 }
 
 .sl-ncr-action-field textarea {
@@ -7549,6 +7555,12 @@ select:focus-visible {
 
 .sl-ncr-action-readonly {
   cursor: default;
+  background: #ffffff;
+  border-style: dashed;
+}
+
+.sl-ncr-action-readonly:hover {
+  background: #ffffff;
 }
 
 .sl-ncr-action-label {
