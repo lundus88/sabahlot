@@ -711,6 +711,9 @@ const MAP_TEXT = {
     openMenu:
       "Open menu",
 
+    goBack:
+      "Back",
+
     fitPolygon:
       "Fit polygon",
 
@@ -905,6 +908,9 @@ const MAP_TEXT = {
     openMenu:
       "Buka menu",
 
+    goBack:
+      "Kembali",
+
     fitPolygon:
       "Muatkan polygon",
 
@@ -1098,6 +1104,9 @@ const MAP_TEXT = {
 
     openMenu:
       "打开菜单",
+
+    goBack:
+      "返回",
 
     fitPolygon:
       "缩放至多边形",
@@ -9711,6 +9720,18 @@ export default function Map({
       />
 
       <header className="sl-topbar">
+        <button
+          type="button"
+          className="sl-icon-button sl-back-button"
+          onClick={() => window.history.back()}
+          title={text.goBack}
+          aria-label={text.goBack}
+        >
+          <Icon>
+            <path d="M15 6l-6 6 6 6" />
+          </Icon>
+        </button>
+
         <button
           type="button"
           className="sl-icon-button sl-menu-button"
