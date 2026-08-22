@@ -5017,7 +5017,7 @@ export default function Map({
               offsetSign: 1 | -1,
             ) => {
               const offsetSteps =
-                [1, 1.6, 2.2, 2.8];
+                [1, 1.6, 2.2, 2.8, 3.6, 4.5];
               const candidateOffsets =
                 offsetSteps.map(
                   (step) =>
@@ -5050,7 +5050,8 @@ export default function Map({
                 );
               const useIndex =
                 selectedIndex === -1
-                  ? 0
+                  ? candidateBoxes.length -
+                    1
                   : selectedIndex;
               const labelOffset =
                 candidateOffsets[
