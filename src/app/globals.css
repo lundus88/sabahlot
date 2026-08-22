@@ -7531,6 +7531,12 @@ select:focus-visible {
   gap: 8px;
 
   cursor: default;
+  background: #ffffff;
+  border-style: dashed;
+}
+
+.sl-ncr-action-field:hover {
+  background: #ffffff;
 }
 
 .sl-ncr-action-field textarea {
@@ -7549,6 +7555,12 @@ select:focus-visible {
 
 .sl-ncr-action-readonly {
   cursor: default;
+  background: #ffffff;
+  border-style: dashed;
+}
+
+.sl-ncr-action-readonly:hover {
+  background: #ffffff;
 }
 
 .sl-ncr-action-label {
@@ -7722,7 +7734,7 @@ select:focus-visible {
 
   .sl-topbar {
     display: grid !important;
-    grid-template-columns: 34px minmax(112px, 1fr) auto auto !important;
+    grid-template-columns: 34px 34px minmax(112px, 1fr) auto auto !important;
     grid-template-rows: 36px 36px !important;
     align-items: center !important;
     top: var(--sl-mobile-header-top) !important;
@@ -7736,13 +7748,18 @@ select:focus-visible {
     gap: 4px !important;
   }
 
-  .sl-topbar .sl-menu-button {
+  .sl-topbar .sl-back-button {
     grid-column: 1;
     grid-row: 1;
   }
 
-  .sl-topbar .sl-brand-chip {
+  .sl-topbar .sl-menu-button {
     grid-column: 2;
+    grid-row: 1;
+  }
+
+  .sl-topbar .sl-brand-chip {
+    grid-column: 3;
     grid-row: 1;
     width: auto !important;
     min-width: 0 !important;
@@ -7770,7 +7787,7 @@ select:focus-visible {
   }
 
   .sl-topbar .sl-region-indicator {
-    grid-column: 3;
+    grid-column: 4;
     grid-row: 1;
     min-width: 0;
   }
@@ -7786,7 +7803,7 @@ select:focus-visible {
   }
 
   .sl-topbar .sl-topbar-actions {
-    grid-column: 4;
+    grid-column: 5;
     grid-row: 1;
     position: static !important;
     width: auto !important;
@@ -7881,7 +7898,7 @@ select:focus-visible {
 
 @media (max-width: 380px) {
   .sl-topbar {
-    grid-template-columns: 34px minmax(96px, 1fr) minmax(44px, auto) auto !important;
+    grid-template-columns: 34px 34px minmax(96px, 1fr) minmax(44px, auto) auto !important;
   }
 
   .sl-topbar .sl-region-pill {

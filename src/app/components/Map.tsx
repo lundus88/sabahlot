@@ -711,6 +711,9 @@ const MAP_TEXT = {
     openMenu:
       "Open menu",
 
+    goBack:
+      "Back",
+
     fitPolygon:
       "Fit polygon",
 
@@ -905,6 +908,9 @@ const MAP_TEXT = {
     openMenu:
       "Buka menu",
 
+    goBack:
+      "Kembali",
+
     fitPolygon:
       "Muatkan polygon",
 
@@ -1098,6 +1104,9 @@ const MAP_TEXT = {
 
     openMenu:
       "打开菜单",
+
+    goBack:
+      "返回",
 
     fitPolygon:
       "缩放至多边形",
@@ -5007,21 +5016,51 @@ export default function Map({
               className: string,
               offsetSign: 1 | -1,
             ) => {
+              const offsetSteps =
+                [1, 1.6, 2.2, 2.8, 3.6, 4.5];
+              const candidateOffsets =
+                offsetSteps.map(
+                  (step) =>
+                    centreOffset *
+                    step *
+                    offsetSign,
+                );
+              const candidateBoxes =
+                candidateOffsets.map(
+                  (candidateOffset) =>
+                    rotatedBox(
+                      centreX +
+                        normalX *
+                          candidateOffset,
+                      centreY +
+                        normalY *
+                          candidateOffset,
+                      labelWidth,
+                      labelHeight,
+                      angle,
+                    ),
+                );
+              const selectedIndex =
+                candidateBoxes.findIndex(
+                  (candidateBox) =>
+                    canUseBox(
+                      candidateBox,
+                      occupied,
+                    ),
+                );
+              const useIndex =
+                selectedIndex === -1
+                  ? candidateBoxes.length -
+                    1
+                  : selectedIndex;
               const labelOffset =
-                centreOffset *
-                offsetSign;
+                candidateOffsets[
+                  useIndex
+                ];
             const box =
-              rotatedBox(
-                centreX +
-                  normalX *
-                    labelOffset,
-                centreY +
-                  normalY *
-                    labelOffset,
-                labelWidth,
-                labelHeight,
-                angle,
-              );
+              candidateBoxes[
+                useIndex
+              ];
 
               occupied.push(
                 box,
@@ -9711,6 +9750,18 @@ export default function Map({
       />
 
       <header className="sl-topbar">
+        <button
+          type="button"
+          className="sl-icon-button sl-back-button"
+          onClick={() => window.history.back()}
+          title={text.goBack}
+          aria-label={text.goBack}
+        >
+          <Icon>
+            <path d="M15 6l-6 6 6 6" />
+          </Icon>
+        </button>
+
         <button
           type="button"
           className="sl-icon-button sl-menu-button"
