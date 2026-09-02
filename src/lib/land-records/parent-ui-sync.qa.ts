@@ -347,30 +347,27 @@ async function testStaleUpdateIsConflict() {
   assert(result.serverRecord?.updatedAt === "2026-05-05T05:05:05.000Z", "expected serverRecord to carry the newer updated_at");
 }
 
-// ---- 7: production stays local-only, even with the correct dev URL -------
+// ---- 7: Alpha production build writes when targeting sabahlot-dev exactly
 
-async function testProductionStaysLocalOnlyEvenWithCorrectDevUrl() {
+async function testAlphaProductionBuildWritesToDevProject() {
   const originalEnv = process.env.NODE_ENV;
-  // NODE_ENV is typed read-only in newer @types/node -- Object.assign
-  // performs the same runtime mutation without tripping that check.
-  // NEXT_PUBLIC_SUPABASE_URL is deliberately left at the correct
-  // sabahlot-dev value (set once, above) for this test -- proving the
-  // gate stays closed in production for a NODE_ENV reason alone, not
-  // because the URL was also wrong.
+  // Vercel builds Alpha with NODE_ENV=production. The URL is deliberately
+  // left at the exact sabahlot-dev value set above, proving the real parent
+  // sync call is enabled by the database boundary rather than build mode.
   Object.assign(process.env, { NODE_ENV: "production" });
 
   try {
     const client = new FakeSupabaseClient();
     client.userId = nextUserId();
+    client.insertQueue.push({ data: baseRow(), error: null });
 
     const result = await syncParentLandRecordToCloud(
       client as unknown as Parameters<typeof syncParentLandRecordToCloud>[0],
       baseInput,
     );
 
-    assert(result.status === "local_only", "expected local_only when the cloud write gate is disabled");
-    assert(result.localOnlyReason === "gate_disabled", "expected gate_disabled reason");
-    assert(client.calls.length === 0, "expected no network calls at all when the gate is disabled");
+    assert(result.status === "core_record_synced", "expected Alpha to sync the parent record to sabahlot-dev");
+    assert(client.calls.filter((call) => call.op === "insert").length === 1, "expected exactly one dev-project insert");
   } finally {
     Object.assign(process.env, { NODE_ENV: originalEnv });
   }
@@ -640,7 +637,7 @@ async function main() {
   await run("Test 4 (retry create, identical payload, safe/idempotent)", testRetryCreateSamePayloadIsSafe);
   await run("Test 5 (duplicate id, different payload -> conflict, no overwrite)", testDuplicateDifferentPayloadIsConflict);
   await run("Test 6 (stale update -> conflict, no silent overwrite)", testStaleUpdateIsConflict);
-  await run("Test 7 (production stays local-only even with the correct dev URL)", testProductionStaysLocalOnlyEvenWithCorrectDevUrl);
+  await run("Test 7 (Alpha production build writes to the exact sabahlot-dev project)", testAlphaProductionBuildWritesToDevProject);
   await run("Test 7a2 (sabahlot-production URL + production NODE_ENV stays local-only while the constant is false)", testProductionUrlAndProductionNodeEnvStaysLocalOnly);
   await run("Test 7b (a different project's URL stays local-only, zero cloud calls)", testWrongProjectUrlStaysLocalOnly);
   await run("Test 7c (missing/empty URL stays local-only, zero cloud calls)", testMissingUrlStaysLocalOnly);
