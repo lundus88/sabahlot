@@ -6548,6 +6548,273 @@ select:focus-visible {
   }
 }
 
+/* =====================================================
+   ALPHA MOBILE VISUAL POLISH
+   Compact, map-first control chrome for high-density phone screens.
+   The final layout contract below retains authoritative geometry;
+   this layer supplies the visual treatment without changing behaviour.
+   ===================================================== */
+@media (max-width: 768px) {
+  .sl-map-shell {
+    --sl-mobile-edge: 10px;
+    --sl-mobile-header-top: max(8px, env(safe-area-inset-top));
+    --sl-mobile-header-height: 72px;
+    --sl-mobile-secondary-top: calc(env(safe-area-inset-top) + 88px);
+    --sl-mobile-secondary-height: 34px;
+    --sl-mobile-panel-top: calc(env(safe-area-inset-top) + 130px);
+    --sl-mobile-summary-bottom: calc(env(safe-area-inset-bottom) + 76px);
+  }
+
+  .sl-topbar {
+    grid-template-columns: 32px 32px minmax(88px, 1fr) auto auto !important;
+    grid-template-rows: 30px 32px !important;
+    min-height: var(--sl-mobile-header-height) !important;
+    height: var(--sl-mobile-header-height) !important;
+    padding: 5px !important;
+    gap: 4px !important;
+    overflow: visible;
+    background: rgba(15, 23, 42, 0.88) !important;
+    border: 1px solid rgba(255, 255, 255, 0.16) !important;
+    border-radius: 16px !important;
+    box-shadow:
+      0 14px 34px rgba(15, 23, 42, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+    backdrop-filter: blur(22px) saturate(1.15) !important;
+    -webkit-backdrop-filter: blur(22px) saturate(1.15) !important;
+  }
+
+  .sl-topbar .sl-back-button,
+  .sl-topbar .sl-menu-button,
+  .sl-topbar .sl-topbar-actions .sl-icon-button,
+  .sl-topbar-actions .sl-language-compact-trigger {
+    width: 30px !important;
+    min-width: 30px !important;
+    height: 30px !important;
+    min-height: 30px !important;
+    color: #f8fafc !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-radius: 9px !important;
+    box-shadow: none !important;
+  }
+
+  .sl-topbar .sl-brand-chip {
+    height: 30px !important;
+    min-height: 30px !important;
+    color: #ffffff;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .sl-topbar .sl-brand-mark {
+    width: 27px;
+    height: 27px;
+    border-radius: 9px;
+    box-shadow: 0 6px 14px rgba(37, 99, 235, 0.34);
+  }
+
+  .sl-topbar .sl-brand-chip strong {
+    color: #ffffff;
+    font-size: 12px !important;
+    letter-spacing: -0.015em;
+  }
+
+  .sl-topbar .sl-region-pill {
+    min-height: 30px !important;
+    height: 30px;
+    padding-inline: 8px !important;
+    color: #e2e8f0 !important;
+    background: rgba(255, 255, 255, 0.09) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 9px !important;
+    box-shadow: none !important;
+    font-size: 11px !important;
+  }
+
+  .sl-topbar .sl-topbar-actions {
+    height: 30px !important;
+    gap: 4px !important;
+  }
+
+  .sl-topbar .sl-search {
+    height: 32px !important;
+    min-height: 32px !important;
+    padding: 0 8px 0 11px !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-radius: 10px !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+  }
+
+  .sl-topbar .sl-search input {
+    height: 30px !important;
+    min-height: 30px !important;
+    padding: 0 !important;
+    color: #ffffff !important;
+    font-size: 13px !important;
+  }
+
+  .sl-topbar .sl-search input::placeholder {
+    color: rgba(226, 232, 240, 0.7) !important;
+    font-size: 13px !important;
+  }
+
+  .sl-mobile-top-control-stack {
+    right: var(--sl-mobile-edge) !important;
+    left: var(--sl-mobile-edge) !important;
+    width: auto !important;
+    min-height: var(--sl-mobile-secondary-height) !important;
+    height: var(--sl-mobile-secondary-height) !important;
+    align-items: center !important;
+  }
+
+  .sl-mobile-top-control-stack .sl-object-list-tab,
+  .sl-mobile-top-control-stack .sl-field-gps-toggle {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    min-height: 32px !important;
+    height: 32px !important;
+    max-height: 32px !important;
+    padding: 0 12px !important;
+    color: #f8fafc !important;
+    background: rgba(15, 23, 42, 0.84) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    border-radius: 999px !important;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.18) !important;
+    font-size: 11px !important;
+    font-weight: 750 !important;
+    line-height: 32px !important;
+    backdrop-filter: blur(18px) saturate(1.12) !important;
+    -webkit-backdrop-filter: blur(18px) saturate(1.12) !important;
+  }
+
+  .sl-mobile-top-control-stack .sl-object-list-tab {
+    position: static !important;
+    max-width: min(42vw, 160px) !important;
+  }
+
+  .sl-mobile-top-control-stack .sl-field-gps-stack {
+    margin-left: auto;
+  }
+
+  .sl-public-beta-label {
+    top: calc(var(--sl-mobile-secondary-top) + 7px) !important;
+    min-height: 20px;
+    max-width: 118px !important;
+    padding: 0 9px !important;
+    color: #fef3c7;
+    background: rgba(120, 53, 15, 0.88);
+    border: 1px solid rgba(251, 191, 36, 0.28);
+    border-radius: 999px;
+    box-shadow: 0 7px 18px rgba(15, 23, 42, 0.14);
+    font-size: 8px !important;
+    line-height: 20px;
+    letter-spacing: 0.045em;
+    text-transform: uppercase;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  .sl-map-navigation {
+    padding: 3px !important;
+    gap: 3px !important;
+    background: rgba(15, 23, 42, 0.82) !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    border-radius: 13px !important;
+    box-shadow: 0 10px 26px rgba(15, 23, 42, 0.2) !important;
+  }
+
+  .sl-map-navigation button {
+    width: 30px !important;
+    height: 30px !important;
+    color: #f8fafc !important;
+    background: rgba(255, 255, 255, 0.09) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    border-radius: 9px !important;
+  }
+
+  .sl-floating-summary-card {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.45fr) minmax(52px, 0.55fr) minmax(0, 1fr) !important;
+    right: var(--sl-mobile-edge) !important;
+    left: var(--sl-mobile-edge) !important;
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    max-height: 58px !important;
+    box-sizing: border-box;
+    overflow: hidden !important;
+    background: rgba(255, 255, 255, 0.92) !important;
+    border: 1px solid rgba(255, 255, 255, 0.76) !important;
+    border-radius: 15px !important;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.16) !important;
+  }
+
+  .sl-floating-summary-card > div {
+    min-width: 0 !important;
+    padding: 6px 8px !important;
+    overflow: hidden;
+  }
+
+  .sl-floating-summary-card > div + div {
+    border-left: 1px solid rgba(203, 213, 225, 0.72);
+  }
+
+  .sl-floating-summary-card small {
+    font-size: 7px !important;
+    line-height: 1 !important;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+  }
+
+  .sl-floating-summary-card strong {
+    display: block;
+    overflow: hidden;
+    font-size: 10px !important;
+    line-height: 1.2 !important;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sl-floating-summary-card div > span {
+    display: block;
+    overflow: hidden;
+    font-size: 8px !important;
+    line-height: 1.12 !important;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .leaflet-control-scale-line,
+  .leaflet-control-attribution {
+    color: #475569 !important;
+    background: rgba(255, 255, 255, 0.78) !important;
+    border-color: rgba(255, 255, 255, 0.62) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 5px 14px rgba(15, 23, 42, 0.08) !important;
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .sl-topbar {
+    grid-template-columns: 30px 30px minmax(78px, 1fr) minmax(40px, auto) auto !important;
+  }
+
+  .sl-topbar .sl-region-pill {
+    max-width: 50px !important;
+    padding-inline: 5px !important;
+  }
+
+  .sl-mobile-top-control-stack .sl-object-list-tab,
+  .sl-mobile-top-control-stack .sl-field-gps-toggle {
+    padding-inline: 10px !important;
+  }
+}
+
 /* Mobile area summary stabilization: keep Draw/Edit/Save/Export clear. */
 @media (max-width: 768px) {
   .sl-floating-summary-card {
@@ -7909,5 +8176,95 @@ select:focus-visible {
   .sl-public-beta-label {
     max-width: 112px;
     font-size: 7px;
+  }
+}
+
+/* Final geometry contract for the Alpha mobile visual polish. */
+@media (max-width: 768px) {
+  .sl-map-shell {
+    --sl-mobile-edge: 10px;
+    --sl-mobile-header-top: max(8px, env(safe-area-inset-top));
+    --sl-mobile-header-height: 72px;
+    --sl-mobile-secondary-top: calc(env(safe-area-inset-top) + 88px);
+    --sl-mobile-secondary-height: 34px;
+    --sl-mobile-panel-top: calc(env(safe-area-inset-top) + 130px);
+    --sl-mobile-summary-bottom: calc(env(safe-area-inset-bottom) + 76px);
+  }
+
+  .sl-topbar {
+    grid-template-columns: 30px 30px minmax(88px, 1fr) auto auto !important;
+    grid-template-rows: 30px 32px !important;
+    min-height: var(--sl-mobile-header-height) !important;
+    height: var(--sl-mobile-header-height) !important;
+    padding: 5px !important;
+  }
+
+  .sl-topbar .sl-brand-chip {
+    height: 30px !important;
+  }
+
+  .sl-topbar .sl-topbar-actions {
+    height: 30px !important;
+  }
+
+  .sl-topbar .sl-search {
+    height: 32px !important;
+    min-height: 32px !important;
+  }
+
+  .sl-mobile-top-control-stack {
+    right: var(--sl-mobile-edge) !important;
+    left: var(--sl-mobile-edge) !important;
+    width: auto !important;
+    height: var(--sl-mobile-secondary-height) !important;
+  }
+
+  .sl-mobile-top-control-stack .sl-object-list-tab,
+  .sl-mobile-top-control-stack .sl-field-gps-toggle {
+    min-height: 32px !important;
+    height: 32px !important;
+    max-height: 32px !important;
+    font-size: 11px !important;
+    line-height: 32px !important;
+  }
+
+  .sl-mobile-top-control-stack .sl-object-list-tab {
+    position: static !important;
+    width: auto !important;
+    max-width: min(42vw, 160px) !important;
+  }
+
+  .sl-floating-summary-card {
+    grid-template-columns: minmax(0, 1.45fr) minmax(52px, 0.55fr) minmax(0, 1fr) !important;
+    right: var(--sl-mobile-edge) !important;
+    left: var(--sl-mobile-edge) !important;
+    width: auto !important;
+    max-width: none !important;
+    max-height: 58px !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  .sl-floating-summary-card > div {
+    min-width: 0 !important;
+    padding: 6px 8px !important;
+  }
+
+  .sl-floating-summary-card small {
+    font-size: 7px !important;
+  }
+
+  .sl-floating-summary-card strong {
+    font-size: 10px !important;
+  }
+
+  .sl-floating-summary-card div > span {
+    font-size: 8px !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .sl-topbar {
+    grid-template-columns: 30px 30px minmax(78px, 1fr) minmax(40px, auto) auto !important;
   }
 }
