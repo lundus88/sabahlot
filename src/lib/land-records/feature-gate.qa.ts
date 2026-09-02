@@ -136,13 +136,13 @@ function testMalformedUrlStaysClosed() {
   assert(!isCloudWriteEnabled(), "expected the write gate to stay closed with a malformed URL");
 }
 
-// ---- 4: correct dev URL, but production -> gate stays closed --------------
+// ---- 4: correct dev URL + production build -> Alpha write gate opens ------
 
-function testProductionStaysClosedEvenWithDevUrl() {
+function testAlphaProductionBuildOpensDevWriteGate() {
   setEnv({ NODE_ENV: "production", NEXT_PUBLIC_SUPABASE_URL: DEV_URL });
   assert(isTargetingSabahlotDevProject(), "the URL itself is still recognized as sabahlot-dev");
-  assert(!isCloudReadEnabled(), "expected the read gate to stay closed in production regardless of URL");
-  assert(!isCloudWriteEnabled(), "expected the write gate to stay closed in production regardless of URL");
+  assert(!isCloudReadEnabled(), "expected the pre-existing dev read gate to stay closed in a production build");
+  assert(isCloudWriteEnabled(), "expected the Alpha production build to write only when it targets sabahlot-dev exactly");
   assert(!isCloudWriteEnabledForParentInProduction(), "expected the parent-in-production gate to stay closed for the dev URL (wrong hostname)");
   assert(!isCloudWriteEnabledForGeometryInProduction(), "expected the geometry-in-production gate to stay closed for the dev URL (wrong hostname)");
   assert(!isCloudWriteEnabledForPointsInProduction(), "expected the points-in-production gate to stay closed for the dev URL (wrong hostname)");
@@ -213,8 +213,8 @@ function testProductionUrlOutsideProductionBuildStaysClosed() {
 function testDevUrlNotRecognizedAsProductionEvenInProductionBuild() {
   setEnv({ NODE_ENV: "production", NEXT_PUBLIC_SUPABASE_URL: DEV_URL });
   assert(!isTargetingSabahlotProductionProject(), "expected the dev URL to never be recognized as sabahlot-production");
-  assert(!isCloudReadEnabled(), "expected the read gate to stay closed (dev URL + production build never opens either branch)");
-  assert(!isCloudWriteEnabled(), "expected the write gate to stay closed (dev URL + production build never opens either branch)");
+  assert(!isCloudReadEnabled(), "expected the pre-existing dev read gate to stay closed in a production build");
+  assert(isCloudWriteEnabled(), "expected the separate dev-only Alpha write gate to open for the exact dev hostname");
   assert(!isCloudWriteEnabledForParentInProduction(), "expected the parent-in-production gate to stay closed for the dev URL even in a production build");
   assert(!isCloudWriteEnabledForGeometryInProduction(), "expected the geometry-in-production gate to stay closed for the dev URL even in a production build");
   assert(!isCloudWriteEnabledForPointsInProduction(), "expected the points-in-production gate to stay closed for the dev URL even in a production build");
@@ -622,7 +622,7 @@ run("Test 2 (a different project's URL keeps the gate closed)", testOtherProject
 run("Test 3 (missing URL keeps the gate closed)", testMissingUrlStaysClosed);
 run("Test 3b (empty URL keeps the gate closed)", testEmptyUrlStaysClosed);
 run("Test 3c (malformed URL keeps the gate closed, never throws)", testMalformedUrlStaysClosed);
-run("Test 4 (production keeps the gate closed even with the correct dev URL)", testProductionStaysClosedEvenWithDevUrl);
+run("Test 4 (Alpha production build opens write only for the exact sabahlot-dev URL)", testAlphaProductionBuildOpensDevWriteGate);
 run("Test 5 (lookalike/substring hostnames are rejected)", testLookalikeHostnamesRejected);
 run("Test 6 (hostname comparison is case-insensitive)", testHostnameCaseInsensitive);
 run("Test 7 (non-https scheme is rejected)", testNonHttpsRejected);

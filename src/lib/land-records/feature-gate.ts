@@ -1,13 +1,11 @@
 // Sprint 02B/02C: gates cloud read and cloud write to Dev only.
 //
 // No existing feature-flag mechanism or env-based Dev/Beta/Prod switch
-// exists elsewhere in this repo (checked: no NODE_ENV/isDev checks
-// gate any data path today). Per Sprint 02B section 6 priority order,
-// falling back to option 3: an internal constant, disabled unless
-// combined with Next.js's own NODE_ENV, defaulting closed. No .env
-// variable was added for this -- flipping this constant is the only
-// way to change it, and it must be flipped back to false before this
-// code path is ever exposed to Beta/Production.
+// existed elsewhere in this repo at the time. Per Sprint 02B section 6,
+// the original implementation used internal constants plus NODE_ENV.
+// Alpha later became a Vercel production build targeting sabahlot-dev, so
+// the write gate now relies on the exact dev-project hostname instead (see
+// isCloudWriteEnabled below). No runtime override was added.
 const CLOUD_READ_ENABLED_CONSTANT = true;
 
 // Sprint 02C: deliberately a SEPARATE constant from the read gate
@@ -116,15 +114,18 @@ export function isCloudReadEnabled(): boolean {
 
 // Both read and write gates require the exact sabahlot-dev project. Keeping
 // their enable constants separate still allows either capability to be
-// disabled independently without weakening the environment boundary.
+// disabled independently without weakening the database boundary.
 //
-// Write gate is untouched by the production-read-gate-phase1 sprint --
-// sabahlot-production is not accepted here under any NODE_ENV, so Production
-// stays write-disabled regardless of the read-gate change above.
+// Alpha is deployed by Vercel as a production build (NODE_ENV=production)
+// while deliberately targeting sabahlot-dev. NODE_ENV therefore cannot be
+// used to distinguish Alpha from the real Production database. The exact
+// Supabase hostname matcher is the security boundary for this dev-only gate:
+// a build pointed at sabahlot-production or any other project still fails
+// closed. The five dedicated sabahlot-production write gates below remain
+// separate and false.
 export function isCloudWriteEnabled(): boolean {
   return (
     CLOUD_WRITE_ENABLED_CONSTANT &&
-    process.env.NODE_ENV !== "production" &&
     isTargetingSabahlotDevProject()
   );
 }
