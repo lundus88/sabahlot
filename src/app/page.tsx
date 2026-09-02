@@ -21,6 +21,9 @@ import {
   createClient,
 } from "@/lib/supabase/client";
 import {
+  activateAccountLocalStorage,
+} from "@/lib/account-local-storage";
+import {
   buildDxfDocument,
   buildKmlDocument,
 } from "@/lib/export-workflows";
@@ -1558,6 +1561,11 @@ function normalizePdfIdentities(
 
 export default function HomePage() {
   const [
+    accountStorageReady,
+    setAccountStorageReady,
+  ] = useState(false);
+
+  const [
     language,
     setLanguage,
   ] = useState<AppLanguage>(
@@ -2096,6 +2104,32 @@ export default function HomePage() {
     );
 
   useEffect(() => {
+    let active = true;
+    const supabase = createClient();
+
+    const prepareAccountStorage = async () => {
+      const { data } = await supabase.auth.getUser();
+
+      if (!active) {
+        return;
+      }
+
+      activateAccountLocalStorage(data.user?.id ?? null);
+      setAccountStorageReady(true);
+    };
+
+    void prepareAccountStorage();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!accountStorageReady) {
+      return;
+    }
+
     try {
       const storedRecord =
         window.localStorage.getItem(
@@ -2209,9 +2243,13 @@ export default function HomePage() {
         STORAGE_KEY,
       );
     }
-  }, []);
+  }, [accountStorageReady]);
 
   useEffect(() => {
+    if (!accountStorageReady) {
+      return;
+    }
+
     try {
       const storedLocalLots =
         getLocalLots();
@@ -2226,10 +2264,11 @@ export default function HomePage() {
         );
       });
     }
-  }, []);
+  }, [accountStorageReady]);
 
   useEffect(() => {
     if (
+      !accountStorageReady ||
       !polygon ||
       polygon.coordinates.length < 3
     ) {
@@ -2260,6 +2299,7 @@ export default function HomePage() {
     }
   }, [
     activeObjectId,
+    accountStorageReady,
     currentProjectId,
     formData,
     polygon,
@@ -8449,7 +8489,7 @@ export default function HomePage() {
           setMapView
         }
         fieldGpsControl={
-          <FieldGpsLite
+          accountStorageReady ? <FieldGpsLite
             enabled={appMode === "advanced"}
             recordName={
               formData.lotNumber
@@ -8463,7 +8503,7 @@ export default function HomePage() {
             onPointsChange={
               setFieldGpsPoints
             }
-          />
+          /> : null
         }
         appMode={appMode}
         region={region}
@@ -9823,7 +9863,6 @@ export default function HomePage() {
     </main>
   );
 }
-
 
 
 

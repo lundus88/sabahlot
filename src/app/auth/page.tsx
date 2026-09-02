@@ -10,6 +10,9 @@ import {
 import {
   createClient,
 } from "@/lib/supabase/client";
+import {
+  activateAccountLocalStorage,
+} from "@/lib/account-local-storage";
 
 import styles from "./auth.module.css";
 
@@ -84,6 +87,9 @@ export default function AuthPage() {
           await supabase.auth.getUser();
 
         if (active) {
+          activateAccountLocalStorage(
+            data.user?.id ?? null,
+          );
           setCurrentEmail(
             data.user?.email ??
               null,
@@ -103,6 +109,9 @@ export default function AuthPage() {
           _event,
           session,
         ) => {
+          activateAccountLocalStorage(
+            session?.user.id ?? null,
+          );
           setCurrentEmail(
             session?.user.email ??
               null,
