@@ -11,6 +11,7 @@ import AccountSessionBoundary from "@/components/AccountSessionBoundary";
 import PWARegister from "@/components/PWARegister";
 
 import "./globals.css";
+import "./desktop-polish.css";
 
 export const metadata: Metadata = {
   title:
