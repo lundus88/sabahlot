@@ -20,54 +20,73 @@ function assert(condition: unknown, message: string): asserts condition {
 const storage = new MemoryStorage();
 const [draftKey, lotsKey, gpsKey] = ACCOUNT_LOCAL_WORKING_KEYS;
 
-// Simulate a device already contaminated under the old v1 namespace:
-// the active owner says user-b while the visible working draft is actually A's.
-storage.setItem("sabahlot:account-local:v1:active-owner", "user:user-b");
+// Reproduce the real-device failure state: v2 already says user-b owns the
+// namespace, both v2 per-user archives exist, and the currently visible
+// working state contains Account A data. A v3 rollout must trust none of it.
+storage.setItem("sabahlot:account-local:v2:active-owner", "user:user-b");
 storage.setItem(draftKey, "a-draft-visible-under-b");
+storage.setItem(lotsKey, "a-lots-visible-under-b");
+storage.setItem(gpsKey, "a-target-visible-under-b");
 storage.setItem(
-  "sabahlot:account-local:v1:owner:user:user-a:sabahlot-alpha-record",
-  "a-v1-archived-draft",
+  "sabahlot:account-local:v2:owner:user:user-a:sabahlot-alpha-record",
+  "a-v2-archived-draft",
 );
 storage.setItem(
-  "sabahlot:account-local:v1:owner:user:user-b:sabahlot-alpha-record",
-  "possibly-contaminated-b-v1-draft",
+  "sabahlot:account-local:v2:owner:user:user-b:sabahlot-alpha-record",
+  "contaminated-b-v2-draft",
 );
 
 activateAccountLocalStorage("user-b", storage);
+ACCOUNT_LOCAL_WORKING_KEYS.forEach((key) => {
+  assert(
+    storage.getItem(key) === null,
+    `v3 trusted contaminated pre-v3 working data through ${key}`,
+  );
+});
 assert(
-  storage.getItem(draftKey) === null,
-  "v2 exposed a working draft carried over from the contaminated v1 namespace",
+  storage.getItem(
+    "sabahlot:account-local:v2:owner:user:user-b:sabahlot-alpha-record",
+  ) === "contaminated-b-v2-draft",
+  "v3 unexpectedly deleted the preserved v2 archive",
 );
 assert(
   [...Array(storage.length).keys()]
     .map((index) => storage.key(index))
-    .some((key) => key?.includes("v2:quarantine:legacy")),
-  "v2 did not preserve the pre-upgrade working draft in quarantine",
+    .some((key) => key?.includes("v3:quarantine:legacy")),
+  "v3 did not preserve the pre-upgrade working data in quarantine",
 );
 
+// Establish a clean Account B working set inside v3.
 ACCOUNT_LOCAL_WORKING_KEYS.forEach((key, index) => {
-  storage.setItem(key, `b-value-${index}`);
+  storage.setItem(key, `b-v3-value-${index}`);
 });
-storage.setItem(draftKey, "b-draft");
-storage.setItem(lotsKey, "b-lots");
-storage.setItem(gpsKey, "{corrupt-but-preserved");
+storage.setItem(draftKey, "b-draft-v3");
+storage.setItem(lotsKey, "b-lots-v3");
+storage.setItem(gpsKey, "b-target-v3");
+
 activateAccountLocalStorage("user-a", storage);
 ACCOUNT_LOCAL_WORKING_KEYS.forEach((key) => {
-  assert(storage.getItem(key) === null, `User B data leaked through ${key}`);
+  assert(storage.getItem(key) === null, `User B v3 data leaked through ${key}`);
 });
 
-storage.setItem(draftKey, "a-draft-v2");
+// Establish a clean Account A working set inside v3.
+storage.setItem(draftKey, "a-draft-v3");
+storage.setItem(lotsKey, "a-lots-v3");
+storage.setItem(gpsKey, "a-target-v3");
+
 activateAccountLocalStorage("user-b", storage);
-assert(storage.getItem(draftKey) === "b-draft", "User B draft was not restored");
-assert(storage.getItem(lotsKey) === "b-lots", "User B lots were not restored");
-assert(
-  storage.getItem(gpsKey) === "{corrupt-but-preserved",
-  "Opaque/corrupt account data was not preserved exactly",
-);
+assert(storage.getItem(draftKey) === "b-draft-v3", "User B v3 draft was not restored");
+assert(storage.getItem(lotsKey) === "b-lots-v3", "User B v3 lots were not restored");
+assert(storage.getItem(gpsKey) === "b-target-v3", "User B v3 target was not restored");
 
 activateAccountLocalStorage(null, storage);
-assert(storage.getItem(draftKey) === null, "Signed-out session exposed User B draft");
-activateAccountLocalStorage("user-a", storage);
-assert(storage.getItem(draftKey) === "a-draft-v2", "User A v2 draft was not restored");
+ACCOUNT_LOCAL_WORKING_KEYS.forEach((key) => {
+  assert(storage.getItem(key) === null, `Signed-out session exposed User B v3 data through ${key}`);
+});
 
-console.log("Account-local storage isolation QA: PASS");
+activateAccountLocalStorage("user-a", storage);
+assert(storage.getItem(draftKey) === "a-draft-v3", "User A v3 draft was not restored");
+assert(storage.getItem(lotsKey) === "a-lots-v3", "User A v3 lots were not restored");
+assert(storage.getItem(gpsKey) === "a-target-v3", "User A v3 target was not restored");
+
+console.log("Account-local storage v3 clean-reset isolation QA: PASS");
