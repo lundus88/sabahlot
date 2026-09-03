@@ -1,0 +1,111 @@
+/*
+ * SabahLot mobile responsive clipping fixes — 2026-09-03
+ *
+ * Presentation-only overrides for narrow screens. These rules intentionally
+ * avoid map geometry, GPS, auth, storage, Supabase, export, and workflow logic.
+ */
+
+@media (max-width: 768px) {
+  /* Keep contextual cards inside the mobile viewport. The area card uses
+     left:50%; without a protected translate it can render from the midpoint
+     toward the right edge and appear cut off. */
+  .sl-progressive-menu.sl-area-card {
+    left: 50% !important;
+    right: auto !important;
+    width: min(220px, calc(100vw - 24px)) !important;
+    max-width: calc(
+      100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)
+    ) !important;
+    box-sizing: border-box !important;
+    transform: translateX(-50%) !important;
+    overflow-x: hidden;
+  }
+
+  .sl-area-card-value,
+  .sl-area-card-meta {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  /* Settings should always respect both screen edges and device safe areas. */
+  .sl-settings-card {
+    left: max(12px, env(safe-area-inset-left)) !important;
+    right: max(12px, env(safe-area-inset-right)) !important;
+    width: auto !important;
+    max-width: none !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+  }
+
+  .sl-settings-card select,
+  .sl-settings-card input,
+  .sl-settings-card button {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .sl-settings-card select {
+    width: 100% !important;
+    padding-right: 42px;
+    text-overflow: ellipsis;
+  }
+
+  /* The category drawer may never exceed the usable mobile width. */
+  .sl-category-drawer {
+    width: min(320px, calc(100vw - 12px)) !important;
+    max-width: calc(
+      100vw - env(safe-area-inset-left) - env(safe-area-inset-right)
+    ) !important;
+    overflow-x: hidden;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .sl-category-item,
+  .sl-category-item-copy {
+    min-width: 0;
+  }
+
+  .sl-category-item-copy {
+    flex: 1 1 auto;
+  }
+
+  .sl-category-item-label,
+  .sl-category-item-description {
+    max-width: 100%;
+  }
+
+  /* The row already names Advanced / Surveyor Mode. On mobile the ModeToggle
+     label repeats the same wording and squeezes the switch outside the row. */
+  .sl-category-item-mode .sl-mode-toggle {
+    flex: 0 0 auto;
+  }
+
+  .sl-category-item-mode .sl-mode-toggle-label {
+    display: none;
+  }
+
+  /* Keep the left-edge drawer affordance wholly inside the viewport while
+     retaining its existing touch target and interaction. */
+  .sl-drawer-handle {
+    left: 0 !important;
+    margin-left: 0 !important;
+    transform: translateY(-50%) !important;
+    border-top-left-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .sl-category-drawer {
+    width: calc(100vw - 8px) !important;
+  }
+
+  .sl-settings-card {
+    left: max(8px, env(safe-area-inset-left)) !important;
+    right: max(8px, env(safe-area-inset-right)) !important;
+  }
+
+  .sl-progressive-menu.sl-area-card {
+    width: min(208px, calc(100vw - 16px)) !important;
+  }
+}
