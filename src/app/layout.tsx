@@ -7,6 +7,7 @@ import type {
   ReactNode,
 } from "react";
 
+import AccountSessionBoundary from "@/components/AccountSessionBoundary";
 import PWARegister from "@/components/PWARegister";
 
 import "./globals.css";
@@ -85,10 +86,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        {children}
-        <PWARegister />
+        <AccountSessionBoundary>
+          {children}
+          <PWARegister />
+        </AccountSessionBoundary>
       </body>
     </html>
   );
 }
-
