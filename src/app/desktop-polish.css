@@ -1,0 +1,121 @@
+/*
+ * SabahLot desktop polish pass — 2026-09-03
+ *
+ * Presentation-only overrides for wide screens. Mobile rules remain owned by
+ * globals.css. No map, auth, storage, GPS, Supabase, or workflow behavior is
+ * changed here.
+ */
+
+@media (min-width: 769px) {
+  /* Keep the map visually dominant while retaining the existing control shell. */
+  .sl-topbar {
+    top: 12px !important;
+    left: 50% !important;
+    right: auto !important;
+    width: min(1040px, calc(100vw - 80px)) !important;
+    min-height: 58px !important;
+    padding: 7px 9px !important;
+    gap: 8px !important;
+    border-radius: 18px !important;
+    border-color: rgba(226, 232, 240, 0.82) !important;
+    background: rgba(248, 250, 252, 0.92) !important;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14) !important;
+    backdrop-filter: blur(18px) saturate(135%);
+    -webkit-backdrop-filter: blur(18px) saturate(135%);
+    transform: translateX(-50%) !important;
+  }
+
+  .sl-topbar .sl-icon-button,
+  .sl-topbar button {
+    min-height: 42px;
+  }
+
+  .sl-brand-chip {
+    gap: 8px !important;
+    padding-inline: 4px 8px !important;
+  }
+
+  .sl-brand-chip strong {
+    font-size: 13px !important;
+    line-height: 1.15 !important;
+    letter-spacing: -0.01em;
+  }
+
+  .sl-brand-chip small {
+    margin-top: 1px !important;
+    color: #64748b !important;
+    font-size: 9px !important;
+    line-height: 1.05 !important;
+    font-weight: 650 !important;
+    letter-spacing: 0.015em;
+  }
+
+  /* Make the alpha state part of the header composition rather than a floating sign. */
+  .sl-public-beta-label {
+    top: 68px !important;
+    padding: 4px 10px !important;
+    border-radius: 999px !important;
+    border: 1px solid rgba(180, 83, 9, 0.2) !important;
+    background: rgba(255, 247, 237, 0.94) !important;
+    color: #9a3412 !important;
+    box-shadow: 0 5px 14px rgba(15, 23, 42, 0.08) !important;
+    font-size: 9px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.045em !important;
+    text-transform: uppercase;
+  }
+
+  /* The collapsed left tool rail should read as an intentional handle, not a clipped panel. */
+  .sl-tool-dock {
+    left: 12px !important;
+    border-radius: 12px !important;
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.12) !important;
+  }
+
+  /* Quieter operational status: readable when needed, secondary to the map. */
+  .sl-map-status {
+    left: 14px !important;
+    bottom: 14px !important;
+    min-height: 34px !important;
+    padding: 6px 10px !important;
+    border: 1px solid rgba(226, 232, 240, 0.16) !important;
+    border-radius: 12px !important;
+    background: rgba(15, 23, 42, 0.78) !important;
+    box-shadow: 0 7px 20px rgba(15, 23, 42, 0.12) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    font-size: 10px !important;
+  }
+
+  .sl-map-status > * {
+    opacity: 0.9;
+  }
+
+  /* Visually unify GPS and map navigation into the same restrained control language. */
+  .sl-field-gps-stack {
+    right: 14px !important;
+  }
+
+  .sl-field-gps-toggle {
+    min-height: 40px !important;
+    padding-inline: 14px !important;
+    border-radius: 12px !important;
+    border-color: rgba(203, 213, 225, 0.92) !important;
+    background: rgba(248, 250, 252, 0.94) !important;
+    box-shadow: 0 7px 20px rgba(15, 23, 42, 0.12) !important;
+  }
+
+  .sl-map-navigation {
+    right: 14px !important;
+    border-radius: 14px !important;
+    border-color: rgba(203, 213, 225, 0.82) !important;
+    background: rgba(248, 250, 252, 0.92) !important;
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.12) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .sl-map-navigation button {
+    border-radius: 9px !important;
+  }
+}
