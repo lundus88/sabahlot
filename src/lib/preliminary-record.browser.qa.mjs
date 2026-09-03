@@ -243,7 +243,7 @@ console.log("Browser QA: wizard data entry completed");
 const mobile = await evaluate(`(() => {
   const drawer = document.querySelector('.sl-lot-drawer');
   const body = document.querySelector('.sl-drawer-body');
-  const save = document.querySelector('.sl-save-button');
+  const save = document.querySelector('.sl-lot-form button[type="submit"].sl-save-button');
   if (!drawer || !body || !save) return { missingRequiredElement: true };
   const rect = drawer.getBoundingClientRect();
   save.scrollIntoView({ block: 'center' });
@@ -259,7 +259,7 @@ const mobile = await evaluate(`(() => {
 if (!Object.values(mobile).every(Boolean)) throw new Error(`Mobile QA failed: ${JSON.stringify(mobile)}`);
 console.log("Browser QA: mobile layout checks passed");
 
-await evaluate("document.querySelector('.sl-save-button').click(); true");
+await evaluate("document.querySelector('.sl-lot-form button[type=\"submit\"].sl-save-button').click(); true");
 await waitFor("JSON.parse(localStorage.getItem('sabahlot_local_lots_v1') || '[]').length === 1", "Save did not persist local lot");
 console.log("Browser QA: local save passed");
 
