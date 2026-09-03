@@ -89,3 +89,56 @@ jobs:
         run: |
           echo "Commit: $GITHUB_SHA"
           echo "TypeScript + ESLint + build + all *.qa.ts/*.qa.tsx + browser QA are required for a green job."
+
+  public-surface-security:
+    if: github.event_name == 'workflow_dispatch'
+    needs: release-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: dev
+            url_secret: SABAHLOT_DEV_SUPABASE_URL
+            key_secret: SABAHLOT_DEV_PUBLISHABLE_KEY
+            eligible_secret: SABAHLOT_DEV_SECURITY_ELIGIBLE_LISTING_ID
+            inactive_secret: SABAHLOT_DEV_SECURITY_INACTIVE_LISTING_ID
+            expired_secret: SABAHLOT_DEV_SECURITY_EXPIRED_LISTING_ID
+            no_consent_secret: SABAHLOT_DEV_SECURITY_NO_CONSENT_LISTING_ID
+            attested_secret: SABAHLOT_DEV_SECURITY_FIXTURE_ATTESTED_AT
+          - target: production
+            url_secret: SABAHLOT_PROD_SUPABASE_URL
+            key_secret: SABAHLOT_PROD_PUBLISHABLE_KEY
+            eligible_secret: SABAHLOT_PROD_SECURITY_ELIGIBLE_LISTING_ID
+            inactive_secret: SABAHLOT_PROD_SECURITY_INACTIVE_LISTING_ID
+            expired_secret: SABAHLOT_PROD_SECURITY_EXPIRED_LISTING_ID
+            no_consent_secret: SABAHLOT_PROD_SECURITY_NO_CONSENT_LISTING_ID
+            attested_secret: SABAHLOT_PROD_SECURITY_FIXTURE_ATTESTED_AT
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Anonymous public-surface negative regression
+        env:
+          SABAHLOT_SECURITY_TARGET_NAME: ${{ matrix.target }}
+          SABAHLOT_SECURITY_SUPABASE_URL: ${{ secrets[matrix.url_secret] }}
+          SABAHLOT_SECURITY_PUBLISHABLE_KEY: ${{ secrets[matrix.key_secret] }}
+          SABAHLOT_SECURITY_ELIGIBLE_LISTING_ID: ${{ secrets[matrix.eligible_secret] }}
+          SABAHLOT_SECURITY_INACTIVE_LISTING_ID: ${{ secrets[matrix.inactive_secret] }}
+          SABAHLOT_SECURITY_EXPIRED_LISTING_ID: ${{ secrets[matrix.expired_secret] }}
+          SABAHLOT_SECURITY_NO_CONSENT_LISTING_ID: ${{ secrets[matrix.no_consent_secret] }}
+          SABAHLOT_SECURITY_FIXTURE_ATTESTED_AT: ${{ secrets[matrix.attested_secret] }}
+        run: node scripts/security/public-surface-negative.mjs
+
+      - name: Security gate summary
+        if: always()
+        run: |
+          echo "Target: ${{ matrix.target }}"
+          echo "Read-only anonymous REST/RPC regression must pass; missing or stale fixture configuration fails closed."
