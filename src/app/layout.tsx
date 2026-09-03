@@ -12,6 +12,7 @@ import PWARegister from "@/components/PWARegister";
 
 import "./globals.css";
 import "./desktop-polish.css";
+import "./mobile-responsive-fixes.css";
 
 export const metadata: Metadata = {
   title:
