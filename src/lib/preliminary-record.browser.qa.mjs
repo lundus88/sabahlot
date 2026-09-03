@@ -259,8 +259,34 @@ const mobile = await evaluate(`(() => {
 if (!Object.values(mobile).every(Boolean)) throw new Error(`Mobile QA failed: ${JSON.stringify(mobile)}`);
 console.log("Browser QA: mobile layout checks passed");
 
-await evaluate("document.querySelector('.sl-lot-form button[type=\"submit\"].sl-save-button').click(); true");
-await waitFor("JSON.parse(localStorage.getItem('sabahlot_local_lots_v1') || '[]').length === 1", "Save did not persist local lot");
+const submitState = await evaluate(`(() => {
+  const form = document.querySelector('.sl-lot-form');
+  const save = form?.querySelector('button[type="submit"].sl-save-button');
+  if (!form || !save) throw new Error('Lot form submit control not found');
+  if (save.form !== form) throw new Error('Save button is not associated with the lot form');
+  const validBeforeSubmit = form.checkValidity();
+  form.requestSubmit(save);
+  return { validBeforeSubmit, saveDisabled: save.disabled, formAssociated: save.form === form };
+})()`);
+await sleep(500);
+const saveState = await evaluate(`(() => {
+  const raw = localStorage.getItem('sabahlot_local_lots_v1');
+  let count = 0;
+  try { count = JSON.parse(raw || '[]').length; } catch {}
+  const form = document.querySelector('.sl-lot-form');
+  const save = form?.querySelector('button[type="submit"].sl-save-button');
+  return {
+    count,
+    message: document.querySelector('.sl-save-message')?.textContent.trim() ?? '',
+    storageKeys: Object.keys(localStorage).filter((key) => key.startsWith('sabahlot')).sort(),
+    formValid: form?.checkValidity() ?? false,
+    saveDisabled: save?.disabled ?? null,
+    formAssociated: Boolean(form && save && save.form === form),
+  };
+})()`);
+if (saveState.count !== 1) {
+  throw new Error(`Save did not persist local lot: ${JSON.stringify({ submitState, saveState })}`);
+}
 console.log("Browser QA: local save passed");
 
 await evaluate("localStorage.removeItem('sabahlot-alpha-record'); location.reload(); true");
