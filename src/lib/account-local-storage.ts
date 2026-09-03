@@ -1,11 +1,11 @@
 const ACTIVE_OWNER_KEY =
-  "sabahlot:account-local:v2:active-owner";
+  "sabahlot:account-local:v3:active-owner";
 
 const ACCOUNT_PREFIX =
-  "sabahlot:account-local:v2:owner";
+  "sabahlot:account-local:v3:owner";
 
 const LEGACY_QUARANTINE_PREFIX =
-  "sabahlot:account-local:v2:quarantine:legacy";
+  "sabahlot:account-local:v3:quarantine:legacy";
 
 export const ACCOUNT_LOCAL_WORKING_KEYS = [
   "sabahlot-alpha-record",
@@ -62,7 +62,7 @@ function restoreWorkingSet(
   }
 }
 
-function quarantineUnownedLegacyData(storage: Storage): void {
+function quarantinePreV3WorkingData(storage: Storage): void {
   for (const workingKey of ACCOUNT_LOCAL_WORKING_KEYS) {
     const value = storage.getItem(workingKey);
 
@@ -80,11 +80,17 @@ function quarantineUnownedLegacyData(storage: Storage): void {
  * Makes the legacy working keys represent exactly one authenticated user
  * (or the anonymous device session).
  *
- * v2 intentionally starts with a fresh owner namespace. This is a
- * fail-closed reset after real-device testing showed that an older v1
- * namespace could already contain data assigned to the wrong account.
- * Existing working-key data is preserved in quarantine rather than being
- * silently attributed to whichever account happens to open the v2 build.
+ * v3 is a deliberate clean reset after real-device testing proved that some
+ * v2 per-user archives had already been contaminated before the global
+ * session boundary was introduced. Existing v1/v2 archives are intentionally
+ * left untouched for forensic/recovery purposes, but v3 never reads or
+ * restores them automatically.
+ *
+ * On the first v3 activation, any currently visible working-key data is
+ * treated as untrusted legacy state and preserved in the v3 quarantine. The
+ * selected user then starts from an empty v3 namespace. After that clean
+ * boundary has been established, normal v3 A -> B -> A archive/restore
+ * behavior resumes.
  */
 export function activateAccountLocalStorage(
   userId: string | null,
@@ -100,7 +106,7 @@ export function activateAccountLocalStorage(
   if (activeOwner) {
     archiveWorkingSet(storage, activeOwner);
   } else {
-    quarantineUnownedLegacyData(storage);
+    quarantinePreV3WorkingData(storage);
   }
 
   restoreWorkingSet(storage, nextOwner);
