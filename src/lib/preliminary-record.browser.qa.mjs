@@ -45,7 +45,13 @@ const evaluate = async (expression) => {
     awaitPromise: true,
     returnByValue: true,
   });
-  if (result.exceptionDetails) throw new Error(result.exceptionDetails.text);
+  if (result.exceptionDetails) {
+    const detail =
+      result.exceptionDetails.exception?.description ??
+      result.exceptionDetails.text ??
+      "Browser evaluation failed";
+    throw new Error(detail);
+  }
   return result.result.value;
 };
 const waitFor = async (expression, message) => {
