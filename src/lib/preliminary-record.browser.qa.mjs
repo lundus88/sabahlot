@@ -194,7 +194,22 @@ const draft = {
   schemaVersion: 3,
   savedAt: new Date().toISOString(),
 };
-await evaluate(`localStorage.clear(); localStorage.setItem('sabahlot-alpha-record', ${JSON.stringify(JSON.stringify(draft))}); location.reload(); true`);
+await evaluate(`(() => {
+  const activeOwner = localStorage.getItem('sabahlot:account-local:v3:active-owner');
+  if (!activeOwner) throw new Error('Account-local v3 owner was not established before fixture setup');
+  for (const key of [
+    'sabahlot-alpha-record',
+    'sabahlot_local_lots_v1',
+    'sabahlot:field-gps-lite:v1',
+    'sabahlot:gps-target:v1',
+    'sabahlot_field_assist_active_target',
+  ]) {
+    localStorage.removeItem(key);
+  }
+  localStorage.setItem('sabahlot-alpha-record', ${JSON.stringify(JSON.stringify(draft))});
+  location.reload();
+  return true;
+})()`);
 await waitFor("document.querySelector('.sl-menu-button') !== null", "App did not reload");
 await sleep(1500);
 await openLotDrawer();
