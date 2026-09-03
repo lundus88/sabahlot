@@ -213,14 +213,14 @@ await setControl("Land case type", "inheritance_land");
 await clickNext();
 
 await waitForStep("Existing Records");
-await toggleChecklist(["Geran", "Koordinat GPS"]);
+await toggleChecklist(["Title deed", "GPS coordinates"]);
 await clickNext();
 
 await waitForStep("Application Age");
 await setControl("Application age", "over_20_years");
 await clickNext();
 
-await waitForStep("Family / Inheritance Details");
+await waitForStep("Family / Heirs");
 await setControl("Original applicant name", "QA Original Applicant");
 await setControl("Original applicant status", "deceased");
 await setControl("Main heir name", "QA Main Heir");
@@ -229,11 +229,11 @@ await setControl("Can heirs identify the land location?", "yes");
 await setControl("Land history notes", "QA family land history");
 await clickNext();
 
-await waitForStep("Issues / Risks");
-await toggleChecklist(["Dokumen hilang", "Pertikaian sempadan"]);
+await waitForStep("Related Issues");
+await toggleChecklist(["Lost documents", "Boundary dispute"]);
 await clickNext();
 
-await waitForStep("Notes");
+await waitForStep("Additional Notes");
 await setControl("General record notes", "QA preliminary notes");
 await clickNext();
 
@@ -295,7 +295,7 @@ await waitForStep("Application Age");
 loaded.applicationAge = await readControl("Application age");
 await clickNext();
 
-await waitForStep("Family / Inheritance Details");
+await waitForStep("Family / Heirs");
 loaded.applicant = await readControl("Original applicant name");
 loaded.applicantStatus = await readControl("Original applicant status");
 loaded.heir = await readControl("Main heir name");
@@ -304,11 +304,11 @@ loaded.locationKnowledge = await readControl("Can heirs identify the land locati
 loaded.history = await readControl("Land history notes");
 await clickNext();
 
-await waitForStep("Issues / Risks");
+await waitForStep("Related Issues");
 loaded.issues = await checkedChecklistLabels();
 await clickNext();
 
-await waitForStep("Notes");
+await waitForStep("Additional Notes");
 loaded.notes = await readControl("General record notes");
 await clickNext();
 await waitForStep("Review & Save");
@@ -336,10 +336,10 @@ const expected = {
 for (const [key, value] of Object.entries(expected)) {
   if (loaded[key] !== value) throw new Error(`Load mismatch for ${key}: ${loaded[key]}`);
 }
-for (const label of ["Geran", "Koordinat GPS"]) {
+for (const label of ["Title deed", "GPS coordinates"]) {
   if (!loaded.records.includes(label)) throw new Error(`Available record missing after load: ${label}`);
 }
-for (const label of ["Dokumen hilang", "Pertikaian sempadan"]) {
+for (const label of ["Lost documents", "Boundary dispute"]) {
   if (!loaded.issues.includes(label)) throw new Error(`Issue tag missing after load: ${label}`);
 }
 if (loaded.mapLeaksHeir) throw new Error("Heir data leaked into map");
