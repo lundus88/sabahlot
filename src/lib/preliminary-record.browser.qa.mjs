@@ -55,6 +55,25 @@ const waitFor = async (expression, message) => {
   }
   throw new Error(message);
 };
+const openLotDrawer = async () => {
+  await evaluate("document.querySelector('.sl-menu-button').click(); true");
+  await waitFor(
+    "document.querySelector('.sl-category-drawer.is-open') !== null",
+    "Category drawer did not open",
+  );
+  const selected = await evaluate(`(() => {
+    const button = [...document.querySelectorAll('.sl-category-list > button.sl-category-item')]
+      .find((item) => item.querySelector('.sl-category-item-label')?.textContent.trim() === 'Land Management');
+    if (!button) return false;
+    button.click();
+    return true;
+  })()`);
+  if (!selected) throw new Error("Land Management category not found");
+  await waitFor(
+    "document.querySelector('.sl-lot-drawer.is-open') !== null",
+    "Lot drawer did not open",
+  );
+};
 
 await send("Page.enable");
 await send("Runtime.enable");
@@ -106,8 +125,7 @@ const draft = {
 await evaluate(`localStorage.clear(); localStorage.setItem('sabahlot-alpha-record', ${JSON.stringify(JSON.stringify(draft))}); location.reload(); true`);
 await waitFor("document.querySelector('.sl-menu-button') !== null", "App did not reload");
 await sleep(1500);
-await evaluate("document.querySelector('.sl-menu-button').click(); true");
-await waitFor("document.querySelector('.sl-lot-drawer.is-open') !== null", "Drawer did not open");
+await openLotDrawer();
 await sleep(400);
 console.log("Browser QA: mobile drawer opened");
 
@@ -175,8 +193,7 @@ console.log("Browser QA: local save passed");
 await evaluate("localStorage.removeItem('sabahlot-alpha-record'); location.reload(); true");
 await waitFor("document.querySelector('.sl-menu-button') !== null", "Refresh failed");
 await sleep(1500);
-await evaluate("document.querySelector('.sl-menu-button').click(); true");
-await waitFor("document.querySelector('.sl-lot-drawer.is-open') !== null", "Drawer did not reopen");
+await openLotDrawer();
 await evaluate(`(() => {
   const load = [...document.querySelectorAll('button')].find((button) => button.textContent.trim() === 'Load');
   if (!load) throw new Error('Local Load button not found');
