@@ -4,6 +4,24 @@ import {
   type NextRequest,
 } from "next/server";
 
+const SUPABASE_AUTH_COOKIE_MARKER = "-auth-token";
+
+function clearStaleSupabaseAuthCookies(
+  request: NextRequest,
+  response: NextResponse,
+) {
+  request.cookies
+    .getAll()
+    .filter(({ name }) =>
+      name.startsWith("sb-") &&
+      name.includes(SUPABASE_AUTH_COOKIE_MARKER),
+    )
+    .forEach(({ name }) => {
+      request.cookies.delete(name);
+      response.cookies.delete(name);
+    });
+}
+
 export async function updateSession(
   request: NextRequest,
 ) {
@@ -71,7 +89,17 @@ export async function updateSession(
       },
     );
 
-  await supabase.auth.getClaims();
+  try {
+    await supabase.auth.getClaims();
+  } catch {
+    // A revoked/expired refresh token is a recoverable client-session state,
+    // not a server failure. Remove only Supabase auth-token cookies so the
+    // next request starts signed out instead of repeatedly throwing in proxy.
+    clearStaleSupabaseAuthCookies(
+      request,
+      response,
+    );
+  }
 
   return response;
 }
