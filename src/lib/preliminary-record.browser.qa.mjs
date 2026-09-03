@@ -80,6 +80,72 @@ const openLotDrawer = async () => {
     "Lot drawer did not open",
   );
 };
+const currentStepTitle = () =>
+  evaluate("document.querySelector('.sl-wizard-step-title')?.textContent.trim() ?? ''");
+const waitForStep = async (title) => {
+  const encoded = JSON.stringify(title);
+  await waitFor(
+    `document.querySelector('.sl-wizard-step-title')?.textContent.trim() === ${encoded}`,
+    `Wizard step did not become ${title}`,
+  );
+};
+const setControl = async (text, value) => {
+  const result = await evaluate(`(() => {
+    const text = ${JSON.stringify(text)};
+    const value = ${JSON.stringify(value)};
+    const element = [...document.querySelectorAll('.sl-lot-form label')]
+      .find((label) => label.querySelector(':scope > span')?.textContent.trim() === text)
+      ?.querySelector('input, select, textarea');
+    if (!element) throw new Error('Missing control: ' + text);
+    const prototype = element instanceof HTMLSelectElement
+      ? HTMLSelectElement.prototype
+      : element instanceof HTMLTextAreaElement
+        ? HTMLTextAreaElement.prototype
+        : HTMLInputElement.prototype;
+    Object.getOwnPropertyDescriptor(prototype, 'value').set.call(element, value);
+    element.dispatchEvent(new Event(element instanceof HTMLSelectElement ? 'change' : 'input', { bubbles: true }));
+    return true;
+  })()`);
+  if (!result) throw new Error(`Failed to set ${text}`);
+  await sleep(80);
+};
+const readControl = (text) =>
+  evaluate(`(() => {
+    const text = ${JSON.stringify(text)};
+    return [...document.querySelectorAll('.sl-lot-form label')]
+      .find((label) => label.querySelector(':scope > span')?.textContent.trim() === text)
+      ?.querySelector('input, select, textarea')?.value ?? null;
+  })()`);
+const clickNext = async () => {
+  const result = await evaluate(`(() => {
+    const button = document.querySelector('.sl-wizard-nav-next');
+    if (!button) throw new Error('Wizard Next button not found');
+    if (button.disabled) throw new Error('Wizard Next button is disabled');
+    button.click();
+    return true;
+  })()`);
+  if (!result) throw new Error("Wizard Next click failed");
+  await sleep(100);
+};
+const toggleChecklist = async (labels) => {
+  for (const text of labels) {
+    const result = await evaluate(`(() => {
+      const text = ${JSON.stringify(text)};
+      const label = [...document.querySelectorAll('.sl-record-checklist label')]
+        .find((item) => item.textContent.trim() === text);
+      if (!label) throw new Error('Missing checkbox: ' + text);
+      const input = label.querySelector('input');
+      if (!input.checked) input.click();
+      return true;
+    })()`);
+    if (!result) throw new Error(`Failed to toggle ${text}`);
+    await sleep(50);
+  }
+};
+const checkedChecklistLabels = () =>
+  evaluate(`(() => [...document.querySelectorAll('.sl-record-checklist label')]
+    .filter((label) => label.querySelector('input')?.checked)
+    .map((label) => label.textContent.trim()))()`);
 
 await send("Page.enable");
 await send("Runtime.enable");
@@ -132,53 +198,53 @@ await evaluate(`localStorage.clear(); localStorage.setItem('sabahlot-alpha-recor
 await waitFor("document.querySelector('.sl-menu-button') !== null", "App did not reload");
 await sleep(1500);
 await openLotDrawer();
-await sleep(400);
+await sleep(250);
 console.log("Browser QA: mobile drawer opened");
 
-const fillResult = await evaluate(`(() => {
-  document.querySelectorAll('.sl-record-section').forEach((section) => { section.open = true; });
-  const control = (text) => [...document.querySelectorAll('.sl-lot-form label')]
-    .find((label) => label.querySelector(':scope > span')?.textContent.trim() === text)
-    ?.querySelector('input, select, textarea');
-  const set = (text, value) => {
-    const element = control(text);
-    if (!element) throw new Error('Missing control: ' + text);
-    const prototype = element instanceof HTMLSelectElement
-      ? HTMLSelectElement.prototype
-      : element instanceof HTMLTextAreaElement
-        ? HTMLTextAreaElement.prototype
-        : HTMLInputElement.prototype;
-    Object.getOwnPropertyDescriptor(prototype, 'value').set.call(element, value);
-    element.dispatchEvent(new Event(element instanceof HTMLSelectElement ? 'change' : 'input', { bubbles: true }));
-  };
-  set('Owner name', 'QA Owner');
-  set('Lot number', 'QA-ALPHA-2026');
-  set('Village', 'QA Village');
-  set('District', 'QA District');
-  set('Land case type', 'inheritance_land');
-  set('Application age', 'over_20_years');
-  set('Original applicant name', 'QA Original Applicant');
-  set('Original applicant status', 'deceased');
-  set('Main heir name', 'QA Main Heir');
-  set('Relationship to applicant', 'Child');
-  set('Can heirs identify the land location?', 'yes');
-  set('Land history notes', 'QA family land history');
-  set('General record notes', 'QA preliminary notes');
-  ['Geran', 'Koordinat GPS', 'Dokumen hilang', 'Pertikaian sempadan'].forEach((text) => {
-    const label = [...document.querySelectorAll('.sl-record-checklist label')]
-      .find((item) => item.textContent.trim() === text);
-    if (!label) throw new Error('Missing checkbox: ' + text);
-    label.querySelector('input').click();
-  });
-  return true;
-})()`);
-if (!fillResult) throw new Error("Form fill failed");
-await sleep(200);
+await waitForStep("Basic Information");
+await setControl("Owner name", "QA Owner");
+await setControl("Lot number", "QA-ALPHA-2026");
+await setControl("Village", "QA Village");
+await setControl("District", "QA District");
+await clickNext();
+
+await waitForStep("Land Case Type");
+await setControl("Land case type", "inheritance_land");
+await clickNext();
+
+await waitForStep("Existing Records");
+await toggleChecklist(["Geran", "Koordinat GPS"]);
+await clickNext();
+
+await waitForStep("Application Age");
+await setControl("Application age", "over_20_years");
+await clickNext();
+
+await waitForStep("Family / Inheritance Details");
+await setControl("Original applicant name", "QA Original Applicant");
+await setControl("Original applicant status", "deceased");
+await setControl("Main heir name", "QA Main Heir");
+await setControl("Relationship to applicant", "Child");
+await setControl("Can heirs identify the land location?", "yes");
+await setControl("Land history notes", "QA family land history");
+await clickNext();
+
+await waitForStep("Issues / Risks");
+await toggleChecklist(["Dokumen hilang", "Pertikaian sempadan"]);
+await clickNext();
+
+await waitForStep("Notes");
+await setControl("General record notes", "QA preliminary notes");
+await clickNext();
+
+await waitForStep("Review & Save");
+console.log("Browser QA: wizard data entry completed");
 
 const mobile = await evaluate(`(() => {
   const drawer = document.querySelector('.sl-lot-drawer');
   const body = document.querySelector('.sl-drawer-body');
   const save = document.querySelector('.sl-save-button');
+  if (!drawer || !body || !save) return { missingRequiredElement: true };
   const rect = drawer.getBoundingClientRect();
   save.scrollIntoView({ block: 'center' });
   const saveRect = save.getBoundingClientRect();
@@ -196,6 +262,7 @@ console.log("Browser QA: mobile layout checks passed");
 await evaluate("document.querySelector('.sl-save-button').click(); true");
 await waitFor("JSON.parse(localStorage.getItem('sabahlot_local_lots_v1') || '[]').length === 1", "Save did not persist local lot");
 console.log("Browser QA: local save passed");
+
 await evaluate("localStorage.removeItem('sabahlot-alpha-record'); location.reload(); true");
 await waitFor("document.querySelector('.sl-menu-button') !== null", "Refresh failed");
 await sleep(1500);
@@ -208,41 +275,73 @@ await evaluate(`(() => {
 })()`);
 await sleep(250);
 
-const loaded = await evaluate(`(() => {
-  const labelValue = (text) => [...document.querySelectorAll('.sl-lot-form label')]
-    .find((label) => label.querySelector(':scope > span')?.textContent.trim() === text)
-    ?.querySelector('input, select, textarea')?.value;
-  const stored = JSON.parse(localStorage.getItem('sabahlot_local_lots_v1'))[0];
+const loaded = {};
+await waitForStep("Basic Information");
+loaded.ownerName = await readControl("Owner name");
+loaded.lotNumber = await readControl("Lot number");
+loaded.village = await readControl("Village");
+loaded.district = await readControl("District");
+await clickNext();
+
+await waitForStep("Land Case Type");
+loaded.caseType = await readControl("Land case type");
+await clickNext();
+
+await waitForStep("Existing Records");
+loaded.records = await checkedChecklistLabels();
+await clickNext();
+
+await waitForStep("Application Age");
+loaded.applicationAge = await readControl("Application age");
+await clickNext();
+
+await waitForStep("Family / Inheritance Details");
+loaded.applicant = await readControl("Original applicant name");
+loaded.applicantStatus = await readControl("Original applicant status");
+loaded.heir = await readControl("Main heir name");
+loaded.relationship = await readControl("Relationship to applicant");
+loaded.locationKnowledge = await readControl("Can heirs identify the land location?");
+loaded.history = await readControl("Land history notes");
+await clickNext();
+
+await waitForStep("Issues / Risks");
+loaded.issues = await checkedChecklistLabels();
+await clickNext();
+
+await waitForStep("Notes");
+loaded.notes = await readControl("General record notes");
+await clickNext();
+await waitForStep("Review & Save");
+
+loaded.mapLeaksHeir = await evaluate(`(() => {
   const mapText = document.querySelector('.sl-map-canvas')?.textContent || '';
-  return {
-    lotNumber: labelValue('Lot number'),
-    caseType: labelValue('Land case type'),
-    applicant: labelValue('Original applicant name'),
-    applicantStatus: labelValue('Original applicant status'),
-    heir: labelValue('Main heir name'),
-    relationship: labelValue('Relationship to applicant'),
-    locationKnowledge: labelValue('Can heirs identify the land location?'),
-    history: labelValue('Land history notes'),
-    records: stored.land_record.recordsAvailable,
-    issues: stored.land_record.issueTags,
-    mapLeaksHeir: mapText.includes('QA Main Heir') || mapText.includes('QA Original Applicant'),
-  };
+  return mapText.includes('QA Main Heir') || mapText.includes('QA Original Applicant');
 })()`);
+
 const expected = {
+  ownerName: "QA Owner",
   lotNumber: "QA-ALPHA-2026",
+  village: "QA Village",
+  district: "QA District",
   caseType: "inheritance_land",
+  applicationAge: "over_20_years",
   applicant: "QA Original Applicant",
   applicantStatus: "deceased",
   heir: "QA Main Heir",
   relationship: "Child",
   locationKnowledge: "yes",
   history: "QA family land history",
+  notes: "QA preliminary notes",
 };
 for (const [key, value] of Object.entries(expected)) {
   if (loaded[key] !== value) throw new Error(`Load mismatch for ${key}: ${loaded[key]}`);
 }
-if (loaded.records.join() !== "title,gps_coordinates") throw new Error("Available records mismatch");
-if (loaded.issues.join() !== "lost_documents,boundary_dispute") throw new Error("Issue tags mismatch");
+for (const label of ["Geran", "Koordinat GPS"]) {
+  if (!loaded.records.includes(label)) throw new Error(`Available record missing after load: ${label}`);
+}
+for (const label of ["Dokumen hilang", "Pertikaian sempadan"]) {
+  if (!loaded.issues.includes(label)) throw new Error(`Issue tag missing after load: ${label}`);
+}
 if (loaded.mapLeaksHeir) throw new Error("Heir data leaked into map");
 
 await evaluate("document.querySelector('.sl-drawer-close').click(); true");
@@ -253,7 +352,7 @@ const closed = await evaluate(`(() => {
 })()`);
 if (!closed) throw new Error("Drawer did not release the map after close");
 
-console.log(JSON.stringify({ saveLoad: "PASS", mobile, loaded, drawerClose: "PASS" }, null, 2));
+console.log(JSON.stringify({ saveLoad: "PASS", mobile, loaded, drawerClose: "PASS", finalStep: await currentStepTitle() }, null, 2));
 socket.close();
 clearTimeout(qaTimeout);
 process.exit(0);
