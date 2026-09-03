@@ -1,11 +1,11 @@
 const ACTIVE_OWNER_KEY =
-  "sabahlot:account-local:v1:active-owner";
+  "sabahlot:account-local:v2:active-owner";
 
 const ACCOUNT_PREFIX =
-  "sabahlot:account-local:v1:owner";
+  "sabahlot:account-local:v2:owner";
 
 const LEGACY_QUARANTINE_PREFIX =
-  "sabahlot:account-local:v1:quarantine:legacy";
+  "sabahlot:account-local:v2:quarantine:legacy";
 
 export const ACCOUNT_LOCAL_WORKING_KEYS = [
   "sabahlot-alpha-record",
@@ -78,8 +78,13 @@ function quarantineUnownedLegacyData(storage: Storage): void {
 
 /**
  * Makes the legacy working keys represent exactly one authenticated user
- * (or the anonymous device session). Existing unowned data is quarantined
- * rather than silently assigned to the first user who opens the new build.
+ * (or the anonymous device session).
+ *
+ * v2 intentionally starts with a fresh owner namespace. This is a
+ * fail-closed reset after real-device testing showed that an older v1
+ * namespace could already contain data assigned to the wrong account.
+ * Existing working-key data is preserved in quarantine rather than being
+ * silently attributed to whichever account happens to open the v2 build.
  */
 export function activateAccountLocalStorage(
   userId: string | null,
@@ -101,4 +106,3 @@ export function activateAccountLocalStorage(
   restoreWorkingSet(storage, nextOwner);
   storage.setItem(ACTIVE_OWNER_KEY, nextOwner);
 }
-
