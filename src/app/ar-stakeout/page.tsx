@@ -93,13 +93,12 @@ function bearingDeg(lat1: number, lon1: number, lat2: number, lon2: number) {
   return normalize360(toDeg(Math.atan2(y, x)));
 }
 
-function offsetNE(currentLat: number, currentLng: number, targetLat: number, targetLng: number) {
-  const metersPerDegLat = 111320;
-  const metersPerDegLng = 111320 * Math.cos(toRad(currentLat));
+function offsetFromDistanceBearing(distance: number, bearing: number) {
+  const bearingRad = toRad(bearing);
 
   return {
-    north: (targetLat - currentLat) * metersPerDegLat,
-    east: (targetLng - currentLng) * metersPerDegLng,
+    north: distance * Math.cos(bearingRad),
+    east: distance * Math.sin(bearingRad),
   };
 }
 
@@ -189,34 +188,54 @@ function getGpsSignal(gps: GpsFix | null, gpsError: string) {
   if (gpsError || !gps) {
     return {
       level: "lost",
-      label: "GPS Lost - No location connection",
+      label: "Position Quality: Unavailable",
       detail: gpsError || "No GPS fix",
     };
   }
 
   const ageSec = (Date.now() - gps.timestamp) / 1000;
-  const accuracy = gps.accuracy ?? Number.POSITIVE_INFINITY;
+  const grade = getGpsQualityGrade(gps.accuracy);
+  const accuracyDetail =
+    typeof gps.accuracy === "number" && Number.isFinite(gps.accuracy)
+      ? `±${gps.accuracy.toFixed(1)} m`
+      : "Accuracy unavailable";
 
-  if (accuracy <= 10 && ageSec <= 15) {
+  if (ageSec > 30) {
     return {
-      level: "strong",
-      label: "GPS Active - Strong signal",
-      detail: `±${accuracy.toFixed(1)} m`,
+      level: "lost",
+      label: "Position Quality: Stale",
+      detail: `${accuracyDetail} · update ${ageSec.toFixed(0)} s old`,
     };
   }
 
-  if (accuracy <= 30 && ageSec <= 30) {
+  if (grade === "A") {
+    return {
+      level: "strong",
+      label: "Position Quality: Excellent",
+      detail: `${accuracyDetail} · preliminary`,
+    };
+  }
+
+  if (grade === "B") {
+    return {
+      level: "strong",
+      label: "Position Quality: Good",
+      detail: `${accuracyDetail} · preliminary`,
+    };
+  }
+
+  if (grade === "C") {
     return {
       level: "weak",
-      label: "GPS Weak - Weak signal",
-      detail: `±${accuracy.toFixed(1)} m`,
+      label: "Position Quality: Moderate",
+      detail: `${accuracyDetail} · preliminary`,
     };
   }
 
   return {
     level: "lost",
-    label: "GPS Lost - No location connection",
-    detail: accuracy > 30 ? `Accuracy weak ±${accuracy.toFixed(1)} m` : "GPS update too old",
+    label: "Position Quality: Weak",
+    detail: `${accuracyDetail} · preliminary`,
   };
 }
 
@@ -325,7 +344,7 @@ export default function ArStakeoutPage() {
 
     const distance = distanceMeters(gps.latitude, gps.longitude, target.latitude, target.longitude);
     const bearing = bearingDeg(gps.latitude, gps.longitude, target.latitude, target.longitude);
-    const offset = offsetNE(gps.latitude, gps.longitude, target.latitude, target.longitude);
+    const offset = offsetFromDistanceBearing(distance, bearing);
 
     return {
       distance,
@@ -351,7 +370,7 @@ export default function ArStakeoutPage() {
       return `Compass heading unavailable. Bearing to target: ${metrics.bearing.toFixed(1)}°`;
     }
 
-    if (Math.abs(relativeAngle) <= 15) return "Face target";
+    if (Math.abs(relativeAngle) <= 15) return "Aligned - proceed toward target";
     if (relativeAngle > 15) return `Turn right ${Math.abs(relativeAngle).toFixed(0)}°`;
     return `Turn left ${Math.abs(relativeAngle).toFixed(0)}°`;
   }, [target, gps, metrics, heading, relativeAngle]);
@@ -728,6 +747,9 @@ export default function ArStakeoutPage() {
   const arrowRotation = heading !== null && relativeAngle !== null ? relativeAngle : 0;
   const targetDirection = metrics ? bearingToCardinal(metrics.bearing) : "-";
   const headingDirection = heading !== null ? bearingToCardinal(heading) : "-";
+  const isAligned = relativeAngle !== null && Math.abs(relativeAngle) <= 15;
+  const compassRotation = heading !== null ? -heading : 0;
+  const counterCompassRotation = heading ?? 0;
 
   return (
     <main className={styles.page}>
@@ -915,10 +937,36 @@ export default function ArStakeoutPage() {
           <div className={styles.arTop}>
             <div>
               <p className={styles.kicker}>AR Guide</p>
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  borderRadius: 999,
+                  padding: "5px 9px",
+                  marginBottom: 6,
+                  background: "rgba(15, 23, 42, 0.78)",
+                  border: "1px solid rgba(255, 255, 255, 0.45)",
+                  color: "#ffffff",
+                  fontSize: 10,
+                  fontWeight: 900,
+                  letterSpacing: "0.08em",
+                }}
+              >
+                PRELIMINARY FIELD ASSIST
+              </span>
               <h2>{target?.name || "Target Point"}</h2>
               <p>{directionText}</p>
             </div>
-            <button type="button" onClick={stopArGuide}>
+            <button
+              type="button"
+              onClick={stopArGuide}
+              style={{
+                padding: "8px 12px",
+                minHeight: 40,
+                borderRadius: 12,
+                fontSize: 14,
+              }}
+            >
               Stop AR
             </button>
           </div>
@@ -926,26 +974,76 @@ export default function ArStakeoutPage() {
           <div className={styles.targetDot} />
           <div className={styles.distanceBubble}>{metrics ? formatMeters(metrics.distance) : "-"}</div>
 
-          <div className={styles.guideLine}>
-            <span />
-            <span />
-            <span />
-            <span />
-          </div>
+          {isAligned && (
+            <div className={styles.guideLine} aria-label="Aligned path toward target">
+              <span />
+              <span />
+              <span />
+              <span />
+            </div>
+          )}
+
+          {!isAligned && heading !== null && relativeAngle !== null && (
+            <div
+              style={{
+                position: "absolute",
+                top: 150,
+                left: "50%",
+                transform: "translateX(-50%)",
+                zIndex: 5,
+                borderRadius: 999,
+                padding: "8px 14px",
+                background: "rgba(15, 23, 42, 0.82)",
+                border: "1px solid rgba(255, 255, 255, 0.38)",
+                color: "#ffffff",
+                fontWeight: 900,
+                whiteSpace: "nowrap",
+              }}
+            >
+              {directionText}
+            </div>
+          )}
 
           <div className={styles.arrowWrap}>
             <div className={styles.compassRose} aria-label="Compass direction reference">
-              <span className={styles.compassN}>N</span>
-              <span className={styles.compassNE}>NE</span>
-              <span className={styles.compassE}>E</span>
-              <span className={styles.compassSE}>SE</span>
-              <span className={styles.compassS}>S</span>
-              <span className={styles.compassSW}>SW</span>
-              <span className={styles.compassW}>W</span>
-              <span className={styles.compassNW}>NW</span>
+              <div
+                aria-label="Absolute compass dial"
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  transform: `rotate(${compassRotation}deg)`,
+                  transition: "transform 0.2s ease",
+                }}
+              >
+                <span className={styles.compassN}>
+                  <b style={{ display: "inline-block", transform: `rotate(${counterCompassRotation}deg)` }}>N</b>
+                </span>
+                <span className={styles.compassNE}>
+                  <b style={{ display: "inline-block", transform: `rotate(${counterCompassRotation}deg)` }}>NE</b>
+                </span>
+                <span className={styles.compassE}>
+                  <b style={{ display: "inline-block", transform: `rotate(${counterCompassRotation}deg)` }}>E</b>
+                </span>
+                <span className={styles.compassSE}>
+                  <b style={{ display: "inline-block", transform: `rotate(${counterCompassRotation}deg)` }}>SE</b>
+                </span>
+                <span className={styles.compassS}>
+                  <b style={{ display: "inline-block", transform: `rotate(${counterCompassRotation}deg)` }}>S</b>
+                </span>
+                <span className={styles.compassSW}>
+                  <b style={{ display: "inline-block", transform: `rotate(${counterCompassRotation}deg)` }}>SW</b>
+                </span>
+                <span className={styles.compassW}>
+                  <b style={{ display: "inline-block", transform: `rotate(${counterCompassRotation}deg)` }}>W</b>
+                </span>
+                <span className={styles.compassNW}>
+                  <b style={{ display: "inline-block", transform: `rotate(${counterCompassRotation}deg)` }}>NW</b>
+                </span>
+              </div>
 
               <div
                 className={styles.arrow}
+                aria-label={directionText}
                 style={{
                   transform: `rotate(${arrowRotation}deg)`,
                 }}
