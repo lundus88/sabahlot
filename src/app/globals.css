@@ -752,7 +752,8 @@ select:focus-visible {
   }
 
   .sl-field-gps-card {
-    max-height: min(25dvh, calc(100dvh - 176px));
+    height: min(80dvh, calc(100dvh - 176px));
+    max-height: min(80dvh, calc(100dvh - 176px));
     gap: 6px;
     padding: 8px;
   }
@@ -2964,7 +2965,8 @@ select:focus-visible {
   }
 
   .sl-field-gps-card {
-    max-height: min(25dvh, calc(100dvh - 176px));
+    height: min(80dvh, calc(100dvh - 176px));
+    max-height: min(80dvh, calc(100dvh - 176px));
   }
 
   .sl-field-gps-actions {
@@ -6454,7 +6456,8 @@ select:focus-visible {
   }
 
   .sl-field-gps-card {
-    max-height: min(25dvh, calc(100dvh - 148px - env(safe-area-inset-top) - env(safe-area-inset-bottom))) !important;
+    height: min(80dvh, calc(100dvh - 148px - env(safe-area-inset-top) - env(safe-area-inset-bottom))) !important;
+    max-height: min(80dvh, calc(100dvh - 148px - env(safe-area-inset-top) - env(safe-area-inset-bottom))) !important;
     padding: 10px;
     border-radius: 16px 16px 10px 10px;
   }
@@ -6527,7 +6530,8 @@ select:focus-visible {
   }
 
   .sl-field-gps-card {
-    max-height: min(25dvh, calc(100dvh - 132px)) !important;
+    height: min(80dvh, calc(100dvh - 132px)) !important;
+    max-height: min(80dvh, calc(100dvh - 132px)) !important;
   }
 }
 
@@ -6638,7 +6642,8 @@ select:focus-visible {
     top: calc(100% + 8px);
     right: 0;
     width: calc(100vw - 24px);
-    max-height: min(25dvh, calc(100dvh - 176px - env(safe-area-inset-top) - env(safe-area-inset-bottom))) !important;
+    height: min(80dvh, calc(100dvh - 176px - env(safe-area-inset-top) - env(safe-area-inset-bottom))) !important;
+    max-height: min(80dvh, calc(100dvh - 176px - env(safe-area-inset-top) - env(safe-area-inset-bottom))) !important;
     /* .sl-field-gps-stack's own z-index (1130) is forced to `auto` above
        once it's pinned static in the mobile control stack, so the card
        needs its own stacking value here or it falls back to auto and

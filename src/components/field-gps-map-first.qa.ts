@@ -121,15 +121,22 @@ assert(
 );
 assert(
   mobileHeightValues.every(
-    (value) => value <= 25,
+    (value) => value === 80,
   ),
-  `Every mobile Field GPS card limit must be <=25dvh; found ${mobileHeightValues.join(
+  `Every mobile Field GPS card limit must be 80dvh; found ${mobileHeightValues.join(
     ", ",
   )}.`,
 );
 
+assert(
+  cssSource.includes(
+    "height: min(80dvh, calc(100dvh - 176px",
+  ),
+  "The mobile Field GPS card must open at 80% viewport height, not only permit that maximum.",
+);
+
 console.log(
-  `field-gps-map-first QA: ALL PASS (mobile limits: ${mobileHeightValues.join(
+  `field-gps-map-first QA: ALL PASS (mobile panel height: ${mobileHeightValues.join(
     ", ",
   )}dvh)`,
 );
