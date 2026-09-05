@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { readGpsTargetMemory } from "@/utils/gpsTargetMemory";
 import StakeoutPathOverlay from "./StakeoutPathOverlay";
@@ -9,6 +9,11 @@ type Fix = {
   latitude: number;
   longitude: number;
   accuracy: number | null;
+};
+
+type OrientationState = {
+  heading: number | null;
+  pitch: number | null;
 };
 
 const toRad = (value: number) => (value * Math.PI) / 180;
@@ -40,12 +45,23 @@ function bearingDeg(lat1: number, lon1: number, lat2: number, lon2: number) {
   return normalize360(toDeg(Math.atan2(y, x)));
 }
 
+function blendAngle(previous: number, next: number, factor: number) {
+  return normalize360(previous + normalizeSigned(next - previous) * factor);
+}
+
 export default function StakeoutPathRuntime() {
   const [fix, setFix] = useState<Fix | null>(null);
-  const [heading, setHeading] = useState<number | null>(null);
+  const [orientation, setOrientation] = useState<OrientationState>({
+    heading: null,
+    pitch: null,
+  });
   const [target, setTarget] = useState<ReturnType<typeof readGpsTargetMemory>>(null);
   const [stage, setStage] = useState<HTMLElement | null>(null);
   const [movingAway, setMovingAway] = useState(false);
+
+  const stableFixRef = useRef<Fix | null>(null);
+  const headingRef = useRef<number | null>(null);
+  const pitchRef = useRef<number | null>(null);
 
   useEffect(() => {
     const refreshTarget = () => setTarget(readGpsTargetMemory());
@@ -62,12 +78,47 @@ export default function StakeoutPathRuntime() {
     if ("geolocation" in navigator) {
       watchId = navigator.geolocation.watchPosition(
         (position) => {
-          const nextFix: Fix = {
+          const rawFix: Fix = {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
             accuracy: position.coords.accuracy ?? null,
           };
 
+          const previousStable = stableFixRef.current;
+          let nextFix = rawFix;
+
+          if (previousStable) {
+            const movement = distanceMeters(
+              previousStable.latitude,
+              previousStable.longitude,
+              rawFix.latitude,
+              rawFix.longitude,
+            );
+            const jitterGate = Math.max(
+              0.7,
+              Math.min(1.4, (rawFix.accuracy ?? 3) * 0.18),
+            );
+
+            if (movement <= jitterGate) {
+              nextFix = {
+                ...previousStable,
+                accuracy: rawFix.accuracy,
+              };
+            } else {
+              const factor = movement >= 3 ? 0.65 : 0.38;
+              nextFix = {
+                latitude:
+                  previousStable.latitude +
+                  (rawFix.latitude - previousStable.latitude) * factor,
+                longitude:
+                  previousStable.longitude +
+                  (rawFix.longitude - previousStable.longitude) * factor,
+                accuracy: rawFix.accuracy,
+              };
+            }
+          }
+
+          stableFixRef.current = nextFix;
           setFix(nextFix);
 
           const currentTarget = readGpsTargetMemory();
@@ -113,11 +164,33 @@ export default function StakeoutPathRuntime() {
         webkitCompassHeading?: number;
       };
 
+      let rawHeading: number | null = null;
       if (typeof mobileEvent.webkitCompassHeading === "number") {
-        setHeading(normalize360(mobileEvent.webkitCompassHeading));
+        rawHeading = normalize360(mobileEvent.webkitCompassHeading);
       } else if (typeof event.alpha === "number") {
-        setHeading(normalize360(360 - event.alpha));
+        rawHeading = normalize360(360 - event.alpha);
       }
+
+      let nextHeading = headingRef.current;
+      if (rawHeading !== null) {
+        nextHeading =
+          headingRef.current === null
+            ? rawHeading
+            : blendAngle(headingRef.current, rawHeading, 0.16);
+        headingRef.current = nextHeading;
+      }
+
+      let nextPitch = pitchRef.current;
+      if (typeof event.beta === "number" && Number.isFinite(event.beta)) {
+        const rawPitch = Math.max(-180, Math.min(180, event.beta));
+        nextPitch =
+          pitchRef.current === null
+            ? rawPitch
+            : pitchRef.current + (rawPitch - pitchRef.current) * 0.12;
+        pitchRef.current = nextPitch;
+      }
+
+      setOrientation({ heading: nextHeading, pitch: nextPitch });
     };
 
     window.addEventListener("deviceorientation", onOrientation, true);
@@ -183,18 +256,20 @@ export default function StakeoutPathRuntime() {
       north: distance * Math.cos(bearingRad),
       east: distance * Math.sin(bearingRad),
       relativeAngle:
-        heading === null ? null : normalizeSigned(bearing - heading),
+        orientation.heading === null
+          ? null
+          : normalizeSigned(bearing - orientation.heading),
     };
-  }, [fix, target, heading]);
+  }, [fix, target, orientation.heading]);
 
   if (!stage || !target || !metrics) return null;
 
   return createPortal(
     <div
-      aria-label="AR dotted-line stakeout runtime"
+      aria-label="AR world-bearing stakeout runtime"
       style={{
         position: "absolute",
-        inset: "250px 0 190px",
+        inset: "118px 0 76px",
         zIndex: 8,
         display: "grid",
         placeItems: "center",
@@ -205,6 +280,7 @@ export default function StakeoutPathRuntime() {
       <StakeoutPathOverlay
         distance={metrics.distance}
         relativeAngle={metrics.relativeAngle}
+        pitch={orientation.pitch}
         north={metrics.north}
         east={metrics.east}
         accuracy={fix?.accuracy ?? null}
