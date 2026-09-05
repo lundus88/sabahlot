@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 type StakeoutPathOverlayProps = {
   distance: number | null;
   relativeAngle: number | null;
+  pitch: number | null;
   north: number | null;
   east: number | null;
   accuracy: number | null;
@@ -29,6 +30,7 @@ function formatDistance(value: number | null) {
 export default function StakeoutPathOverlay({
   distance,
   relativeAngle,
+  pitch,
   north,
   east,
   accuracy,
@@ -53,7 +55,7 @@ export default function StakeoutPathOverlay({
     }
 
     const delta = normalizeSigned(relativeAngle - previous);
-    const next = previous + delta * 0.18;
+    const next = previous + delta * 0.14;
     smoothedAngleRef.current = next;
     setVisualAngle(next);
   }, [relativeAngle]);
@@ -63,11 +65,26 @@ export default function StakeoutPathOverlay({
   const pathGeometry = useMemo(() => {
     const userX = 110;
     const userY = 270;
-    const angle = clamp(visualAngle ?? 0, -70, 70);
-    const targetX = clamp(110 + angle * 1.08, 34, 186);
-    const targetY = 42;
-    const dx = targetX - userX;
-    const dy = targetY - userY;
+    const halfHorizontalFov = 30;
+    const isVisible =
+      visualAngle !== null && Math.abs(visualAngle) <= halfHorizontalFov;
+    const normalized =
+      visualAngle === null ? 0 : clamp(visualAngle / halfHorizontalFov, -1, 1);
+    const targetX = 110 + normalized * 82;
+
+    const portraitPitch = pitch ?? 90;
+    const cameraPitch = clamp(90 - portraitPitch, -35, 35);
+    const targetY = clamp(62 + cameraPitch * 1.05, 30, 102);
+
+    const displayTargetX = isVisible
+      ? targetX
+      : visualAngle !== null && visualAngle < 0
+        ? 22
+        : 198;
+    const displayTargetY = isVisible ? targetY : 68;
+
+    const dx = displayTargetX - userX;
+    const dy = displayTargetY - userY;
     const rotation = (Math.atan2(dx, -dy) * 180) / Math.PI;
 
     const pointAt = (t: number) => ({
@@ -78,12 +95,19 @@ export default function StakeoutPathOverlay({
     return {
       userX,
       userY,
-      targetX,
-      targetY,
+      targetX: displayTargetX,
+      targetY: displayTargetY,
+      isVisible,
+      offscreenSide:
+        !isVisible && visualAngle !== null
+          ? visualAngle < 0
+            ? "left"
+            : "right"
+          : null,
       rotation,
-      chevrons: [0.34, 0.5, 0.66, 0.8].map(pointAt),
+      chevrons: [0.36, 0.52, 0.68, 0.82].map(pointAt),
     };
-  }, [visualAngle]);
+  }, [visualAngle, pitch]);
 
   const gridGeometry = useMemo(() => {
     if (north === null || east === null) return null;
@@ -187,12 +211,12 @@ export default function StakeoutPathOverlay({
       style={{
         justifySelf: "center",
         width: "min(92vw, 430px)",
-        height: "min(48vh, 430px)",
-        minHeight: 320,
+        height: "min(62vh, 520px)",
+        minHeight: 360,
         zIndex: 4,
       }}
     >
-      <svg viewBox="0 0 220 300" width="100%" height="100%" role="img" aria-label="AR dotted-line stakeout path">
+      <svg viewBox="0 0 220 300" width="100%" height="100%" role="img" aria-label="AR world-bearing stakeout path">
         <defs>
           <filter id="target-shadow" x="-50%" y="-50%" width="200%" height="200%">
             <feDropShadow dx="0" dy="3" stdDeviation="3" floodOpacity="0.45" />
@@ -208,6 +232,7 @@ export default function StakeoutPathOverlay({
           strokeWidth="5"
           strokeDasharray="3 10"
           strokeLinecap="round"
+          opacity={pathGeometry.isVisible ? 1 : 0.72}
         />
 
         {pathGeometry.chevrons.map((point, index) => (
@@ -232,10 +257,24 @@ export default function StakeoutPathOverlay({
           </g>
         ))}
 
-        <g filter="url(#target-shadow)">
-          <circle cx={pathGeometry.targetX} cy={pathGeometry.targetY} r="15" fill="rgba(254,202,202,0.55)" />
-          <circle cx={pathGeometry.targetX} cy={pathGeometry.targetY} r="10" fill="#ef4444" stroke="white" strokeWidth="2.5" />
-        </g>
+        {pathGeometry.isVisible ? (
+          <g filter="url(#target-shadow)">
+            <circle cx={pathGeometry.targetX} cy={pathGeometry.targetY} r="15" fill="rgba(254,202,202,0.55)" />
+            <circle cx={pathGeometry.targetX} cy={pathGeometry.targetY} r="10" fill="#ef4444" stroke="white" strokeWidth="2.5" />
+          </g>
+        ) : (
+          <g transform={`translate(${pathGeometry.targetX} ${pathGeometry.targetY})`}>
+            <circle r="18" fill="rgba(15,23,42,0.88)" stroke="white" strokeWidth="2" />
+            <path
+              d={
+                pathGeometry.offscreenSide === "left"
+                  ? "M 7 -10 L -8 0 L 7 10 Z"
+                  : "M -7 -10 L 8 0 L -7 10 Z"
+              }
+              fill="#ef4444"
+            />
+          </g>
+        )}
 
         <g transform={`translate(${clamp(pathGeometry.targetX, 54, 166)} ${pathGeometry.targetY + 31})`}>
           <rect x="-47" y="-15" width="94" height="30" rx="15" fill="rgba(37,99,235,0.92)" />
@@ -243,6 +282,19 @@ export default function StakeoutPathOverlay({
             {formatDistance(distance)}
           </text>
         </g>
+
+        {!pathGeometry.isVisible && (
+          <text
+            x={pathGeometry.offscreenSide === "left" ? 26 : 194}
+            y="101"
+            textAnchor={pathGeometry.offscreenSide === "left" ? "start" : "end"}
+            fill="white"
+            fontSize="9"
+            fontWeight="900"
+          >
+            TARGET OFF-SCREEN
+          </text>
+        )}
 
         <circle cx={pathGeometry.userX} cy={pathGeometry.userY} r="12" fill="#2563eb" stroke="white" strokeWidth="3" />
         <path
@@ -259,7 +311,7 @@ export default function StakeoutPathOverlay({
         </text>
 
         <text x="110" y="294" textAnchor="middle" fill="rgba(255,255,255,0.92)" fontSize="10" fontWeight="800">
-          {targetName} · follow dotted path
+          {targetName} · world-bearing anchor
         </text>
       </svg>
     </div>
