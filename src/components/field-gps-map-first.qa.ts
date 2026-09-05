@@ -135,6 +135,12 @@ assert(
   "The mobile Field GPS card must open at 80% viewport height, not only permit that maximum.",
 );
 
+assert(
+  cssSource.includes("align-content: start;") &&
+    cssSource.includes("grid-auto-rows: max-content;"),
+  "The 80dvh Field GPS card must keep controls at their natural height when diagnostics are collapsed.",
+);
+
 console.log(
   `field-gps-map-first QA: ALL PASS (mobile panel height: ${mobileHeightValues.join(
     ", ",

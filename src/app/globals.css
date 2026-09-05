@@ -204,6 +204,8 @@ select:focus-visible {
 
 .sl-field-gps-card {
   display: grid;
+  align-content: start;
+  grid-auto-rows: max-content;
   gap: 10px;
   width: 100%;
   max-height: min(680px, calc(100dvh - 170px));
