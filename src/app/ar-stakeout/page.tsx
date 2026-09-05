@@ -62,6 +62,26 @@ type RestoredTarget = {
   savedAt?: string;
 };
 
+type MotionGuidance = {
+  courseHeading: number | null;
+  courseSource: "GPS course" | "Derived course" | null;
+  movementMeters: number;
+  distanceDelta: number | null;
+  movingAway: boolean;
+  approaching: boolean;
+  confidence: "stationary" | "low" | "good";
+};
+
+const EMPTY_MOTION_GUIDANCE: MotionGuidance = {
+  courseHeading: null,
+  courseSource: null,
+  movementMeters: 0,
+  distanceDelta: null,
+  movingAway: false,
+  approaching: false,
+  confidence: "stationary",
+};
+
 const toRad = (value: number) => (value * Math.PI) / 180;
 const toDeg = (value: number) => (value * 180) / Math.PI;
 
@@ -269,6 +289,12 @@ export default function ArStakeoutPage() {
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const gpsWatchRef = useRef<number | null>(null);
   const headingRef = useRef<number | null>(null);
+  const previousMotionGpsRef = useRef<GpsFix | null>(null);
+  const previousTargetDistanceRef = useRef<number | null>(null);
+  const motionTargetKeyRef = useRef("");
+  const movingAwayCountRef = useRef(0);
+  const approachingCountRef = useRef(0);
+  const courseHeadingRef = useRef<number | null>(null);
 
   const [targetName, setTargetName] = useState("Target Point");
   const [targetLatText, setTargetLatText] = useState("");
@@ -288,6 +314,7 @@ export default function ArStakeoutPage() {
 
   const [heading, setHeading] = useState<number | null>(null);
   const [headingStatus, setHeadingStatus] = useState<HeadingStatus>("Inactive");
+  const [motionGuidance, setMotionGuidance] = useState<MotionGuidance>(EMPTY_MOTION_GUIDANCE);
 
   const [arActive, setArActive] = useState(false);
   const [fieldMessage, setFieldMessage] = useState("");
@@ -359,17 +386,158 @@ export default function ArStakeoutPage() {
     };
   }, [gps, target]);
 
+  useEffect(() => {
+    if (!gps || !target) {
+      previousMotionGpsRef.current = null;
+      previousTargetDistanceRef.current = null;
+      movingAwayCountRef.current = 0;
+      approachingCountRef.current = 0;
+      courseHeadingRef.current = null;
+      setMotionGuidance(EMPTY_MOTION_GUIDANCE);
+      return;
+    }
+
+    const targetKey = `${target.latitude.toFixed(7)}:${target.longitude.toFixed(7)}`;
+
+    if (motionTargetKeyRef.current !== targetKey) {
+      motionTargetKeyRef.current = targetKey;
+      previousMotionGpsRef.current = null;
+      previousTargetDistanceRef.current = null;
+      movingAwayCountRef.current = 0;
+      approachingCountRef.current = 0;
+      courseHeadingRef.current = null;
+    }
+
+    const currentDistance = distanceMeters(
+      gps.latitude,
+      gps.longitude,
+      target.latitude,
+      target.longitude,
+    );
+    const previousGps = previousMotionGpsRef.current;
+    const previousDistance = previousTargetDistanceRef.current;
+    const speed =
+      typeof gps.speed === "number" && Number.isFinite(gps.speed)
+        ? gps.speed
+        : null;
+
+    let movementMeters = 0;
+    let rawCourseHeading: number | null = null;
+    let courseSource: MotionGuidance["courseSource"] = null;
+
+    if (
+      typeof gps.heading === "number" &&
+      Number.isFinite(gps.heading) &&
+      speed !== null &&
+      speed >= 0.5
+    ) {
+      rawCourseHeading = normalize360(gps.heading);
+      courseSource = "GPS course";
+    }
+
+    if (previousGps) {
+      movementMeters = distanceMeters(
+        previousGps.latitude,
+        previousGps.longitude,
+        gps.latitude,
+        gps.longitude,
+      );
+
+      if (rawCourseHeading === null && movementMeters >= 1.5) {
+        rawCourseHeading = bearingDeg(
+          previousGps.latitude,
+          previousGps.longitude,
+          gps.latitude,
+          gps.longitude,
+        );
+        courseSource = "Derived course";
+      }
+    }
+
+    let courseHeading = rawCourseHeading;
+
+    if (rawCourseHeading !== null) {
+      const previousCourse = courseHeadingRef.current;
+      if (previousCourse !== null) {
+        const delta = normalizeSigned(rawCourseHeading - previousCourse);
+        courseHeading = normalize360(previousCourse + delta * 0.35);
+      }
+      courseHeadingRef.current = courseHeading;
+    }
+
+    const distanceDelta =
+      previousDistance === null ? null : currentDistance - previousDistance;
+    const accuracy =
+      typeof gps.accuracy === "number" && Number.isFinite(gps.accuracy)
+        ? gps.accuracy
+        : 3;
+    const trendThreshold = Math.max(0.35, Math.min(1, accuracy * 0.15));
+    const reliableMovement =
+      (speed !== null && speed >= 0.5) || movementMeters >= 1.2;
+
+    if (reliableMovement && distanceDelta !== null) {
+      if (distanceDelta > trendThreshold) {
+        movingAwayCountRef.current += 1;
+        approachingCountRef.current = 0;
+      } else if (distanceDelta < -trendThreshold) {
+        approachingCountRef.current += 1;
+        movingAwayCountRef.current = 0;
+      } else {
+        movingAwayCountRef.current = Math.max(0, movingAwayCountRef.current - 1);
+        approachingCountRef.current = Math.max(0, approachingCountRef.current - 1);
+      }
+    }
+
+    const confidence: MotionGuidance["confidence"] =
+      speed !== null && speed >= 0.5
+        ? "good"
+        : movementMeters >= 1.5
+          ? "good"
+          : movementMeters >= 0.7
+            ? "low"
+            : "stationary";
+
+    setMotionGuidance({
+      courseHeading,
+      courseSource,
+      movementMeters,
+      distanceDelta,
+      movingAway: movingAwayCountRef.current >= 2,
+      approaching: approachingCountRef.current >= 1,
+      confidence,
+    });
+
+    previousMotionGpsRef.current = gps;
+    previousTargetDistanceRef.current = currentDistance;
+  }, [gps, target]);
+
   const signal = getGpsSignal(gps, gpsError);
 
+  const navigationHeading = useMemo(() => {
+    if (
+      motionGuidance.confidence === "good" &&
+      motionGuidance.courseHeading !== null
+    ) {
+      return motionGuidance.courseHeading;
+    }
+
+    return heading;
+  }, [motionGuidance, heading]);
+
   const relativeAngle = useMemo(() => {
-    if (!metrics || heading === null) return null;
-    return normalizeSigned(metrics.bearing - heading);
-  }, [metrics, heading]);
+    if (!metrics || navigationHeading === null) return null;
+    return normalizeSigned(metrics.bearing - navigationHeading);
+  }, [metrics, navigationHeading]);
+
+  const courseError = useMemo(() => {
+    if (!metrics || motionGuidance.courseHeading === null) return null;
+    return normalizeSigned(metrics.bearing - motionGuidance.courseHeading);
+  }, [metrics, motionGuidance.courseHeading]);
 
   const localStakeout = useMemo(() => {
-    if (!metrics || heading === null) return null;
+    if (!metrics || navigationHeading === null) return null;
 
-    const headingRad = toRad(heading);
+    const headingRad = toRad(navigationHeading);
 
     return {
       forward:
@@ -379,44 +547,73 @@ export default function ArStakeoutPage() {
         -metrics.north * Math.sin(headingRad) +
         metrics.east * Math.cos(headingRad),
     };
-  }, [metrics, heading]);
+  }, [metrics, navigationHeading]);
 
   const directionText = useMemo(() => {
     if (!target) return "Enter valid target coordinate.";
     if (!gps) return "Start GPS first.";
     if (!metrics) return "Waiting for navigation data.";
 
-    if (heading === null || relativeAngle === null || !localStakeout) {
-      return `Compass heading unavailable. Bearing to target: ${metrics.bearing.toFixed(1)}°`;
-    }
-
     if (metrics.distance <= 0.8) {
       return "Near target - verify before marking";
     }
 
-    if (Math.abs(relativeAngle) > 15) {
+    if (motionGuidance.movingAway) {
+      return "MOVING AWAY - turn around and re-align";
+    }
+
+    if (
+      motionGuidance.confidence === "good" &&
+      courseError !== null &&
+      Math.abs(courseError) > 100
+    ) {
+      return "Movement is away from target - turn around";
+    }
+
+    if (navigationHeading === null || relativeAngle === null || !localStakeout) {
+      return `Compass heading unavailable. Bearing to target: ${metrics.bearing.toFixed(1)}°`;
+    }
+
+    if (Math.abs(relativeAngle) > 7) {
       if (relativeAngle > 0) return `Turn right ${Math.abs(relativeAngle).toFixed(0)}°`;
       return `Turn left ${Math.abs(relativeAngle).toFixed(0)}°`;
     }
 
-    if (localStakeout.right > 0.4) {
-      return `Move right ${Math.abs(localStakeout.right).toFixed(2)} m`;
-    }
+    if (metrics.distance <= 3) {
+      if (localStakeout.right > 0.35) {
+        return `Move right ${Math.abs(localStakeout.right).toFixed(2)} m`;
+      }
 
-    if (localStakeout.right < -0.4) {
-      return `Move left ${Math.abs(localStakeout.right).toFixed(2)} m`;
+      if (localStakeout.right < -0.35) {
+        return `Move left ${Math.abs(localStakeout.right).toFixed(2)} m`;
+      }
     }
 
     if (localStakeout.forward < -0.8) {
-      return "Target behind phone - turn around";
+      return "Target behind - turn around";
     }
 
     return `Proceed forward ${Math.max(localStakeout.forward, 0).toFixed(2)} m`;
-  }, [target, gps, metrics, heading, relativeAngle, localStakeout]);
+  }, [
+    target,
+    gps,
+    metrics,
+    navigationHeading,
+    relativeAngle,
+    localStakeout,
+    motionGuidance,
+    courseError,
+  ]);
 
   function startGps() {
     setGpsError("");
     setFieldMessage("");
+    previousMotionGpsRef.current = null;
+    previousTargetDistanceRef.current = null;
+    movingAwayCountRef.current = 0;
+    approachingCountRef.current = 0;
+    courseHeadingRef.current = null;
+    setMotionGuidance(EMPTY_MOTION_GUIDANCE);
 
     if (!("geolocation" in navigator)) {
       setGpsStatus("GPS not supported");
@@ -461,7 +658,7 @@ export default function ArStakeoutPage() {
       },
       {
         enableHighAccuracy: true,
-        maximumAge: 1000,
+        maximumAge: 500,
         timeout: 15000,
       }
     );
@@ -789,12 +986,14 @@ export default function ArStakeoutPage() {
   }, []);
 
   const canSave = Boolean(gps && target && metrics);
-  const arrowRotation = heading !== null && relativeAngle !== null ? relativeAngle : 0;
+  const arrowRotation = navigationHeading !== null && relativeAngle !== null ? relativeAngle : 0;
   const targetDirection = metrics ? bearingToCardinal(metrics.bearing) : "-";
   const headingDirection = heading !== null ? bearingToCardinal(heading) : "-";
-  const isAligned = relativeAngle !== null && Math.abs(relativeAngle) <= 15;
-  const compassRotation = heading !== null ? -heading : 0;
-  const counterCompassRotation = heading ?? 0;
+  const navigationDirection =
+    navigationHeading !== null ? bearingToCardinal(navigationHeading) : "-";
+  const isAligned = relativeAngle !== null && Math.abs(relativeAngle) <= 7;
+  const compassRotation = navigationHeading !== null ? -navigationHeading : 0;
+  const counterCompassRotation = navigationHeading ?? 0;
 
   const targetDotStyle = useMemo(() => {
     if (!metrics || !localStakeout) {
@@ -839,27 +1038,20 @@ export default function ArStakeoutPage() {
               return;
             }
 
-            const savedTarget =
-              readGpsTargetMemory();
+            const savedTarget = readGpsTargetMemory();
 
             if (savedTarget) {
               router.push(
                 buildMapHref({
-                  name:
-                    savedTarget.label ||
-                    "AR Guide Target",
-                  latitude:
-                    savedTarget.lat,
-                  longitude:
-                    savedTarget.lng,
+                  name: savedTarget.label || "AR Guide Target",
+                  latitude: savedTarget.lat,
+                  longitude: savedTarget.lng,
                 }),
               );
               return;
             }
 
-            router.push(
-              "/?restoreTarget=1",
-            );
+            router.push("/?restoreTarget=1");
           }}
         >
           ← Back to Map
@@ -967,8 +1159,16 @@ export default function ArStakeoutPage() {
               <dd>{metrics ? `${metrics.bearing.toFixed(1)}° ${targetDirection}` : "-"}</dd>
             </div>
             <div>
-              <dt>Heading</dt>
+              <dt>Phone heading</dt>
               <dd>{heading !== null ? `${heading.toFixed(1)}° ${headingDirection}` : headingStatus}</dd>
+            </div>
+            <div>
+              <dt>Navigation reference</dt>
+              <dd>
+                {navigationHeading !== null
+                  ? `${navigationHeading.toFixed(1)}° ${navigationDirection}`
+                  : "-"}
+              </dd>
             </div>
             <div>
               <dt>Direction</dt>
@@ -987,6 +1187,16 @@ export default function ArStakeoutPage() {
             <span suppressHydrationWarning>getUserMedia: {getUserMediaSupport}</span>
             <span suppressHydrationWarning>Camera mode: {cameraMode}</span>
             <span>Video ready: {videoReady ? "yes" : "no"}</span>
+            <span>
+              Course: {motionGuidance.courseHeading !== null
+                ? `${motionGuidance.courseHeading.toFixed(1)}° ${bearingToCardinal(motionGuidance.courseHeading)} (${motionGuidance.courseSource})`
+                : "waiting for movement"}
+            </span>
+            <span>
+              Distance trend: {motionGuidance.distanceDelta !== null
+                ? `${motionGuidance.distanceDelta >= 0 ? "+" : ""}${motionGuidance.distanceDelta.toFixed(2)} m`
+                : "waiting"}
+            </span>
             {cameraErrorName && <span>Error name: {cameraErrorName}</span>}
             {cameraErrorMessage && <span>Error message: {cameraErrorMessage}</span>}
           </div>
@@ -1020,7 +1230,7 @@ export default function ArStakeoutPage() {
               <h2>{target?.name || "Target Point"}</h2>
               <p>{directionText}</p>
               <span style={{ fontSize: 11, fontWeight: 800, color: "#dbeafe" }}>
-                Phone head ↑ = forward reference
+                Phone head ↑ = forward · movement course validates direction
               </span>
             </div>
             <button
@@ -1056,7 +1266,7 @@ export default function ArStakeoutPage() {
           <div className={styles.targetDot} style={targetDotStyle} />
           <div className={styles.distanceBubble}>{metrics ? formatMeters(metrics.distance) : "-"}</div>
 
-          {isAligned && (
+          {isAligned && !motionGuidance.movingAway && (
             <div className={styles.guideLine} aria-label="Aligned path toward target">
               <span />
               <span />
@@ -1065,7 +1275,7 @@ export default function ArStakeoutPage() {
             </div>
           )}
 
-          {!isAligned && heading !== null && relativeAngle !== null && (
+          {(!isAligned || motionGuidance.movingAway) && navigationHeading !== null && relativeAngle !== null && (
             <div
               style={{
                 position: "absolute",
@@ -1075,7 +1285,9 @@ export default function ArStakeoutPage() {
                 zIndex: 5,
                 borderRadius: 999,
                 padding: "8px 14px",
-                background: "rgba(15, 23, 42, 0.82)",
+                background: motionGuidance.movingAway
+                  ? "rgba(153, 27, 27, 0.92)"
+                  : "rgba(15, 23, 42, 0.82)",
                 border: "1px solid rgba(255, 255, 255, 0.38)",
                 color: "#ffffff",
                 fontWeight: 900,
@@ -1089,7 +1301,7 @@ export default function ArStakeoutPage() {
           <div className={styles.arrowWrap}>
             <div className={styles.compassRose} aria-label="Compass direction reference">
               <div
-                aria-label="Absolute compass dial"
+                aria-label="Navigation compass dial"
                 style={{
                   position: "absolute",
                   inset: 0,
@@ -1160,7 +1372,15 @@ export default function ArStakeoutPage() {
             <span className={`${styles.signalDot} ${styles[signal.level] ?? ""}`} />
             <span>{signal.label}</span>
             <span>Camera: {cameraStatus}</span>
-            <span>Heading: {heading !== null ? `${heading.toFixed(1)}° ${headingDirection}` : headingStatus}</span>
+            <span>Phone: {heading !== null ? `${heading.toFixed(1)}° ${headingDirection}` : headingStatus}</span>
+            <span>
+              Nav: {navigationHeading !== null ? `${navigationHeading.toFixed(1)}° ${navigationDirection}` : "-"}
+            </span>
+            <span>
+              ΔDist: {motionGuidance.distanceDelta !== null
+                ? `${motionGuidance.distanceDelta >= 0 ? "+" : ""}${motionGuidance.distanceDelta.toFixed(2)} m`
+                : "-"}
+            </span>
             <span>
               F/R: {localStakeout ? `${formatMeters(localStakeout.forward)} / ${formatMeters(localStakeout.right)}` : "-"}
             </span>
@@ -1211,8 +1431,3 @@ export default function ArStakeoutPage() {
     </main>
   );
 }
-
-
-
-
-
