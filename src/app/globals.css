@@ -317,6 +317,25 @@ select:focus-visible {
   padding: 0 8px 8px;
 }
 
+.sl-field-gps-more-tools {
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 9px;
+}
+
+.sl-field-gps-more-tools > summary {
+  padding: 8px 10px;
+  color: #334155;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.sl-field-gps-more-tools-content {
+  display: grid;
+  gap: 10px;
+  padding: 0 8px 8px;
+}
+
 .sl-field-gps-quality,
 .sl-field-gps-note,
 .sl-field-gps-warning,
@@ -734,7 +753,32 @@ select:focus-visible {
 
   .sl-field-gps-card {
     max-height: min(25dvh, calc(100dvh - 176px));
-    padding: 10px;
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .sl-field-gps-card > .sl-field-gps-note {
+    font-size: 10px;
+    line-height: 1.2;
+  }
+
+  .sl-field-gps-compact-status,
+  .sl-field-gps-compact-target {
+    min-height: 34px;
+    padding: 5px 8px;
+  }
+
+  .sl-field-gps-diagnostics > summary,
+  .sl-field-gps-more-tools > summary {
+    padding: 6px 8px;
+  }
+
+  .sl-field-gps-quick-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sl-field-gps-quick-actions button {
+    min-height: 36px;
   }
 
   .sl-field-gps-actions,

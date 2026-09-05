@@ -3081,6 +3081,35 @@ export default function FieldGpsLite({
             Preliminary Field Assist
           </p>
 
+          <div className="sl-field-gps-actions sl-field-gps-quick-actions">
+            <button
+              type="button"
+              onClick={toggleGps}
+              className={
+                gpsActive
+                  ? "is-active"
+                  : ""
+              }
+            >
+              {gpsActive
+                ? "Stop GPS"
+                : "Start GPS"}
+            </button>
+            <button
+              type="button"
+              onClick={toggleTracking}
+              className={
+                tracking
+                  ? "is-active"
+                  : ""
+              }
+            >
+              {tracking
+                ? "Stop Tracking"
+                : "Track Position"}
+            </button>
+          </div>
+
           <FieldGpsAccuracyPanel
             reading={reading}
             status={status}
@@ -3130,6 +3159,9 @@ export default function FieldGpsLite({
             </div>
           )}
 
+          <details className="sl-field-gps-more-tools">
+            <summary>More GPS tools</summary>
+            <div className="sl-field-gps-more-tools-content">
           <section className="sl-field-gps-section">
             <div className="sl-field-gps-actions">
               <button
@@ -3138,32 +3170,6 @@ export default function FieldGpsLite({
                 className="sl-field-gps-action-primary"
               >
                 AR Guide
-              </button>
-              <button
-                type="button"
-                onClick={toggleGps}
-                className={
-                  gpsActive
-                    ? "is-active"
-                    : ""
-                }
-              >
-                {gpsActive
-                  ? "Stop GPS"
-                  : "Start GPS"}
-              </button>
-              <button
-                type="button"
-                onClick={toggleTracking}
-                className={
-                  tracking
-                    ? "is-active"
-                    : ""
-                }
-              >
-                {tracking
-                  ? "Stop Tracking"
-                  : "Track My Position"}
               </button>
               <button
                 type="button"
@@ -4217,6 +4223,8 @@ export default function FieldGpsLite({
               </Link>
             </div>
           </section>
+            </div>
+          </details>
         </div>
       )}
     </section>

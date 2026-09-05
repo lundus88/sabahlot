@@ -69,6 +69,19 @@ assert(
 );
 
 assert(
+  componentSource.indexOf(
+    "sl-field-gps-quick-actions",
+  ) <
+    componentSource.indexOf(
+      "<FieldGpsAccuracyPanel",
+    ) &&
+    componentSource.includes(
+      '<summary>More GPS tools</summary>',
+    ),
+  "Start GPS and Track Position must be visible before collapsed secondary tools.",
+);
+
+assert(
   componentSource.includes(
     "Preliminary Field Assist",
   ),
