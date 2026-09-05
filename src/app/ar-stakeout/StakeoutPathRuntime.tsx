@@ -207,7 +207,7 @@ export default function StakeoutPathRuntime() {
         relativeAngle={metrics.relativeAngle}
         north={metrics.north}
         east={metrics.east}
-        accuracy={fix.accuracy}
+        accuracy={fix?.accuracy ?? null}
         movingAway={movingAway}
         targetName={target.label || "Target Point"}
       />
