@@ -296,6 +296,10 @@
   z-index: 3;
 }
 
+.stageFullscreen .distanceBubble {
+  display: none;
+}
+
 .guideLine {
   position: absolute;
   left: 50%;
