@@ -12,6 +12,7 @@ interface FieldGpsAccuracyPanelProps {
   reading: FieldGpsReading | null;
   status: string;
   qualityGrade: "A" | "B" | "C" | "D";
+  positionQualityLabel: string;
   gpsSignalLabel: string;
   gpsSignalClassName: string;
   gateMeters: number | null;
@@ -38,6 +39,7 @@ export default function FieldGpsAccuracyPanel({
   reading,
   status,
   qualityGrade,
+  positionQualityLabel,
   gpsSignalLabel,
   gpsSignalClassName,
   gateMeters,
@@ -45,104 +47,127 @@ export default function FieldGpsAccuracyPanel({
   allowApproximate,
   onAllowApproximateChange,
 }: FieldGpsAccuracyPanelProps) {
+  const compactAccuracy =
+    reading?.accuracyMeters !== undefined
+      ? `±${reading.accuracyMeters.toFixed(1)} m`
+      : "±-";
+  const compactHeading =
+    reading?.heading !== null &&
+    reading?.heading !== undefined
+      ? `HDG ${reading.heading.toFixed(0)}°`
+      : "HDG -";
+
   return (
     <section className="sl-field-gps-section">
-      <div className="sl-field-gps-status-row">
-        <strong>{status}</strong>
-        <span className="sl-field-gps-status-badges">
-          <span className={gpsSignalClassName}>
-            {gpsSignalLabel}
-          </span>
-          <span className={`sl-gps-grade is-${qualityGrade.toLowerCase()}`}>
-            {qualityGrade}
-          </span>
-        </span>
+      <div className="sl-field-gps-compact-status" aria-label="Position Quality">
+        <span>Position Quality</span>
+        <strong>
+          {positionQualityLabel} · {compactAccuracy} · {compactHeading}
+        </strong>
       </div>
 
-      <p className="sl-field-gps-quality">
-        {getGpsQualityLabel(qualityGrade)}
-      </p>
+      <details className="sl-field-gps-diagnostics">
+        <summary>Diagnostics &amp; accuracy settings</summary>
 
-      <div className="sl-field-gps-grid">
-        <span>Latitude</span>
-        <strong>{valueOrDash(reading?.latitude.toFixed(7))}</strong>
-        <span>Longitude</span>
-        <strong>{valueOrDash(reading?.longitude.toFixed(7))}</strong>
-        <span>Accuracy</span>
-        <strong>
-          {reading?.accuracyMeters !== undefined
-            ? `+/- ${reading.accuracyMeters.toFixed(1)} m`
-            : "-"}
-        </strong>
-        <span>GPS signal</span>
-        <strong>
-          <span className={gpsSignalClassName}>
-            {gpsSignalLabel}
-          </span>
-        </strong>
-        <span>Altitude</span>
-        <strong>
-          {reading?.altitude !== null &&
-          reading?.altitude !== undefined
-            ? `${reading.altitude.toFixed(1)} m`
-            : "-"}
-        </strong>
-        <span>Altitude accuracy</span>
-        <strong>
-          {reading?.altitudeAccuracyMeters !== null &&
-          reading?.altitudeAccuracyMeters !== undefined
-            ? `+/- ${reading.altitudeAccuracyMeters.toFixed(1)} m`
-            : "-"}
-        </strong>
-        <span>Heading</span>
-        <strong>
-          {reading?.heading !== null &&
-          reading?.heading !== undefined
-            ? `${reading.heading.toFixed(0)} deg`
-            : "-"}
-        </strong>
-        <span>Speed</span>
-        <strong>
-          {reading?.speed !== null &&
-          reading?.speed !== undefined
-            ? `${reading.speed.toFixed(2)} m/s`
-            : "-"}
-        </strong>
-        <span>Timestamp</span>
-        <strong>{valueOrDash(reading?.timestamp)}</strong>
-      </div>
+        <div className="sl-field-gps-diagnostics-content">
+          <div className="sl-field-gps-status-row">
+            <strong>{status}</strong>
+            <span className="sl-field-gps-status-badges">
+              <span className={gpsSignalClassName}>
+                {gpsSignalLabel}
+              </span>
+              <span className={`sl-gps-grade is-${qualityGrade.toLowerCase()}`}>
+                {qualityGrade}
+              </span>
+            </span>
+          </div>
 
-      <label className="sl-field-gps-label">
-        <span>Minimum accuracy gate</span>
-        <select
-          value={gateMeters ?? "none"}
-          onChange={(event) =>
-            onGateChange(
-              event.target.value === "none"
-                ? null
-                : Number(event.target.value),
-            )
-          }
-        >
-          <option value={5}>5 m</option>
-          <option value={10}>10 m</option>
-          <option value={25}>25 m</option>
-          <option value="none">No gate</option>
-        </select>
-      </label>
+          <p className="sl-field-gps-quality">
+            {getGpsQualityLabel(qualityGrade)}
+          </p>
 
-      <label className="sl-field-gps-check">
-        <input
-          type="checkbox"
-          checked={allowApproximate}
-          onChange={(event) =>
-            onAllowApproximateChange(
-              event.target.checked,
-            )
-          }
-        />
-        <span>Save approximate point anyway</span>
-      </label>
+          <div className="sl-field-gps-grid">
+            <span>Latitude</span>
+            <strong>{valueOrDash(reading?.latitude.toFixed(7))}</strong>
+            <span>Longitude</span>
+            <strong>{valueOrDash(reading?.longitude.toFixed(7))}</strong>
+            <span>Accuracy</span>
+            <strong>
+              {reading?.accuracyMeters !== undefined
+                ? `+/- ${reading.accuracyMeters.toFixed(1)} m`
+                : "-"}
+            </strong>
+            <span>Position Quality</span>
+            <strong>
+              <span className={gpsSignalClassName}>
+                {gpsSignalLabel}
+              </span>
+            </strong>
+            <span>Altitude</span>
+            <strong>
+              {reading?.altitude !== null &&
+              reading?.altitude !== undefined
+                ? `${reading.altitude.toFixed(1)} m`
+                : "-"}
+            </strong>
+            <span>Altitude accuracy</span>
+            <strong>
+              {reading?.altitudeAccuracyMeters !== null &&
+              reading?.altitudeAccuracyMeters !== undefined
+                ? `+/- ${reading.altitudeAccuracyMeters.toFixed(1)} m`
+                : "-"}
+            </strong>
+            <span>Heading</span>
+            <strong>
+              {reading?.heading !== null &&
+              reading?.heading !== undefined
+                ? `${reading.heading.toFixed(0)} deg`
+                : "-"}
+            </strong>
+            <span>Speed</span>
+            <strong>
+              {reading?.speed !== null &&
+              reading?.speed !== undefined
+                ? `${reading.speed.toFixed(2)} m/s`
+                : "-"}
+            </strong>
+            <span>Timestamp</span>
+            <strong>{valueOrDash(reading?.timestamp)}</strong>
+          </div>
+
+          <label className="sl-field-gps-label">
+            <span>Minimum accuracy gate</span>
+            <select
+              value={gateMeters ?? "none"}
+              onChange={(event) =>
+                onGateChange(
+                  event.target.value === "none"
+                    ? null
+                    : Number(event.target.value),
+                )
+              }
+            >
+              <option value={5}>5 m</option>
+              <option value={10}>10 m</option>
+              <option value={25}>25 m</option>
+              <option value="none">No gate</option>
+            </select>
+          </label>
+
+          <label className="sl-field-gps-check">
+            <input
+              type="checkbox"
+              checked={allowApproximate}
+              onChange={(event) =>
+                onAllowApproximateChange(
+                  event.target.checked,
+                )
+              }
+            />
+            <span>Save approximate point anyway</span>
+          </label>
+        </div>
+      </details>
     </section>
   );
 }

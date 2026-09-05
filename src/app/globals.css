@@ -259,6 +259,64 @@ select:focus-visible {
   gap: 8px;
 }
 
+.sl-field-gps-compact-status,
+.sl-field-gps-compact-target {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 10px;
+  color: #0f172a;
+  background: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  border-radius: 10px;
+}
+
+.sl-field-gps-compact-status > span,
+.sl-field-gps-compact-target > span {
+  color: #475569;
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.sl-field-gps-compact-status > strong,
+.sl-field-gps-compact-target > strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 900;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sl-field-gps-compact-direction {
+  display: inline-block;
+  margin-left: 5px;
+  transform-origin: center;
+}
+
+.sl-field-gps-diagnostics {
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 9px;
+}
+
+.sl-field-gps-diagnostics > summary {
+  padding: 8px 10px;
+  color: #334155;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.sl-field-gps-diagnostics-content {
+  display: grid;
+  gap: 8px;
+  padding: 0 8px 8px;
+}
+
 .sl-field-gps-quality,
 .sl-field-gps-note,
 .sl-field-gps-warning,
@@ -675,7 +733,7 @@ select:focus-visible {
   }
 
   .sl-field-gps-card {
-    max-height: min(62dvh, calc(100dvh - 176px));
+    max-height: min(25dvh, calc(100dvh - 176px));
     padding: 10px;
   }
 
@@ -2862,7 +2920,7 @@ select:focus-visible {
   }
 
   .sl-field-gps-card {
-    max-height: min(62dvh, calc(100dvh - 176px));
+    max-height: min(25dvh, calc(100dvh - 176px));
   }
 
   .sl-field-gps-actions {
@@ -6352,7 +6410,7 @@ select:focus-visible {
   }
 
   .sl-field-gps-card {
-    max-height: min(60dvh, calc(100dvh - 148px - env(safe-area-inset-top) - env(safe-area-inset-bottom))) !important;
+    max-height: min(25dvh, calc(100dvh - 148px - env(safe-area-inset-top) - env(safe-area-inset-bottom))) !important;
     padding: 10px;
     border-radius: 16px 16px 10px 10px;
   }
@@ -6420,9 +6478,12 @@ select:focus-visible {
 
 @media (max-width: 768px) and (max-height: 640px) {
   .sl-object-list,
-  .sl-settings-card,
-  .sl-field-gps-card {
+  .sl-settings-card {
     max-height: min(52dvh, calc(100dvh - 132px)) !important;
+  }
+
+  .sl-field-gps-card {
+    max-height: min(25dvh, calc(100dvh - 132px)) !important;
   }
 }
 
@@ -6533,7 +6594,7 @@ select:focus-visible {
     top: calc(100% + 8px);
     right: 0;
     width: calc(100vw - 24px);
-    max-height: min(54dvh, calc(100dvh - 176px - env(safe-area-inset-top) - env(safe-area-inset-bottom))) !important;
+    max-height: min(25dvh, calc(100dvh - 176px - env(safe-area-inset-top) - env(safe-area-inset-bottom))) !important;
     /* .sl-field-gps-stack's own z-index (1130) is forced to `auto` above
        once it's pinned static in the mobile control stack, so the card
        needs its own stacking value here or it falls back to auto and
