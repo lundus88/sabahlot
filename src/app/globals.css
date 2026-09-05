@@ -8405,6 +8405,7 @@ select:focus-visible {
     max-height: calc(100dvh - var(--sl-mobile-panel-top, calc(env(safe-area-inset-top) + 130px)) - var(--sl-mobile-edge, 10px)) !important;
     margin-top: 0 !important;
     overflow-y: auto !important;
+    overflow-anchor: none;
     overscroll-behavior: contain;
   }
 

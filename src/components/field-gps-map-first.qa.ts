@@ -161,8 +161,12 @@ assert(
 assert(
   componentSource.includes("ref={fieldGpsCardRef}") &&
     componentSource.includes('"orientationchange"') &&
-    componentSource.includes("fieldGpsCardRef.current.scrollTop = 0"),
-  "Rotating the phone must reset the Field GPS card to its top after landscape reflow.",
+    componentSource.includes('"resize"') &&
+    componentSource.includes("window.visualViewport?.addEventListener") &&
+    componentSource.includes('card.closest<HTMLElement>(\n          ".sl-field-gps-stack"') &&
+    componentSource.includes("card.scrollTop = 0") &&
+    cssSource.includes("overflow-anchor: none;"),
+  "Rotating the phone must reset both GPS scroll containers after Samsung Chrome landscape reflow.",
 );
 
 console.log(

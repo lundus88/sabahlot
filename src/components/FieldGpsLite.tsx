@@ -1804,20 +1804,47 @@ export default function FieldGpsLite({
       return;
     }
 
-    let settleTimer: number | null = null;
-    const resetPanelScroll = () => {
-      if (fieldGpsCardRef.current) {
-        fieldGpsCardRef.current.scrollTop = 0;
+    let landscape =
+      window.innerWidth > window.innerHeight;
+    const settleTimers: number[] = [];
+    const resetScrollNow = () => {
+      const card = fieldGpsCardRef.current;
+      if (!card) {
+        return;
       }
 
-      if (settleTimer !== null) {
-        window.clearTimeout(settleTimer);
+      card.scrollTop = 0;
+      const stack =
+        card.closest<HTMLElement>(
+          ".sl-field-gps-stack",
+        );
+      if (stack) {
+        stack.scrollTop = 0;
       }
-      settleTimer = window.setTimeout(() => {
-        if (fieldGpsCardRef.current) {
-          fieldGpsCardRef.current.scrollTop = 0;
-        }
-      }, 150);
+    };
+    const resetPanelScroll = () => {
+      settleTimers.splice(0).forEach(
+        (timer) => window.clearTimeout(timer),
+      );
+      resetScrollNow();
+      [150, 500].forEach((delay) => {
+        settleTimers.push(
+          window.setTimeout(
+            resetScrollNow,
+            delay,
+          ),
+        );
+      });
+    };
+    const handleViewportResize = () => {
+      const nextLandscape =
+        window.innerWidth > window.innerHeight;
+      if (nextLandscape === landscape) {
+        return;
+      }
+
+      landscape = nextLandscape;
+      resetPanelScroll();
     };
 
     resetPanelScroll();
@@ -1829,11 +1856,19 @@ export default function FieldGpsLite({
       "change",
       resetPanelScroll,
     );
+    window.addEventListener(
+      "resize",
+      handleViewportResize,
+    );
+    window.visualViewport?.addEventListener(
+      "resize",
+      handleViewportResize,
+    );
 
     return () => {
-      if (settleTimer !== null) {
-        window.clearTimeout(settleTimer);
-      }
+      settleTimers.splice(0).forEach(
+        (timer) => window.clearTimeout(timer),
+      );
       window.removeEventListener(
         "orientationchange",
         resetPanelScroll,
@@ -1841,6 +1876,14 @@ export default function FieldGpsLite({
       window.screen.orientation?.removeEventListener(
         "change",
         resetPanelScroll,
+      );
+      window.removeEventListener(
+        "resize",
+        handleViewportResize,
+      );
+      window.visualViewport?.removeEventListener(
+        "resize",
+        handleViewportResize,
       );
     };
   }, [
