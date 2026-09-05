@@ -1,9 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  useRouter,
-} from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   readGpsTargetMemory,
   saveGpsTargetMemory,
@@ -62,6 +60,26 @@ type RestoredTarget = {
   savedAt?: string;
 };
 
+type MotionGuidance = {
+  courseHeading: number | null;
+  courseSource: "GPS course" | "Derived course" | null;
+  movementMeters: number;
+  distanceDelta: number | null;
+  movingAway: boolean;
+  approaching: boolean;
+  confidence: "stationary" | "low" | "good";
+};
+
+const EMPTY_MOTION_GUIDANCE: MotionGuidance = {
+  courseHeading: null,
+  courseSource: null,
+  movementMeters: 0,
+  distanceDelta: null,
+  movingAway: false,
+  approaching: false,
+  confidence: "stationary",
+};
+
 const toRad = (value: number) => (value * Math.PI) / 180;
 const toDeg = (value: number) => (value * 180) / Math.PI;
 
@@ -71,6 +89,10 @@ function normalize360(value: number) {
 
 function normalizeSigned(value: number) {
   return ((value + 540) % 360) - 180;
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
 }
 
 function distanceMeters(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -93,13 +115,12 @@ function bearingDeg(lat1: number, lon1: number, lat2: number, lon2: number) {
   return normalize360(toDeg(Math.atan2(y, x)));
 }
 
-function offsetNE(currentLat: number, currentLng: number, targetLat: number, targetLng: number) {
-  const metersPerDegLat = 111320;
-  const metersPerDegLng = 111320 * Math.cos(toRad(currentLat));
+function offsetFromDistanceBearing(distance: number, bearing: number) {
+  const bearingRad = toRad(bearing);
 
   return {
-    north: (targetLat - currentLat) * metersPerDegLat,
-    east: (targetLng - currentLng) * metersPerDegLng,
+    north: distance * Math.cos(bearingRad),
+    east: distance * Math.sin(bearingRad),
   };
 }
 
@@ -108,6 +129,12 @@ function formatMeters(value: number | null | undefined) {
   if (Math.abs(value) < 10) return `${value.toFixed(3)} m`;
   if (Math.abs(value) < 100) return `${value.toFixed(2)} m`;
   return `${value.toFixed(1)} m`;
+}
+
+function formatGuidanceMeters(value: number | null | undefined) {
+  if (value === null || value === undefined || Number.isNaN(value)) return "-";
+  if (Math.abs(value) < 10) return `${value.toFixed(1)} m`;
+  return `${value.toFixed(0)} m`;
 }
 
 function bearingToCardinal(value: number | null | undefined) {
@@ -151,9 +178,7 @@ function readTargetFromUrlOrMemory(): RestoredTarget | null {
 
   const savedTarget = readGpsTargetMemory();
 
-  if (!savedTarget) {
-    return null;
-  }
+  if (!savedTarget) return null;
 
   return {
     lat: savedTarget.lat,
@@ -169,11 +194,9 @@ function buildMapHref(
     name: string;
     latitude: number;
     longitude: number;
-  } | null
+  } | null,
 ) {
-  if (!target) {
-    return "/?restoreTarget=1";
-  }
+  if (!target) return "/?restoreTarget=1";
 
   const params = new URLSearchParams({
     restoreTarget: "1",
@@ -189,34 +212,54 @@ function getGpsSignal(gps: GpsFix | null, gpsError: string) {
   if (gpsError || !gps) {
     return {
       level: "lost",
-      label: "GPS Lost - No location connection",
+      label: "Position Quality: Unavailable",
       detail: gpsError || "No GPS fix",
     };
   }
 
   const ageSec = (Date.now() - gps.timestamp) / 1000;
-  const accuracy = gps.accuracy ?? Number.POSITIVE_INFINITY;
+  const grade = getGpsQualityGrade(gps.accuracy);
+  const accuracyDetail =
+    typeof gps.accuracy === "number" && Number.isFinite(gps.accuracy)
+      ? `±${gps.accuracy.toFixed(1)} m`
+      : "Accuracy unavailable";
 
-  if (accuracy <= 10 && ageSec <= 15) {
+  if (ageSec > 30) {
     return {
-      level: "strong",
-      label: "GPS Active - Strong signal",
-      detail: `±${accuracy.toFixed(1)} m`,
+      level: "lost",
+      label: "Position Quality: Stale",
+      detail: `${accuracyDetail} · update ${ageSec.toFixed(0)} s old`,
     };
   }
 
-  if (accuracy <= 30 && ageSec <= 30) {
+  if (grade === "A") {
+    return {
+      level: "strong",
+      label: "Position Quality: Excellent",
+      detail: `${accuracyDetail} · preliminary`,
+    };
+  }
+
+  if (grade === "B") {
+    return {
+      level: "strong",
+      label: "Position Quality: Good",
+      detail: `${accuracyDetail} · preliminary`,
+    };
+  }
+
+  if (grade === "C") {
     return {
       level: "weak",
-      label: "GPS Weak - Weak signal",
-      detail: `±${accuracy.toFixed(1)} m`,
+      label: "Position Quality: Moderate",
+      detail: `${accuracyDetail} · preliminary`,
     };
   }
 
   return {
     level: "lost",
-    label: "GPS Lost - No location connection",
-    detail: accuracy > 30 ? `Accuracy weak ±${accuracy.toFixed(1)} m` : "GPS update too old",
+    label: "Position Quality: Weak",
+    detail: `${accuracyDetail} · preliminary`,
   };
 }
 
@@ -224,19 +267,13 @@ function cameraMessage(errorName: string, fallback: string) {
   if (errorName === "NotAllowedError") {
     return "Camera permission denied. Allow Camera permission in browser site settings.";
   }
-
   if (errorName === "NotReadableError") {
     return "Camera is busy or used by another app. Close camera apps and try again.";
   }
-
-  if (errorName === "NotFoundError") {
-    return "No camera found on this device.";
-  }
-
+  if (errorName === "NotFoundError") return "No camera found on this device.";
   if (errorName === "OverconstrainedError") {
     return "Rear camera constraint failed. SabahLot will try fallback camera.";
   }
-
   return fallback;
 }
 
@@ -245,6 +282,13 @@ export default function ArStakeoutPage() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const gpsWatchRef = useRef<number | null>(null);
+  const headingRef = useRef<number | null>(null);
+  const previousMotionGpsRef = useRef<GpsFix | null>(null);
+  const previousTargetDistanceRef = useRef<number | null>(null);
+  const motionTargetKeyRef = useRef("");
+  const movingAwayCountRef = useRef(0);
+  const approachingCountRef = useRef(0);
+  const courseHeadingRef = useRef<number | null>(null);
 
   const [targetName, setTargetName] = useState("Target Point");
   const [targetLatText, setTargetLatText] = useState("");
@@ -264,6 +308,7 @@ export default function ArStakeoutPage() {
 
   const [heading, setHeading] = useState<number | null>(null);
   const [headingStatus, setHeadingStatus] = useState<HeadingStatus>("Inactive");
+  const [motionGuidance, setMotionGuidance] = useState<MotionGuidance>(EMPTY_MOTION_GUIDANCE);
 
   const [arActive, setArActive] = useState(false);
   const [fieldMessage, setFieldMessage] = useState("");
@@ -298,10 +343,7 @@ export default function ArStakeoutPage() {
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       const restoredTarget = readTargetFromUrlOrMemory();
-
-      if (!restoredTarget) {
-        return;
-      }
+      if (!restoredTarget) return;
 
       setTargetName(restoredTarget.label);
       setTargetLatText(String(restoredTarget.lat));
@@ -315,17 +357,25 @@ export default function ArStakeoutPage() {
       });
     }, 0);
 
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
+    return () => window.clearTimeout(timeoutId);
   }, []);
 
   const metrics = useMemo(() => {
     if (!gps || !target) return null;
 
-    const distance = distanceMeters(gps.latitude, gps.longitude, target.latitude, target.longitude);
-    const bearing = bearingDeg(gps.latitude, gps.longitude, target.latitude, target.longitude);
-    const offset = offsetNE(gps.latitude, gps.longitude, target.latitude, target.longitude);
+    const distance = distanceMeters(
+      gps.latitude,
+      gps.longitude,
+      target.latitude,
+      target.longitude,
+    );
+    const bearing = bearingDeg(
+      gps.latitude,
+      gps.longitude,
+      target.latitude,
+      target.longitude,
+    );
+    const offset = offsetFromDistanceBearing(distance, bearing);
 
     return {
       distance,
@@ -335,30 +385,325 @@ export default function ArStakeoutPage() {
     };
   }, [gps, target]);
 
-  const signal = getGpsSignal(gps, gpsError);
-
-  const relativeAngle = useMemo(() => {
-    if (!metrics || heading === null) return null;
-    return normalizeSigned(metrics.bearing - heading);
-  }, [metrics, heading]);
-
-  const directionText = useMemo(() => {
-    if (!target) return "Enter valid target coordinate.";
-    if (!gps) return "Start GPS first.";
-    if (!metrics) return "Waiting for navigation data.";
-
-    if (heading === null || relativeAngle === null) {
-      return `Compass heading unavailable. Bearing to target: ${metrics.bearing.toFixed(1)}°`;
+  useEffect(() => {
+    if (!gps || !target) {
+      previousMotionGpsRef.current = null;
+      previousTargetDistanceRef.current = null;
+      movingAwayCountRef.current = 0;
+      approachingCountRef.current = 0;
+      courseHeadingRef.current = null;
+      setMotionGuidance(EMPTY_MOTION_GUIDANCE);
+      return;
     }
 
-    if (Math.abs(relativeAngle) <= 15) return "Face target";
-    if (relativeAngle > 15) return `Turn right ${Math.abs(relativeAngle).toFixed(0)}°`;
-    return `Turn left ${Math.abs(relativeAngle).toFixed(0)}°`;
-  }, [target, gps, metrics, heading, relativeAngle]);
+    const targetKey = `${target.latitude.toFixed(7)}:${target.longitude.toFixed(7)}`;
+
+    if (motionTargetKeyRef.current !== targetKey) {
+      motionTargetKeyRef.current = targetKey;
+      previousMotionGpsRef.current = null;
+      previousTargetDistanceRef.current = null;
+      movingAwayCountRef.current = 0;
+      approachingCountRef.current = 0;
+      courseHeadingRef.current = null;
+    }
+
+    const currentDistance = distanceMeters(
+      gps.latitude,
+      gps.longitude,
+      target.latitude,
+      target.longitude,
+    );
+    const previousGps = previousMotionGpsRef.current;
+    const previousDistance = previousTargetDistanceRef.current;
+    const speed =
+      typeof gps.speed === "number" && Number.isFinite(gps.speed)
+        ? gps.speed
+        : null;
+
+    let movementMeters = 0;
+    let rawCourseHeading: number | null = null;
+    let courseSource: MotionGuidance["courseSource"] = null;
+
+    if (
+      typeof gps.heading === "number" &&
+      Number.isFinite(gps.heading) &&
+      speed !== null &&
+      speed >= 0.5
+    ) {
+      rawCourseHeading = normalize360(gps.heading);
+      courseSource = "GPS course";
+    }
+
+    if (previousGps) {
+      movementMeters = distanceMeters(
+        previousGps.latitude,
+        previousGps.longitude,
+        gps.latitude,
+        gps.longitude,
+      );
+
+      if (rawCourseHeading === null && movementMeters >= 1.5) {
+        rawCourseHeading = bearingDeg(
+          previousGps.latitude,
+          previousGps.longitude,
+          gps.latitude,
+          gps.longitude,
+        );
+        courseSource = "Derived course";
+      }
+    }
+
+    let courseHeading = rawCourseHeading;
+
+    if (rawCourseHeading !== null) {
+      const previousCourse = courseHeadingRef.current;
+      if (previousCourse !== null) {
+        const delta = normalizeSigned(rawCourseHeading - previousCourse);
+        courseHeading = normalize360(previousCourse + delta * 0.35);
+      }
+      courseHeadingRef.current = courseHeading;
+    }
+
+    const distanceDelta =
+      previousDistance === null ? null : currentDistance - previousDistance;
+    const accuracy =
+      typeof gps.accuracy === "number" && Number.isFinite(gps.accuracy)
+        ? gps.accuracy
+        : 3;
+    const trendThreshold = Math.max(0.35, Math.min(1, accuracy * 0.15));
+    const reliableMovement =
+      (speed !== null && speed >= 0.5) || movementMeters >= 1.2;
+
+    if (reliableMovement && distanceDelta !== null) {
+      if (distanceDelta > trendThreshold) {
+        movingAwayCountRef.current += 1;
+        approachingCountRef.current = 0;
+      } else if (distanceDelta < -trendThreshold) {
+        approachingCountRef.current += 1;
+        movingAwayCountRef.current = 0;
+      } else {
+        movingAwayCountRef.current = Math.max(0, movingAwayCountRef.current - 1);
+        approachingCountRef.current = Math.max(0, approachingCountRef.current - 1);
+      }
+    }
+
+    const confidence: MotionGuidance["confidence"] =
+      speed !== null && speed >= 0.5
+        ? "good"
+        : movementMeters >= 1.5
+          ? "good"
+          : movementMeters >= 0.7
+            ? "low"
+            : "stationary";
+
+    setMotionGuidance({
+      courseHeading,
+      courseSource,
+      movementMeters,
+      distanceDelta,
+      movingAway: movingAwayCountRef.current >= 2,
+      approaching: approachingCountRef.current >= 1,
+      confidence,
+    });
+
+    previousMotionGpsRef.current = gps;
+    previousTargetDistanceRef.current = currentDistance;
+  }, [gps, target]);
+
+  const signal = getGpsSignal(gps, gpsError);
+
+  const navigationHeading = useMemo(() => {
+    if (
+      motionGuidance.confidence === "good" &&
+      motionGuidance.courseHeading !== null
+    ) {
+      return motionGuidance.courseHeading;
+    }
+    return heading;
+  }, [motionGuidance, heading]);
+
+  const relativeAngle = useMemo(() => {
+    if (!metrics || navigationHeading === null) return null;
+    return normalizeSigned(metrics.bearing - navigationHeading);
+  }, [metrics, navigationHeading]);
+
+  const courseError = useMemo(() => {
+    if (!metrics || motionGuidance.courseHeading === null) return null;
+    return normalizeSigned(metrics.bearing - motionGuidance.courseHeading);
+  }, [metrics, motionGuidance.courseHeading]);
+
+  const localStakeout = useMemo(() => {
+    if (!metrics || navigationHeading === null) return null;
+
+    const headingRad = toRad(navigationHeading);
+
+    return {
+      forward:
+        metrics.north * Math.cos(headingRad) +
+        metrics.east * Math.sin(headingRad),
+      right:
+        -metrics.north * Math.sin(headingRad) +
+        metrics.east * Math.cos(headingRad),
+    };
+  }, [metrics, navigationHeading]);
+
+  const accuracyZone = useMemo(() => {
+    if (
+      !gps ||
+      !metrics ||
+      typeof gps.accuracy !== "number" ||
+      !Number.isFinite(gps.accuracy)
+    ) {
+      return false;
+    }
+    return metrics.distance <= gps.accuracy;
+  }, [gps, metrics]);
+
+  const guidance = useMemo(() => {
+    if (!target) {
+      return {
+        title: "SET TARGET",
+        detail: "Enter a valid target coordinate.",
+        tone: "normal" as const,
+      };
+    }
+
+    if (!gps || !metrics) {
+      return {
+        title: "START GPS",
+        detail: "Wait for a valid position fix before navigating.",
+        tone: "normal" as const,
+      };
+    }
+
+    if (motionGuidance.movingAway) {
+      return {
+        title: "WRONG WAY · TURN AROUND",
+        detail: "Distance is increasing. Stop, turn around and re-align.",
+        tone: "danger" as const,
+      };
+    }
+
+    if (
+      motionGuidance.confidence === "good" &&
+      courseError !== null &&
+      Math.abs(courseError) > 100
+    ) {
+      return {
+        title: "WRONG WAY · TURN AROUND",
+        detail: "Movement course is away from the target.",
+        tone: "danger" as const,
+      };
+    }
+
+    if (accuracyZone) {
+      return {
+        title: "GPS ACCURACY ZONE · STOP & VERIFY",
+        detail: `Target is fixed at the bullseye. Phone GPS uncertainty is ±${gps.accuracy?.toFixed(1) ?? "-"} m.`,
+        tone: "success" as const,
+      };
+    }
+
+    if (metrics.distance <= 1) {
+      return {
+        title: "TARGET ZONE · STOP & VERIFY",
+        detail: "Target stays fixed. Do not use phone GPS for final survey marking.",
+        tone: "success" as const,
+      };
+    }
+
+    if (navigationHeading === null || relativeAngle === null || !localStakeout) {
+      return {
+        title: "WAIT FOR DIRECTION",
+        detail: `Target bearing ${metrics.bearing.toFixed(0)}° ${bearingToCardinal(metrics.bearing)}.`,
+        tone: "normal" as const,
+      };
+    }
+
+    if (metrics.distance > 3) {
+      if (Math.abs(relativeAngle) > 7) {
+        return {
+          title:
+            relativeAngle > 0
+              ? `TURN RIGHT ${Math.abs(relativeAngle).toFixed(0)}°`
+              : `TURN LEFT ${Math.abs(relativeAngle).toFixed(0)}°`,
+          detail: "Point the top of the phone toward the target before walking.",
+          tone: "normal" as const,
+        };
+      }
+
+      return {
+        title: `WALK FORWARD ${formatGuidanceMeters(metrics.distance)}`,
+        detail: motionGuidance.approaching
+          ? "Good direction · distance is reducing."
+          : "Follow the line from YOU to the fixed TARGET bullseye.",
+        tone: "success" as const,
+      };
+    }
+
+    if (Math.abs(relativeAngle) > 10) {
+      return {
+        title:
+          relativeAngle > 0
+            ? `TURN RIGHT ${Math.abs(relativeAngle).toFixed(0)}°`
+            : `TURN LEFT ${Math.abs(relativeAngle).toFixed(0)}°`,
+        detail: "Re-align before the final approach.",
+        tone: "normal" as const,
+      };
+    }
+
+    return {
+      title: `SLOW DOWN · ${formatGuidanceMeters(metrics.distance)}`,
+      detail: "Move the YOU dot toward the fixed TARGET bullseye.",
+      tone: "warning" as const,
+    };
+  }, [
+    target,
+    gps,
+    metrics,
+    motionGuidance,
+    courseError,
+    accuracyZone,
+    navigationHeading,
+    relativeAngle,
+    localStakeout,
+  ]);
+
+  const stakeoutPlot = useMemo(() => {
+    if (!metrics) return null;
+
+    const cx = 110;
+    const cy = 110;
+    const distance = Math.max(metrics.distance, 0.001);
+    const radialDistance = clamp(90 * (1 - Math.exp(-distance / 8)), 2, 90);
+    const userX = clamp(cx - (metrics.east / distance) * radialDistance, 18, 202);
+    const userY = clamp(cy + (metrics.north / distance) * radialDistance, 18, 202);
+    const approachMode = metrics.distance <= 3;
+    const approachScale = 28;
+    const accuracyRadius =
+      approachMode && typeof gps?.accuracy === "number" && Number.isFinite(gps.accuracy)
+        ? clamp(gps.accuracy * approachScale, 10, 88)
+        : 0;
+
+    return {
+      cx,
+      cy,
+      userX,
+      userY,
+      approachMode,
+      accuracyRadius,
+    };
+  }, [metrics, gps]);
 
   function startGps() {
     setGpsError("");
     setFieldMessage("");
+    previousMotionGpsRef.current = null;
+    previousTargetDistanceRef.current = null;
+    movingAwayCountRef.current = 0;
+    approachingCountRef.current = 0;
+    courseHeadingRef.current = null;
+    setMotionGuidance(EMPTY_MOTION_GUIDANCE);
 
     if (!("geolocation" in navigator)) {
       setGpsStatus("GPS not supported");
@@ -403,9 +748,9 @@ export default function ArStakeoutPage() {
       },
       {
         enableHighAccuracy: true,
-        maximumAge: 1000,
+        maximumAge: 500,
         timeout: 15000,
-      }
+      },
     );
   }
 
@@ -414,21 +759,34 @@ export default function ArStakeoutPage() {
       navigator.geolocation.clearWatch(gpsWatchRef.current);
       gpsWatchRef.current = null;
     }
-
     setGpsStatus(gps ? "GPS stopped · last fix retained" : "GPS stopped");
+  }
+
+  function smoothHeading(nextHeading: number) {
+    const previousHeading = headingRef.current;
+
+    if (previousHeading === null) {
+      headingRef.current = nextHeading;
+      return nextHeading;
+    }
+
+    const delta = normalizeSigned(nextHeading - previousHeading);
+    const smoothed = normalize360(previousHeading + delta * 0.25);
+    headingRef.current = smoothed;
+    return smoothed;
   }
 
   function handleOrientation(event: DeviceOrientationEvent) {
     const mobileEvent = event as WebkitOrientationEvent;
 
     if (typeof mobileEvent.webkitCompassHeading === "number") {
-      setHeading(normalize360(mobileEvent.webkitCompassHeading));
+      setHeading(smoothHeading(normalize360(mobileEvent.webkitCompassHeading)));
       setHeadingStatus("Active");
       return;
     }
 
     if (typeof event.alpha === "number") {
-      setHeading(normalize360(360 - event.alpha));
+      setHeading(smoothHeading(normalize360(360 - event.alpha)));
       setHeadingStatus("Active");
       return;
     }
@@ -446,7 +804,6 @@ export default function ArStakeoutPage() {
 
       if (DeviceOrientation?.requestPermission) {
         const permission = await DeviceOrientation.requestPermission();
-
         if (permission !== "granted") {
           setHeadingStatus("Denied");
           return;
@@ -477,18 +834,17 @@ export default function ArStakeoutPage() {
 
   async function getUserMediaWithTimeout(
     constraints: MediaStreamConstraints,
-    timeoutMs: number
+    timeoutMs: number,
   ): Promise<MediaStream> {
     if (!navigator.mediaDevices?.getUserMedia) {
       throw new Error("Camera is not supported in this browser.");
     }
 
     const cameraPromise = navigator.mediaDevices.getUserMedia(constraints);
-
     const timeoutPromise = new Promise<never>((_, reject) => {
       window.setTimeout(() => {
         const error = new Error(
-          "Camera permission request timed out. Please allow camera permission or reopen in Chrome/Safari."
+          "Camera permission request timed out. Please allow camera permission or reopen in Chrome/Safari.",
         );
         error.name = "TimeoutError";
         reject(error);
@@ -516,19 +872,11 @@ export default function ArStakeoutPage() {
       },
       {
         mode: "environment",
-        constraints: {
-          video: {
-            facingMode: "environment",
-          },
-          audio: false,
-        },
+        constraints: { video: { facingMode: "environment" }, audio: false },
       },
       {
         mode: "any camera",
-        constraints: {
-          video: true,
-          audio: false,
-        },
+        constraints: { video: true, audio: false },
       },
     ];
 
@@ -563,7 +911,7 @@ export default function ArStakeoutPage() {
 
       if (getUserMediaSupport !== "yes") {
         const error = new Error(
-          "Camera is not supported in this browser. Open alpha.sabahlot.com in Chrome Android or Safari iPhone."
+          "Camera is not supported in this browser. Open alpha.sabahlot.com in Chrome Android or Safari iPhone.",
         );
         error.name = "NotSupportedError";
         throw error;
@@ -571,12 +919,9 @@ export default function ArStakeoutPage() {
 
       const stream = await requestCameraStream();
       cameraStreamRef.current = stream;
-
       const video = videoRef.current;
 
-      if (!video) {
-        throw new Error("Video element is not ready.");
-      }
+      if (!video) throw new Error("Video element is not ready.");
 
       video.muted = true;
       video.playsInline = true;
@@ -601,12 +946,10 @@ export default function ArStakeoutPage() {
       });
 
       await video.play();
-
       setVideoReady(true);
       setCameraStatus("Active");
     } catch (error) {
       const err = error as Error & { name?: string };
-
       const name = err?.name || "CameraError";
       const message = cameraMessage(name, err?.message || "Camera failed to start.");
 
@@ -617,7 +960,7 @@ export default function ArStakeoutPage() {
             ? "Not supported"
             : name === "TimeoutError"
               ? "Timed out"
-              : "Failed to start"
+              : "Failed to start",
       );
       setCameraErrorName(name);
       setCameraErrorMessage(message);
@@ -651,7 +994,6 @@ export default function ArStakeoutPage() {
 
     setFieldMessage("");
     setArActive(true);
-
     await enableHeading();
     await startCamera();
   }
@@ -684,14 +1026,6 @@ export default function ArStakeoutPage() {
     setSavedPoints((items) => [record, ...items].slice(0, 10));
     setNote("");
 
-    // Bug fix 2026-08-18: this page has no shared React state with
-    // FieldGpsLite (the main map's own found-point list) -- without this,
-    // savedPoints above is the ONLY copy, and it is pure in-memory state
-    // that is destroyed the moment the user navigates back to the map,
-    // silently losing every point captured here. Persist into
-    // FieldGpsLite's own storage so it survives that navigation and shows
-    // up in the map's Field GPS panel, same as the target point already
-    // does via gpsTargetMemory.
     const persisted = appendFoundPointToFieldGpsStorage({
       targetName: target.name,
       targetLatitude: target.latitude,
@@ -718,16 +1052,22 @@ export default function ArStakeoutPage() {
       if (gpsWatchRef.current !== null) {
         navigator.geolocation.clearWatch(gpsWatchRef.current);
       }
-
       cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
       window.removeEventListener("deviceorientation", handleOrientation, true);
     };
   }, []);
 
   const canSave = Boolean(gps && target && metrics);
-  const arrowRotation = heading !== null && relativeAngle !== null ? relativeAngle : 0;
   const targetDirection = metrics ? bearingToCardinal(metrics.bearing) : "-";
   const headingDirection = heading !== null ? bearingToCardinal(heading) : "-";
+  const navigationDirection =
+    navigationHeading !== null ? bearingToCardinal(navigationHeading) : "-";
+
+  const distanceDisplay = useMemo(() => {
+    if (!metrics) return "-";
+    const prefix = accuracyZone ? "~" : "";
+    return `${prefix}${formatGuidanceMeters(metrics.distance)}`;
+  }, [metrics, accuracyZone]);
 
   return (
     <main className={styles.page}>
@@ -735,9 +1075,7 @@ export default function ArStakeoutPage() {
         <div>
           <p className={styles.kicker}>{brandLabel}</p>
           <h1>AR Guide</h1>
-          <p>
-            Preliminary Field Assist using phone GPS, camera, and directional arrow.
-          </p>
+          <p>Preliminary Field Assist using phone GPS, camera, and GNSS-style stakeout.</p>
         </div>
         <button
           type="button"
@@ -754,27 +1092,19 @@ export default function ArStakeoutPage() {
               return;
             }
 
-            const savedTarget =
-              readGpsTargetMemory();
-
+            const savedTarget = readGpsTargetMemory();
             if (savedTarget) {
               router.push(
                 buildMapHref({
-                  name:
-                    savedTarget.label ||
-                    "AR Guide Target",
-                  latitude:
-                    savedTarget.lat,
-                  longitude:
-                    savedTarget.lng,
+                  name: savedTarget.label || "AR Guide Target",
+                  latitude: savedTarget.lat,
+                  longitude: savedTarget.lng,
                 }),
               );
               return;
             }
 
-            router.push(
-              "/?restoreTarget=1",
-            );
+            router.push("/?restoreTarget=1");
           }}
         >
           ← Back to Map
@@ -815,12 +1145,8 @@ export default function ArStakeoutPage() {
           )}
 
           <div className={styles.buttonRow}>
-            <button type="button" onClick={startGps}>
-              Start GPS
-            </button>
-            <button type="button" onClick={stopGps}>
-              Stop GPS
-            </button>
+            <button type="button" onClick={startGps}>Start GPS</button>
+            <button type="button" onClick={stopGps}>Stop GPS</button>
           </div>
 
           <button type="button" className={styles.secondaryButton} onClick={testCamera}>
@@ -831,9 +1157,7 @@ export default function ArStakeoutPage() {
             <button type="button" className={styles.primaryButton} onClick={startArGuide}>
               Start AR Guide
             </button>
-            <button type="button" onClick={stopArGuide}>
-              Stop AR
-            </button>
+            <button type="button" onClick={stopArGuide}>Stop AR</button>
           </div>
 
           <label>
@@ -861,38 +1185,18 @@ export default function ArStakeoutPage() {
           </div>
 
           <dl className={styles.statusList}>
+            <div><dt>GPS status</dt><dd>{gpsStatus}</dd></div>
+            <div><dt>Latitude</dt><dd>{gps ? gps.latitude.toFixed(7) : "-"}</dd></div>
+            <div><dt>Longitude</dt><dd>{gps ? gps.longitude.toFixed(7) : "-"}</dd></div>
+            <div><dt>Accuracy</dt><dd>{gps?.accuracy ? `±${gps.accuracy.toFixed(1)} m` : "-"}</dd></div>
+            <div><dt>Bearing</dt><dd>{metrics ? `${metrics.bearing.toFixed(1)}° ${targetDirection}` : "-"}</dd></div>
+            <div><dt>Phone heading</dt><dd>{heading !== null ? `${heading.toFixed(1)}° ${headingDirection}` : headingStatus}</dd></div>
             <div>
-              <dt>GPS status</dt>
-              <dd>{gpsStatus}</dd>
+              <dt>Navigation reference</dt>
+              <dd>{navigationHeading !== null ? `${navigationHeading.toFixed(1)}° ${navigationDirection}` : "-"}</dd>
             </div>
-            <div>
-              <dt>Latitude</dt>
-              <dd>{gps ? gps.latitude.toFixed(7) : "-"}</dd>
-            </div>
-            <div>
-              <dt>Longitude</dt>
-              <dd>{gps ? gps.longitude.toFixed(7) : "-"}</dd>
-            </div>
-            <div>
-              <dt>Accuracy</dt>
-              <dd>{gps?.accuracy ? `±${gps.accuracy.toFixed(1)} m` : "-"}</dd>
-            </div>
-            <div>
-              <dt>Bearing</dt>
-              <dd>{metrics ? `${metrics.bearing.toFixed(1)}° ${targetDirection}` : "-"}</dd>
-            </div>
-            <div>
-              <dt>Heading</dt>
-              <dd>{heading !== null ? `${heading.toFixed(1)}° ${headingDirection}` : headingStatus}</dd>
-            </div>
-            <div>
-              <dt>Direction</dt>
-              <dd>{directionText}</dd>
-            </div>
-            <div>
-              <dt>Camera</dt>
-              <dd>{cameraStatus}</dd>
-            </div>
+            <div><dt>Guidance</dt><dd>{guidance.title}</dd></div>
+            <div><dt>Camera</dt><dd>{cameraStatus}</dd></div>
           </dl>
 
           <div className={styles.diagnostics}>
@@ -902,6 +1206,18 @@ export default function ArStakeoutPage() {
             <span suppressHydrationWarning>getUserMedia: {getUserMediaSupport}</span>
             <span suppressHydrationWarning>Camera mode: {cameraMode}</span>
             <span>Video ready: {videoReady ? "yes" : "no"}</span>
+            <span>N/E: {metrics ? `${formatMeters(metrics.north)} / ${formatMeters(metrics.east)}` : "-"}</span>
+            <span>F/R: {localStakeout ? `${formatMeters(localStakeout.forward)} / ${formatMeters(localStakeout.right)}` : "-"}</span>
+            <span>
+              Course: {motionGuidance.courseHeading !== null
+                ? `${motionGuidance.courseHeading.toFixed(1)}° ${bearingToCardinal(motionGuidance.courseHeading)} (${motionGuidance.courseSource})`
+                : "waiting for movement"}
+            </span>
+            <span>
+              Distance trend: {motionGuidance.distanceDelta !== null
+                ? `${motionGuidance.distanceDelta >= 0 ? "+" : ""}${motionGuidance.distanceDelta.toFixed(2)} m`
+                : "waiting"}
+            </span>
             {cameraErrorName && <span>Error name: {cameraErrorName}</span>}
             {cameraErrorMessage && <span>Error message: {cameraErrorMessage}</span>}
           </div>
@@ -915,92 +1231,183 @@ export default function ArStakeoutPage() {
           <div className={styles.arTop}>
             <div>
               <p className={styles.kicker}>AR Guide</p>
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  borderRadius: 999,
+                  padding: "5px 9px",
+                  marginBottom: 6,
+                  background: "rgba(15, 23, 42, 0.78)",
+                  border: "1px solid rgba(255, 255, 255, 0.45)",
+                  color: "#ffffff",
+                  fontSize: 10,
+                  fontWeight: 900,
+                  letterSpacing: "0.08em",
+                }}
+              >
+                PRELIMINARY FIELD ASSIST
+              </span>
               <h2>{target?.name || "Target Point"}</h2>
-              <p>{directionText}</p>
+              <div
+                style={{
+                  marginTop: 10,
+                  maxWidth: 430,
+                  borderRadius: 16,
+                  padding: "10px 12px",
+                  background:
+                    guidance.tone === "danger"
+                      ? "rgba(153, 27, 27, 0.92)"
+                      : guidance.tone === "success"
+                        ? "rgba(22, 101, 52, 0.88)"
+                        : guidance.tone === "warning"
+                          ? "rgba(133, 77, 14, 0.9)"
+                          : "rgba(15, 23, 42, 0.82)",
+                  border: "1px solid rgba(255, 255, 255, 0.35)",
+                  color: "#ffffff",
+                }}
+              >
+                <strong style={{ display: "block", fontSize: 18, lineHeight: 1.15, fontWeight: 950 }}>
+                  {guidance.title}
+                </strong>
+                <span style={{ display: "block", marginTop: 5, fontSize: 12, lineHeight: 1.3, color: "rgba(255,255,255,0.9)", fontWeight: 750 }}>
+                  {guidance.detail}
+                </span>
+              </div>
+              <span style={{ display: "block", marginTop: 6, fontSize: 11, fontWeight: 800, color: "#dbeafe" }}>
+                GNSS-style north-up stakeout · TARGET stays fixed · YOU moves
+              </span>
             </div>
-            <button type="button" onClick={stopArGuide}>
+            <button
+              type="button"
+              onClick={stopArGuide}
+              style={{ padding: "8px 12px", minHeight: 40, minWidth: 96, borderRadius: 12, fontSize: 14, whiteSpace: "nowrap" }}
+            >
               Stop AR
             </button>
           </div>
 
-          <div className={styles.targetDot} />
-          <div className={styles.distanceBubble}>{metrics ? formatMeters(metrics.distance) : "-"}</div>
+          <div className={styles.distanceBubble}>{distanceDisplay}</div>
 
-          <div className={styles.guideLine}>
-            <span />
-            <span />
-            <span />
-            <span />
+          <div
+            style={{
+              justifySelf: "center",
+              width: "min(72vw, 300px)",
+              aspectRatio: "1 / 1",
+              borderRadius: 24,
+              background: "rgba(15, 23, 42, 0.72)",
+              border: "1px solid rgba(255,255,255,0.42)",
+              boxShadow: "0 18px 36px rgba(2,6,23,0.32)",
+              padding: 8,
+              zIndex: 4,
+            }}
+          >
+            <svg
+              viewBox="0 0 220 220"
+              width="100%"
+              height="100%"
+              role="img"
+              aria-label="GNSS-style target centered stakeout plot"
+            >
+              <defs>
+                <marker id="stake-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="white" />
+                </marker>
+              </defs>
+
+              <circle cx="110" cy="110" r="92" fill="rgba(2,6,23,0.34)" stroke="rgba(255,255,255,0.32)" strokeWidth="1.5" />
+              <line x1="110" y1="18" x2="110" y2="202" stroke="rgba(255,255,255,0.18)" strokeWidth="1" />
+              <line x1="18" y1="110" x2="202" y2="110" stroke="rgba(255,255,255,0.18)" strokeWidth="1" />
+              <circle cx="110" cy="110" r="46" fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="1" strokeDasharray="4 5" />
+
+              <text x="110" y="14" textAnchor="middle" fill="white" fontSize="12" fontWeight="900">N</text>
+              <text x="210" y="114" textAnchor="middle" fill="white" fontSize="10" fontWeight="800">E</text>
+              <text x="110" y="216" textAnchor="middle" fill="white" fontSize="10" fontWeight="800">S</text>
+              <text x="10" y="114" textAnchor="middle" fill="white" fontSize="10" fontWeight="800">W</text>
+
+              {stakeoutPlot?.approachMode && stakeoutPlot.accuracyRadius > 0 && (
+                <circle
+                  cx={stakeoutPlot.userX}
+                  cy={stakeoutPlot.userY}
+                  r={stakeoutPlot.accuracyRadius}
+                  fill="rgba(59,130,246,0.08)"
+                  stroke="rgba(147,197,253,0.55)"
+                  strokeWidth="1.5"
+                  strokeDasharray="5 4"
+                />
+              )}
+
+              {stakeoutPlot && (
+                <line
+                  x1={stakeoutPlot.userX}
+                  y1={stakeoutPlot.userY}
+                  x2={stakeoutPlot.cx}
+                  y2={stakeoutPlot.cy}
+                  stroke={motionGuidance.movingAway ? "#fecaca" : "#ffffff"}
+                  strokeWidth="4"
+                  strokeLinecap="round"
+                  markerEnd="url(#stake-arrow)"
+                />
+              )}
+
+              <circle cx="110" cy="110" r="15" fill="rgba(239,68,68,0.18)" stroke="#fecaca" strokeWidth="2" />
+              <circle cx="110" cy="110" r="8" fill="#ef4444" stroke="white" strokeWidth="3" />
+              <line x1="94" y1="110" x2="126" y2="110" stroke="white" strokeWidth="1.6" />
+              <line x1="110" y1="94" x2="110" y2="126" stroke="white" strokeWidth="1.6" />
+              <text x="110" y="139" textAnchor="middle" fill="white" fontSize="10" fontWeight="900">TARGET</text>
+
+              {stakeoutPlot && (
+                <>
+                  <circle cx={stakeoutPlot.userX} cy={stakeoutPlot.userY} r="11" fill="#2563eb" stroke="#dbeafe" strokeWidth="3" />
+                  <circle cx={stakeoutPlot.userX} cy={stakeoutPlot.userY} r="3" fill="white" />
+                  <text
+                    x={stakeoutPlot.userX}
+                    y={stakeoutPlot.userY + (stakeoutPlot.userY < 150 ? -16 : 22)}
+                    textAnchor="middle"
+                    fill="white"
+                    fontSize="10"
+                    fontWeight="900"
+                  >
+                    YOU
+                  </text>
+                </>
+              )}
+            </svg>
           </div>
 
-          <div className={styles.arrowWrap}>
-            <div className={styles.compassRose} aria-label="Compass direction reference">
-              <span className={styles.compassN}>N</span>
-              <span className={styles.compassNE}>NE</span>
-              <span className={styles.compassE}>E</span>
-              <span className={styles.compassSE}>SE</span>
-              <span className={styles.compassS}>S</span>
-              <span className={styles.compassSW}>SW</span>
-              <span className={styles.compassW}>W</span>
-              <span className={styles.compassNW}>NW</span>
-
-              <div
-                className={styles.arrow}
-                style={{
-                  transform: `rotate(${arrowRotation}deg)`,
-                }}
-              >
-                ↑
-              </div>
-            </div>
-          </div>
-
-          <div className={styles.bottomStrip}>
+          <div className={styles.bottomStrip} style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
             <div>
               <span>Target</span>
               <strong>{target?.name || "-"}</strong>
             </div>
             <div>
               <span>Distance</span>
-              <strong>{metrics ? formatMeters(metrics.distance) : "-"}</strong>
+              <strong>{distanceDisplay}</strong>
             </div>
             <div>
-              <span>Bearing</span>
-              <strong>{metrics ? `${metrics.bearing.toFixed(1)}° ${targetDirection}` : "-"}</strong>
-            </div>
-            <div>
-              <span>N / E</span>
-              <strong>
-                {metrics ? `${formatMeters(metrics.north)} / ${formatMeters(metrics.east)}` : "-"}
-              </strong>
+              <span>GPS accuracy</span>
+              <strong>{gps?.accuracy ? `±${gps.accuracy.toFixed(1)} m` : "-"}</strong>
             </div>
           </div>
 
           <div className={styles.arStatusRow}>
             <span className={`${styles.signalDot} ${styles[signal.level] ?? ""}`} />
             <span>{signal.label}</span>
+            <span>{stakeoutPlot?.approachMode ? "Mode: Target-centered grid" : "Mode: Direction"}</span>
             <span>Camera: {cameraStatus}</span>
-            <span>Heading: {heading !== null ? `${heading.toFixed(1)}° ${headingDirection}` : headingStatus}</span>
             <span>Video: {videoReady ? "ready" : "not ready"}</span>
           </div>
 
           {!videoReady && cameraStatus === "Active" && (
             <div className={styles.videoWarning}>
-              Camera stream active but video frame is not visible. Try Test Camera again or reopen
-              this page in Chrome/Safari.
-            </div>
-          )}
-
-          {!arActive && (
-            <div className={styles.notActive}>
-              Tap Test Camera to test the camera or Start AR Guide for find point guidance.
+              Camera stream active but video frame is not visible. Try Test Camera again or reopen this page in Chrome/Safari.
             </div>
           )}
         </div>
       </section>
 
       <section className={styles.disclaimer}>
-        Preliminary Field Assist navigation only.
+        Preliminary Field Assist navigation only. Target bullseye represents the fixed entered coordinate; phone GPS position may wander within reported accuracy.
       </section>
 
       <section className={styles.panel}>
@@ -1012,9 +1419,7 @@ export default function ArStakeoutPage() {
             {savedPoints.map((point) => (
               <article key={point.id}>
                 <strong>{point.targetName}</strong>
-                <span>
-                  Found: {point.foundLat.toFixed(7)}, {point.foundLng.toFixed(7)}
-                </span>
+                <span>Found: {point.foundLat.toFixed(7)}, {point.foundLng.toFixed(7)}</span>
                 <span>Distance: {formatMeters(point.distance)}</span>
                 <span>Bearing: {point.bearing.toFixed(1)}°</span>
                 <span>Accuracy: {point.accuracy ? `±${point.accuracy.toFixed(1)} m` : "-"}</span>
@@ -1028,8 +1433,3 @@ export default function ArStakeoutPage() {
     </main>
   );
 }
-
-
-
-
-

@@ -123,6 +123,7 @@ type GpsSignalLevel =
 interface GpsSignalStatus {
   level: GpsSignalLevel;
   label: string;
+  compactLabel: "GOOD" | "FAIR" | "NO FIX";
   className: string;
 }
 
@@ -246,11 +247,11 @@ function getGpsSignalStatus(
   lastUpdateMs: number,
 ): GpsSignalStatus {
   const lostLabel =
-    "GPS Lost - No location connection";
+    "Position Quality · NO FIX";
   const weakLabel =
-    "GPS Weak - Weak signal";
+    "Position Quality · FAIR";
   const strongLabel =
-    "GPS Active - Strong signal";
+    "Position Quality · GOOD";
 
   const statusText =
     `${gpsStatus} ${error}`.toLowerCase();
@@ -264,11 +265,11 @@ function getGpsSignalStatus(
   const buildStatus = (
     level: GpsSignalLevel,
     baseLabel: string,
-  ) => {
+  ): GpsSignalStatus => {
     const accuracyLabel =
       position?.accuracyMeters !==
       undefined
-        ? ` - +/-${position.accuracyMeters.toFixed(
+        ? ` · ±${position.accuracyMeters.toFixed(
             1,
           )} m`
         : "";
@@ -276,6 +277,12 @@ function getGpsSignalStatus(
     return {
       level,
       label: `${baseLabel}${accuracyLabel}`,
+      compactLabel:
+        level === "strong"
+          ? "GOOD"
+          : level === "weak"
+            ? "FAIR"
+            : "NO FIX",
       className: `sl-gps-signal sl-gps-signal-${level}`,
     };
   };
@@ -1028,6 +1035,8 @@ export default function FieldGpsLite({
     useRef<string | null>(null);
   const fieldGpsRestoredRef =
     useRef(false);
+  const fieldGpsCardRef =
+    useRef<HTMLDivElement | null>(null);
 
   const stopCameraStream =
     useCallback(() => {
@@ -1255,6 +1264,15 @@ export default function FieldGpsLite({
       targetNavigation?.bearingDegrees,
       reading?.heading,
     );
+
+  const compactTargetBearing =
+    targetNavigation
+      ? String(
+          Math.round(
+            targetNavigation.bearingDegrees,
+          ) % 360,
+        ).padStart(3, "0")
+      : "---";
 
   const restoreTargetToFieldGps =
     useCallback(
@@ -1779,6 +1797,98 @@ export default function FieldGpsLite({
   }, [
     closeFieldGpsPanel,
     enabled,
+  ]);
+
+  useEffect(() => {
+    if (!enabled || !open) {
+      return;
+    }
+
+    let landscape =
+      window.innerWidth > window.innerHeight;
+    const settleTimers: number[] = [];
+    const resetScrollNow = () => {
+      const card = fieldGpsCardRef.current;
+      if (!card) {
+        return;
+      }
+
+      card.scrollTop = 0;
+      const stack =
+        card.closest<HTMLElement>(
+          ".sl-field-gps-stack",
+        );
+      if (stack) {
+        stack.scrollTop = 0;
+      }
+    };
+    const resetPanelScroll = () => {
+      settleTimers.splice(0).forEach(
+        (timer) => window.clearTimeout(timer),
+      );
+      resetScrollNow();
+      [150, 500].forEach((delay) => {
+        settleTimers.push(
+          window.setTimeout(
+            resetScrollNow,
+            delay,
+          ),
+        );
+      });
+    };
+    const handleViewportResize = () => {
+      const nextLandscape =
+        window.innerWidth > window.innerHeight;
+      if (nextLandscape === landscape) {
+        return;
+      }
+
+      landscape = nextLandscape;
+      resetPanelScroll();
+    };
+
+    resetPanelScroll();
+    window.addEventListener(
+      "orientationchange",
+      resetPanelScroll,
+    );
+    window.screen.orientation?.addEventListener(
+      "change",
+      resetPanelScroll,
+    );
+    window.addEventListener(
+      "resize",
+      handleViewportResize,
+    );
+    window.visualViewport?.addEventListener(
+      "resize",
+      handleViewportResize,
+    );
+
+    return () => {
+      settleTimers.splice(0).forEach(
+        (timer) => window.clearTimeout(timer),
+      );
+      window.removeEventListener(
+        "orientationchange",
+        resetPanelScroll,
+      );
+      window.screen.orientation?.removeEventListener(
+        "change",
+        resetPanelScroll,
+      );
+      window.removeEventListener(
+        "resize",
+        handleViewportResize,
+      );
+      window.visualViewport?.removeEventListener(
+        "resize",
+        handleViewportResize,
+      );
+    };
+  }, [
+    enabled,
+    open,
   ]);
 
   if (!enabled) {
@@ -3043,7 +3153,10 @@ export default function FieldGpsLite({
       </button>
 
       {open && (
-        <div className="sl-field-gps-card">
+        <div
+          ref={fieldGpsCardRef}
+          className="sl-field-gps-card"
+        >
           <div className="sl-field-gps-heading">
             <div>
               <span>Handheld GPS</span>
@@ -3065,10 +3178,42 @@ export default function FieldGpsLite({
             Preliminary Field Assist
           </p>
 
+          <div className="sl-field-gps-actions sl-field-gps-quick-actions">
+            <button
+              type="button"
+              onClick={toggleGps}
+              className={
+                gpsActive
+                  ? "is-active"
+                  : ""
+              }
+            >
+              {gpsActive
+                ? "Stop GPS"
+                : "Start GPS"}
+            </button>
+            <button
+              type="button"
+              onClick={toggleTracking}
+              className={
+                tracking
+                  ? "is-active"
+                  : ""
+              }
+            >
+              {tracking
+                ? "Stop Tracking"
+                : "Track Position"}
+            </button>
+          </div>
+
           <FieldGpsAccuracyPanel
             reading={reading}
             status={status}
             qualityGrade={qualityGrade}
+            positionQualityLabel={
+              gpsSignalStatus.compactLabel
+            }
             gpsSignalLabel={
               gpsSignalStatus.label
             }
@@ -3085,6 +3230,35 @@ export default function FieldGpsLite({
             }
           />
 
+          {targetPoint && (
+            <div
+              className="sl-field-gps-compact-target"
+              aria-label="Find Point status"
+            >
+              <span>Find Point</span>
+              <strong>
+                {targetPoint.label} ·{" "}
+                {targetNavigation
+                  ? formatDistance(
+                      targetNavigation.distanceMeters,
+                    )
+                  : "-"} · {compactTargetBearing}°
+                <span
+                  className="sl-field-gps-compact-direction"
+                  style={{
+                    transform: `rotate(${directionArrowDegrees}deg)`,
+                  }}
+                  aria-label="Direction to target"
+                >
+                  ↑
+                </span>
+              </strong>
+            </div>
+          )}
+
+          <details className="sl-field-gps-more-tools">
+            <summary>More GPS tools</summary>
+            <div className="sl-field-gps-more-tools-content">
           <section className="sl-field-gps-section">
             <div className="sl-field-gps-actions">
               <button
@@ -3093,32 +3267,6 @@ export default function FieldGpsLite({
                 className="sl-field-gps-action-primary"
               >
                 AR Guide
-              </button>
-              <button
-                type="button"
-                onClick={toggleGps}
-                className={
-                  gpsActive
-                    ? "is-active"
-                    : ""
-                }
-              >
-                {gpsActive
-                  ? "Stop GPS"
-                  : "Start GPS"}
-              </button>
-              <button
-                type="button"
-                onClick={toggleTracking}
-                className={
-                  tracking
-                    ? "is-active"
-                    : ""
-                }
-              >
-                {tracking
-                  ? "Stop Tracking"
-                  : "Track My Position"}
               </button>
               <button
                 type="button"
@@ -3132,44 +3280,49 @@ export default function FieldGpsLite({
               </button>
             </div>
 
-            <div className="sl-field-gps-grid">
-              <span>GPS signal</span>
-              <strong>
-                <span
-                  className={
-                    gpsSignalStatus.className
-                  }
-                >
-                  {gpsSignalStatus.label}
-                </span>
-              </strong>
-              <span>GPS state</span>
-              <strong>
-                {gpsActive
-                  ? "Started"
-                  : "Stopped"}
-              </strong>
-              <span>Tracking state</span>
-              <strong>
-                {tracking
-                  ? "Started"
-                  : "Stopped"}
-              </strong>
-              <span>Navigation</span>
-              <strong>
-                {navigationActive
-                  ? "Started"
-                  : "Stopped"}
-              </strong>
-              <span>Camera</span>
-              <strong>
-                Camera: {cameraStatus}
-              </strong>
-              <span>Track fixes</span>
-              <strong>
-                {trackLog.length}
-              </strong>
-            </div>
+            <details className="sl-field-gps-diagnostics">
+              <summary>Session diagnostics</summary>
+              <div className="sl-field-gps-diagnostics-content">
+                <div className="sl-field-gps-grid">
+                  <span>Position Quality</span>
+                  <strong>
+                    <span
+                      className={
+                        gpsSignalStatus.className
+                      }
+                    >
+                      {gpsSignalStatus.label}
+                    </span>
+                  </strong>
+                  <span>GPS state</span>
+                  <strong>
+                    {gpsActive
+                      ? "Started"
+                      : "Stopped"}
+                  </strong>
+                  <span>Tracking state</span>
+                  <strong>
+                    {tracking
+                      ? "Started"
+                      : "Stopped"}
+                  </strong>
+                  <span>Navigation</span>
+                  <strong>
+                    {navigationActive
+                      ? "Started"
+                      : "Stopped"}
+                  </strong>
+                  <span>Camera</span>
+                  <strong>
+                    Camera: {cameraStatus}
+                  </strong>
+                  <span>Track fixes</span>
+                  <strong>
+                    {trackLog.length}
+                  </strong>
+                </div>
+              </div>
+            </details>
           </section>
 
           <section className="sl-field-gps-section">
@@ -3633,7 +3786,7 @@ export default function FieldGpsLite({
                   &uarr;
                 </div>
                 <div className="sl-field-gps-grid">
-                  <span>GPS signal</span>
+                  <span>Position Quality</span>
                   <strong>
                     <span
                       className={
@@ -4167,6 +4320,8 @@ export default function FieldGpsLite({
               </Link>
             </div>
           </section>
+            </div>
+          </details>
         </div>
       )}
     </section>
