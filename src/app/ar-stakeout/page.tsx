@@ -133,6 +133,12 @@ function formatMeters(value: number | null | undefined) {
   return `${value.toFixed(1)} m`;
 }
 
+function formatGuidanceMeters(value: number | null | undefined) {
+  if (value === null || value === undefined || Number.isNaN(value)) return "-";
+  if (Math.abs(value) < 10) return `${value.toFixed(1)} m`;
+  return `${value.toFixed(0)} m`;
+}
+
 function bearingToCardinal(value: number | null | undefined) {
   if (value === null || value === undefined || Number.isNaN(value)) return "-";
 
@@ -549,17 +555,37 @@ export default function ArStakeoutPage() {
     };
   }, [metrics, navigationHeading]);
 
-  const directionText = useMemo(() => {
-    if (!target) return "Enter valid target coordinate.";
-    if (!gps) return "Start GPS first.";
-    if (!metrics) return "Waiting for navigation data.";
+  const accuracyZone = useMemo(() => {
+    if (!gps || !metrics || typeof gps.accuracy !== "number" || !Number.isFinite(gps.accuracy)) {
+      return false;
+    }
 
-    if (metrics.distance <= 0.8) {
-      return "Near target - verify before marking";
+    return metrics.distance <= gps.accuracy;
+  }, [gps, metrics]);
+
+  const guidance = useMemo(() => {
+    if (!target) {
+      return {
+        title: "SET TARGET",
+        detail: "Enter a valid target coordinate.",
+        tone: "normal" as const,
+      };
+    }
+
+    if (!gps || !metrics) {
+      return {
+        title: "START GPS",
+        detail: "Wait for a valid position fix before navigating.",
+        tone: "normal" as const,
+      };
     }
 
     if (motionGuidance.movingAway) {
-      return "MOVING AWAY - turn around and re-align";
+      return {
+        title: "WRONG WAY · TURN AROUND",
+        detail: "Distance is increasing. Stop, turn around and re-align.",
+        tone: "danger" as const,
+      };
     }
 
     if (
@@ -567,42 +593,82 @@ export default function ArStakeoutPage() {
       courseError !== null &&
       Math.abs(courseError) > 100
     ) {
-      return "Movement is away from target - turn around";
+      return {
+        title: "WRONG WAY · TURN AROUND",
+        detail: "Movement course is away from the target.",
+        tone: "danger" as const,
+      };
+    }
+
+    if (accuracyZone) {
+      return {
+        title: "GPS ACCURACY ZONE · STOP & VERIFY",
+        detail: `Target is inside the phone GPS uncertainty (±${gps.accuracy?.toFixed(1) ?? "-"} m).`,
+        tone: "success" as const,
+      };
+    }
+
+    if (metrics.distance <= 1) {
+      return {
+        title: "TARGET ZONE · STOP & VERIFY",
+        detail: "Do not rely on phone GPS for final survey marking.",
+        tone: "success" as const,
+      };
     }
 
     if (navigationHeading === null || relativeAngle === null || !localStakeout) {
-      return `Compass heading unavailable. Bearing to target: ${metrics.bearing.toFixed(1)}°`;
+      return {
+        title: "WAIT FOR DIRECTION",
+        detail: `Target bearing ${metrics.bearing.toFixed(0)}° ${bearingToCardinal(metrics.bearing)}.`,
+        tone: "normal" as const,
+      };
     }
 
-    if (Math.abs(relativeAngle) > 7) {
-      if (relativeAngle > 0) return `Turn right ${Math.abs(relativeAngle).toFixed(0)}°`;
-      return `Turn left ${Math.abs(relativeAngle).toFixed(0)}°`;
-    }
-
-    if (metrics.distance <= 3) {
-      if (localStakeout.right > 0.35) {
-        return `Move right ${Math.abs(localStakeout.right).toFixed(2)} m`;
+    if (metrics.distance > 3) {
+      if (Math.abs(relativeAngle) > 7) {
+        return {
+          title: relativeAngle > 0
+            ? `TURN RIGHT ${Math.abs(relativeAngle).toFixed(0)}°`
+            : `TURN LEFT ${Math.abs(relativeAngle).toFixed(0)}°`,
+          detail: "Point the top of the phone toward the target before walking.",
+          tone: "normal" as const,
+        };
       }
 
-      if (localStakeout.right < -0.35) {
-        return `Move left ${Math.abs(localStakeout.right).toFixed(2)} m`;
-      }
+      return {
+        title: `WALK FORWARD ${formatGuidanceMeters(metrics.distance)}`,
+        detail: motionGuidance.approaching
+          ? "Good direction · distance is reducing."
+          : "Keep the top of the phone pointing forward.",
+        tone: "success" as const,
+      };
     }
 
-    if (localStakeout.forward < -0.8) {
-      return "Target behind - turn around";
+    if (Math.abs(relativeAngle) > 10) {
+      return {
+        title: relativeAngle > 0
+          ? `TURN RIGHT ${Math.abs(relativeAngle).toFixed(0)}°`
+          : `TURN LEFT ${Math.abs(relativeAngle).toFixed(0)}°`,
+        detail: "Re-align before the final approach.",
+        tone: "normal" as const,
+      };
     }
 
-    return `Proceed forward ${Math.max(localStakeout.forward, 0).toFixed(2)} m`;
+    return {
+      title: `SLOW DOWN · ${formatGuidanceMeters(metrics.distance)}`,
+      detail: "Take short steps and watch the distance trend.",
+      tone: "warning" as const,
+    };
   }, [
     target,
     gps,
     metrics,
+    motionGuidance,
+    courseError,
+    accuracyZone,
     navigationHeading,
     relativeAngle,
     localStakeout,
-    motionGuidance,
-    courseError,
   ]);
 
   function startGps() {
@@ -995,6 +1061,12 @@ export default function ArStakeoutPage() {
   const compassRotation = navigationHeading !== null ? -navigationHeading : 0;
   const counterCompassRotation = navigationHeading ?? 0;
 
+  const distanceDisplay = useMemo(() => {
+    if (!metrics) return "-";
+    if (accuracyZone) return "GPS accuracy zone";
+    return formatGuidanceMeters(metrics.distance);
+  }, [metrics, accuracyZone]);
+
   const targetDotStyle = useMemo(() => {
     if (!metrics || !localStakeout) {
       return undefined;
@@ -1171,8 +1243,8 @@ export default function ArStakeoutPage() {
               </dd>
             </div>
             <div>
-              <dt>Direction</dt>
-              <dd>{directionText}</dd>
+              <dt>Guidance</dt>
+              <dd>{guidance.title}</dd>
             </div>
             <div>
               <dt>Camera</dt>
@@ -1187,6 +1259,8 @@ export default function ArStakeoutPage() {
             <span suppressHydrationWarning>getUserMedia: {getUserMediaSupport}</span>
             <span suppressHydrationWarning>Camera mode: {cameraMode}</span>
             <span>Video ready: {videoReady ? "yes" : "no"}</span>
+            <span>N/E: {metrics ? `${formatMeters(metrics.north)} / ${formatMeters(metrics.east)}` : "-"}</span>
+            <span>F/R: {localStakeout ? `${formatMeters(localStakeout.forward)} / ${formatMeters(localStakeout.right)}` : "-"}</span>
             <span>
               Course: {motionGuidance.courseHeading !== null
                 ? `${motionGuidance.courseHeading.toFixed(1)}° ${bearingToCardinal(motionGuidance.courseHeading)} (${motionGuidance.courseSource})`
@@ -1228,9 +1302,57 @@ export default function ArStakeoutPage() {
                 PRELIMINARY FIELD ASSIST
               </span>
               <h2>{target?.name || "Target Point"}</h2>
-              <p>{directionText}</p>
-              <span style={{ fontSize: 11, fontWeight: 800, color: "#dbeafe" }}>
-                Phone head ↑ = forward · movement course validates direction
+              <div
+                style={{
+                  marginTop: 10,
+                  maxWidth: 430,
+                  borderRadius: 16,
+                  padding: "10px 12px",
+                  background:
+                    guidance.tone === "danger"
+                      ? "rgba(153, 27, 27, 0.92)"
+                      : guidance.tone === "success"
+                        ? "rgba(22, 101, 52, 0.88)"
+                        : guidance.tone === "warning"
+                          ? "rgba(133, 77, 14, 0.9)"
+                          : "rgba(15, 23, 42, 0.82)",
+                  border: "1px solid rgba(255, 255, 255, 0.35)",
+                  color: "#ffffff",
+                }}
+              >
+                <strong
+                  style={{
+                    display: "block",
+                    fontSize: 18,
+                    lineHeight: 1.15,
+                    fontWeight: 950,
+                  }}
+                >
+                  {guidance.title}
+                </strong>
+                <span
+                  style={{
+                    display: "block",
+                    marginTop: 5,
+                    fontSize: 12,
+                    lineHeight: 1.3,
+                    color: "rgba(255,255,255,0.9)",
+                    fontWeight: 750,
+                  }}
+                >
+                  {guidance.detail}
+                </span>
+              </div>
+              <span
+                style={{
+                  display: "block",
+                  marginTop: 6,
+                  fontSize: 11,
+                  fontWeight: 800,
+                  color: "#dbeafe",
+                }}
+              >
+                Follow one instruction at a time · phone head ↑ = forward
               </span>
             </div>
             <button
@@ -1239,8 +1361,10 @@ export default function ArStakeoutPage() {
               style={{
                 padding: "8px 12px",
                 minHeight: 40,
+                minWidth: 96,
                 borderRadius: 12,
                 fontSize: 14,
+                whiteSpace: "nowrap",
               }}
             >
               Stop AR
@@ -1264,37 +1388,14 @@ export default function ArStakeoutPage() {
             }}
           />
           <div className={styles.targetDot} style={targetDotStyle} />
-          <div className={styles.distanceBubble}>{metrics ? formatMeters(metrics.distance) : "-"}</div>
+          <div className={styles.distanceBubble}>{distanceDisplay}</div>
 
-          {isAligned && !motionGuidance.movingAway && (
+          {isAligned && !motionGuidance.movingAway && !accuracyZone && (
             <div className={styles.guideLine} aria-label="Aligned path toward target">
               <span />
               <span />
               <span />
               <span />
-            </div>
-          )}
-
-          {(!isAligned || motionGuidance.movingAway) && navigationHeading !== null && relativeAngle !== null && (
-            <div
-              style={{
-                position: "absolute",
-                top: 150,
-                left: "50%",
-                transform: "translateX(-50%)",
-                zIndex: 5,
-                borderRadius: 999,
-                padding: "8px 14px",
-                background: motionGuidance.movingAway
-                  ? "rgba(153, 27, 27, 0.92)"
-                  : "rgba(15, 23, 42, 0.82)",
-                border: "1px solid rgba(255, 255, 255, 0.38)",
-                color: "#ffffff",
-                fontWeight: 900,
-                whiteSpace: "nowrap",
-              }}
-            >
-              {directionText}
             </div>
           )}
 
@@ -1337,7 +1438,7 @@ export default function ArStakeoutPage() {
 
               <div
                 className={styles.arrow}
-                aria-label={directionText}
+                aria-label={guidance.title}
                 style={{
                   transform: `rotate(${arrowRotation}deg)`,
                 }}
@@ -1347,24 +1448,21 @@ export default function ArStakeoutPage() {
             </div>
           </div>
 
-          <div className={styles.bottomStrip}>
+          <div
+            className={styles.bottomStrip}
+            style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}
+          >
             <div>
               <span>Target</span>
               <strong>{target?.name || "-"}</strong>
             </div>
             <div>
               <span>Distance</span>
-              <strong>{metrics ? formatMeters(metrics.distance) : "-"}</strong>
+              <strong>{distanceDisplay}</strong>
             </div>
             <div>
-              <span>Bearing</span>
-              <strong>{metrics ? `${metrics.bearing.toFixed(1)}° ${targetDirection}` : "-"}</strong>
-            </div>
-            <div>
-              <span>N / E</span>
-              <strong>
-                {metrics ? `${formatMeters(metrics.north)} / ${formatMeters(metrics.east)}` : "-"}
-              </strong>
+              <span>GPS accuracy</span>
+              <strong>{gps?.accuracy ? `±${gps.accuracy.toFixed(1)} m` : "-"}</strong>
             </div>
           </div>
 
@@ -1372,18 +1470,6 @@ export default function ArStakeoutPage() {
             <span className={`${styles.signalDot} ${styles[signal.level] ?? ""}`} />
             <span>{signal.label}</span>
             <span>Camera: {cameraStatus}</span>
-            <span>Phone: {heading !== null ? `${heading.toFixed(1)}° ${headingDirection}` : headingStatus}</span>
-            <span>
-              Nav: {navigationHeading !== null ? `${navigationHeading.toFixed(1)}° ${navigationDirection}` : "-"}
-            </span>
-            <span>
-              ΔDist: {motionGuidance.distanceDelta !== null
-                ? `${motionGuidance.distanceDelta >= 0 ? "+" : ""}${motionGuidance.distanceDelta.toFixed(2)} m`
-                : "-"}
-            </span>
-            <span>
-              F/R: {localStakeout ? `${formatMeters(localStakeout.forward)} / ${formatMeters(localStakeout.right)}` : "-"}
-            </span>
             <span>Video: {videoReady ? "ready" : "not ready"}</span>
           </div>
 
@@ -1391,12 +1477,6 @@ export default function ArStakeoutPage() {
             <div className={styles.videoWarning}>
               Camera stream active but video frame is not visible. Try Test Camera again or reopen
               this page in Chrome/Safari.
-            </div>
-          )}
-
-          {!arActive && (
-            <div className={styles.notActive}>
-              Tap Test Camera to test the camera or Start AR Guide for find point guidance.
             </div>
           )}
         </div>
