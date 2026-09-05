@@ -158,6 +158,13 @@ assert(
   "Short landscape screens must anchor the GPS card below the header without retaining outer-stack scroll.",
 );
 
+assert(
+  componentSource.includes("ref={fieldGpsCardRef}") &&
+    componentSource.includes('"orientationchange"') &&
+    componentSource.includes("fieldGpsCardRef.current.scrollTop = 0"),
+  "Rotating the phone must reset the Field GPS card to its top after landscape reflow.",
+);
+
 console.log(
   `field-gps-map-first QA: ALL PASS (mobile panel height: ${mobileHeightValues.join(
     ", ",

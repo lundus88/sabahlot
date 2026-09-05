@@ -1035,6 +1035,8 @@ export default function FieldGpsLite({
     useRef<string | null>(null);
   const fieldGpsRestoredRef =
     useRef(false);
+  const fieldGpsCardRef =
+    useRef<HTMLDivElement | null>(null);
 
   const stopCameraStream =
     useCallback(() => {
@@ -1795,6 +1797,55 @@ export default function FieldGpsLite({
   }, [
     closeFieldGpsPanel,
     enabled,
+  ]);
+
+  useEffect(() => {
+    if (!enabled || !open) {
+      return;
+    }
+
+    let settleTimer: number | null = null;
+    const resetPanelScroll = () => {
+      if (fieldGpsCardRef.current) {
+        fieldGpsCardRef.current.scrollTop = 0;
+      }
+
+      if (settleTimer !== null) {
+        window.clearTimeout(settleTimer);
+      }
+      settleTimer = window.setTimeout(() => {
+        if (fieldGpsCardRef.current) {
+          fieldGpsCardRef.current.scrollTop = 0;
+        }
+      }, 150);
+    };
+
+    resetPanelScroll();
+    window.addEventListener(
+      "orientationchange",
+      resetPanelScroll,
+    );
+    window.screen.orientation?.addEventListener(
+      "change",
+      resetPanelScroll,
+    );
+
+    return () => {
+      if (settleTimer !== null) {
+        window.clearTimeout(settleTimer);
+      }
+      window.removeEventListener(
+        "orientationchange",
+        resetPanelScroll,
+      );
+      window.screen.orientation?.removeEventListener(
+        "change",
+        resetPanelScroll,
+      );
+    };
+  }, [
+    enabled,
+    open,
   ]);
 
   if (!enabled) {
@@ -3059,7 +3110,10 @@ export default function FieldGpsLite({
       </button>
 
       {open && (
-        <div className="sl-field-gps-card">
+        <div
+          ref={fieldGpsCardRef}
+          className="sl-field-gps-card"
+        >
           <div className="sl-field-gps-heading">
             <div>
               <span>Handheld GPS</span>
