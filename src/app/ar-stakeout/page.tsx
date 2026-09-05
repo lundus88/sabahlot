@@ -73,6 +73,10 @@ function normalizeSigned(value: number) {
   return ((value + 540) % 360) - 180;
 }
 
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
+}
+
 function distanceMeters(lat1: number, lon1: number, lat2: number, lon2: number) {
   const earthRadius = 6371008.8;
   const dLat = toRad(lat2 - lat1);
@@ -264,6 +268,7 @@ export default function ArStakeoutPage() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const gpsWatchRef = useRef<number | null>(null);
+  const headingRef = useRef<number | null>(null);
 
   const [targetName, setTargetName] = useState("Target Point");
   const [targetLatText, setTargetLatText] = useState("");
@@ -361,19 +366,53 @@ export default function ArStakeoutPage() {
     return normalizeSigned(metrics.bearing - heading);
   }, [metrics, heading]);
 
+  const localStakeout = useMemo(() => {
+    if (!metrics || heading === null) return null;
+
+    const headingRad = toRad(heading);
+
+    return {
+      forward:
+        metrics.north * Math.cos(headingRad) +
+        metrics.east * Math.sin(headingRad),
+      right:
+        -metrics.north * Math.sin(headingRad) +
+        metrics.east * Math.cos(headingRad),
+    };
+  }, [metrics, heading]);
+
   const directionText = useMemo(() => {
     if (!target) return "Enter valid target coordinate.";
     if (!gps) return "Start GPS first.";
     if (!metrics) return "Waiting for navigation data.";
 
-    if (heading === null || relativeAngle === null) {
+    if (heading === null || relativeAngle === null || !localStakeout) {
       return `Compass heading unavailable. Bearing to target: ${metrics.bearing.toFixed(1)}°`;
     }
 
-    if (Math.abs(relativeAngle) <= 15) return "Aligned - proceed toward target";
-    if (relativeAngle > 15) return `Turn right ${Math.abs(relativeAngle).toFixed(0)}°`;
-    return `Turn left ${Math.abs(relativeAngle).toFixed(0)}°`;
-  }, [target, gps, metrics, heading, relativeAngle]);
+    if (metrics.distance <= 0.8) {
+      return "Near target - verify before marking";
+    }
+
+    if (Math.abs(relativeAngle) > 15) {
+      if (relativeAngle > 0) return `Turn right ${Math.abs(relativeAngle).toFixed(0)}°`;
+      return `Turn left ${Math.abs(relativeAngle).toFixed(0)}°`;
+    }
+
+    if (localStakeout.right > 0.4) {
+      return `Move right ${Math.abs(localStakeout.right).toFixed(2)} m`;
+    }
+
+    if (localStakeout.right < -0.4) {
+      return `Move left ${Math.abs(localStakeout.right).toFixed(2)} m`;
+    }
+
+    if (localStakeout.forward < -0.8) {
+      return "Target behind phone - turn around";
+    }
+
+    return `Proceed forward ${Math.max(localStakeout.forward, 0).toFixed(2)} m`;
+  }, [target, gps, metrics, heading, relativeAngle, localStakeout]);
 
   function startGps() {
     setGpsError("");
@@ -437,17 +476,31 @@ export default function ArStakeoutPage() {
     setGpsStatus(gps ? "GPS stopped · last fix retained" : "GPS stopped");
   }
 
+  function smoothHeading(nextHeading: number) {
+    const previousHeading = headingRef.current;
+
+    if (previousHeading === null) {
+      headingRef.current = nextHeading;
+      return nextHeading;
+    }
+
+    const delta = normalizeSigned(nextHeading - previousHeading);
+    const smoothed = normalize360(previousHeading + delta * 0.25);
+    headingRef.current = smoothed;
+    return smoothed;
+  }
+
   function handleOrientation(event: DeviceOrientationEvent) {
     const mobileEvent = event as WebkitOrientationEvent;
 
     if (typeof mobileEvent.webkitCompassHeading === "number") {
-      setHeading(normalize360(mobileEvent.webkitCompassHeading));
+      setHeading(smoothHeading(normalize360(mobileEvent.webkitCompassHeading)));
       setHeadingStatus("Active");
       return;
     }
 
     if (typeof event.alpha === "number") {
-      setHeading(normalize360(360 - event.alpha));
+      setHeading(smoothHeading(normalize360(360 - event.alpha)));
       setHeadingStatus("Active");
       return;
     }
@@ -703,14 +756,6 @@ export default function ArStakeoutPage() {
     setSavedPoints((items) => [record, ...items].slice(0, 10));
     setNote("");
 
-    // Bug fix 2026-08-18: this page has no shared React state with
-    // FieldGpsLite (the main map's own found-point list) -- without this,
-    // savedPoints above is the ONLY copy, and it is pure in-memory state
-    // that is destroyed the moment the user navigates back to the map,
-    // silently losing every point captured here. Persist into
-    // FieldGpsLite's own storage so it survives that navigation and shows
-    // up in the map's Field GPS panel, same as the target point already
-    // does via gpsTargetMemory.
     const persisted = appendFoundPointToFieldGpsStorage({
       targetName: target.name,
       targetLatitude: target.latitude,
@@ -750,6 +795,24 @@ export default function ArStakeoutPage() {
   const isAligned = relativeAngle !== null && Math.abs(relativeAngle) <= 15;
   const compassRotation = heading !== null ? -heading : 0;
   const counterCompassRotation = heading ?? 0;
+
+  const targetDotStyle = useMemo(() => {
+    if (!metrics || !localStakeout) {
+      return undefined;
+    }
+
+    const safeDistance = Math.max(metrics.distance, 0.001);
+    const displayRadius = clamp(metrics.distance * 42, 28, 150);
+    const x = clamp((localStakeout.right / safeDistance) * displayRadius, -145, 145);
+    const y = clamp((-localStakeout.forward / safeDistance) * displayRadius, -165, 165);
+
+    return {
+      left: "50%",
+      top: "38%",
+      transform: `translate(calc(-50% + ${x.toFixed(1)}px), calc(-50% + ${y.toFixed(1)}px))`,
+      transition: "transform 0.2s ease-out, top 0.2s ease-out, left 0.2s ease-out",
+    };
+  }, [metrics, localStakeout]);
 
   return (
     <main className={styles.page}>
@@ -956,6 +1019,9 @@ export default function ArStakeoutPage() {
               </span>
               <h2>{target?.name || "Target Point"}</h2>
               <p>{directionText}</p>
+              <span style={{ fontSize: 11, fontWeight: 800, color: "#dbeafe" }}>
+                Phone head ↑ = forward reference
+              </span>
             </div>
             <button
               type="button"
@@ -971,7 +1037,23 @@ export default function ArStakeoutPage() {
             </button>
           </div>
 
-          <div className={styles.targetDot} />
+          <div
+            aria-label="Phone forward reference center"
+            style={{
+              position: "absolute",
+              left: "50%",
+              top: "38%",
+              width: 20,
+              height: 20,
+              borderRadius: 999,
+              border: "2px solid rgba(255, 255, 255, 0.95)",
+              transform: "translate(-50%, -50%)",
+              boxShadow: "0 0 0 5px rgba(15, 23, 42, 0.28)",
+              zIndex: 2,
+              pointerEvents: "none",
+            }}
+          />
+          <div className={styles.targetDot} style={targetDotStyle} />
           <div className={styles.distanceBubble}>{metrics ? formatMeters(metrics.distance) : "-"}</div>
 
           {isAligned && (
@@ -1079,6 +1161,9 @@ export default function ArStakeoutPage() {
             <span>{signal.label}</span>
             <span>Camera: {cameraStatus}</span>
             <span>Heading: {heading !== null ? `${heading.toFixed(1)}° ${headingDirection}` : headingStatus}</span>
+            <span>
+              F/R: {localStakeout ? `${formatMeters(localStakeout.forward)} / ${formatMeters(localStakeout.right)}` : "-"}
+            </span>
             <span>Video: {videoReady ? "ready" : "not ready"}</span>
           </div>
 
