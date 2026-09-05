@@ -108,6 +108,16 @@ assert(
   "Unsupported satellite-count/HDOP/PDOP metrics must not be shown.",
 );
 
+assert(
+  !/GPS (?:Active|Weak|Lost) -|Strong signal|Weak signal/.test(
+    userFacingGpsSources,
+  ) &&
+    componentSource.includes("Position Quality · GOOD") &&
+    componentSource.includes("Position Quality · FAIR") &&
+    componentSource.includes("Position Quality · NO FIX"),
+  "Detailed GPS badges must use Position Quality wording consistently.",
+);
+
 const mobileHeightValues = Array.from(
   cssSource.matchAll(
     /\.sl-field-gps-card\s*\{[^{}]*?max-height:\s*min\((\d+)dvh/g,
@@ -139,6 +149,13 @@ assert(
   cssSource.includes("align-content: start;") &&
     cssSource.includes("grid-auto-rows: max-content;"),
   "The 80dvh Field GPS card must keep controls at their natural height when diagnostics are collapsed.",
+);
+
+assert(
+  cssSource.includes("@media (orientation: landscape) and (max-width: 1024px) and (max-height: 520px)") &&
+    cssSource.includes("top: var(--sl-mobile-panel-top, calc(env(safe-area-inset-top) + 130px)) !important;") &&
+    cssSource.includes("overflow: visible !important;"),
+  "Short landscape screens must anchor the GPS card below the header without retaining outer-stack scroll.",
 );
 
 console.log(

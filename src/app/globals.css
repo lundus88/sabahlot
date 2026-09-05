@@ -8380,3 +8380,42 @@ select:focus-visible {
     grid-template-columns: 30px 30px minmax(78px, 1fr) minmax(40px, auto) auto !important;
   }
 }
+
+/* A short landscape viewport cannot fit the portrait stack above and below
+   the card. Anchor the card below the mobile header rows and keep scrolling
+   inside the card so rotation cannot retain a stack scroll offset that moves
+   the heading off-screen. */
+@media (orientation: landscape) and (max-width: 1024px) and (max-height: 520px) {
+  .sl-field-gps-stack {
+    top: var(--sl-mobile-secondary-top, calc(env(safe-area-inset-top) + 88px)) !important;
+    bottom: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .sl-field-gps-card,
+  .sl-mobile-top-control-stack .sl-field-gps-card {
+    position: fixed !important;
+    top: var(--sl-mobile-panel-top, calc(env(safe-area-inset-top) + 130px)) !important;
+    right: var(--sl-mobile-edge, 10px) !important;
+    bottom: auto !important;
+    left: var(--sl-mobile-edge, 10px) !important;
+    width: auto !important;
+    height: calc(100dvh - var(--sl-mobile-panel-top, calc(env(safe-area-inset-top) + 130px)) - var(--sl-mobile-edge, 10px)) !important;
+    max-height: calc(100dvh - var(--sl-mobile-panel-top, calc(env(safe-area-inset-top) + 130px)) - var(--sl-mobile-edge, 10px)) !important;
+    margin-top: 0 !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+  }
+
+  .sl-field-gps-heading > div {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+
+  .sl-field-gps-heading > div > span,
+  .sl-field-gps-heading > div > strong {
+    display: block;
+  }
+}

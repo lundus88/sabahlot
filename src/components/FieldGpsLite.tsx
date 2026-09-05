@@ -247,11 +247,11 @@ function getGpsSignalStatus(
   lastUpdateMs: number,
 ): GpsSignalStatus {
   const lostLabel =
-    "GPS Lost - No location connection";
+    "Position Quality · NO FIX";
   const weakLabel =
-    "GPS Weak - Weak signal";
+    "Position Quality · FAIR";
   const strongLabel =
-    "GPS Active - Strong signal";
+    "Position Quality · GOOD";
 
   const statusText =
     `${gpsStatus} ${error}`.toLowerCase();
@@ -269,7 +269,7 @@ function getGpsSignalStatus(
     const accuracyLabel =
       position?.accuracyMeters !==
       undefined
-        ? ` - +/-${position.accuracyMeters.toFixed(
+        ? ` · ±${position.accuracyMeters.toFixed(
             1,
           )} m`
         : "";
