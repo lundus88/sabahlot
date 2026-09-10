@@ -1755,12 +1755,13 @@ export default function FieldGpsLite({
     restoreTargetToFieldGps,
   ]);
 
-  const stopArGuide = () => {
-    stopCameraStream();
-    setArActive(false);
-    setCameraTestActive(false);
-    setArMessage("AR Guide stopped.");
-  };
+  const stopArGuide =
+    useCallback(() => {
+      stopCameraStream();
+      setArActive(false);
+      setCameraTestActive(false);
+      setArMessage("AR Guide stopped.");
+    }, [stopCameraStream]);
 
   const closeFieldGpsPanel =
     useCallback(() => {
@@ -1771,6 +1772,7 @@ export default function FieldGpsLite({
       setOpen(false);
     }, [
       arActive,
+      stopArGuide,
     ]);
 
   useEffect(() => {

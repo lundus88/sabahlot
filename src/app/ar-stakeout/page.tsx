@@ -392,8 +392,10 @@ export default function ArStakeoutPage() {
       movingAwayCountRef.current = 0;
       approachingCountRef.current = 0;
       courseHeadingRef.current = null;
-      setMotionGuidance(EMPTY_MOTION_GUIDANCE);
-      return;
+      const frameId = window.requestAnimationFrame(() => {
+        setMotionGuidance(EMPTY_MOTION_GUIDANCE);
+      });
+      return () => window.cancelAnimationFrame(frameId);
     }
 
     const targetKey = `${target.latitude.toFixed(7)}:${target.longitude.toFixed(7)}`;

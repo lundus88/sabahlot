@@ -41,23 +41,27 @@ export default function StakeoutPathOverlay({
   const [visualAngle, setVisualAngle] = useState<number | null>(relativeAngle);
 
   useEffect(() => {
-    if (relativeAngle === null || !Number.isFinite(relativeAngle)) {
-      smoothedAngleRef.current = null;
-      setVisualAngle(null);
-      return;
-    }
+    const frameId = window.requestAnimationFrame(() => {
+      if (relativeAngle === null || !Number.isFinite(relativeAngle)) {
+        smoothedAngleRef.current = null;
+        setVisualAngle(null);
+        return;
+      }
 
-    const previous = smoothedAngleRef.current;
-    if (previous === null) {
-      smoothedAngleRef.current = relativeAngle;
-      setVisualAngle(relativeAngle);
-      return;
-    }
+      const previous = smoothedAngleRef.current;
+      if (previous === null) {
+        smoothedAngleRef.current = relativeAngle;
+        setVisualAngle(relativeAngle);
+        return;
+      }
 
-    const delta = normalizeSigned(relativeAngle - previous);
-    const next = previous + delta * 0.2;
-    smoothedAngleRef.current = next;
-    setVisualAngle(next);
+      const delta = normalizeSigned(relativeAngle - previous);
+      const next = previous + delta * 0.2;
+      smoothedAngleRef.current = next;
+      setVisualAngle(next);
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
   }, [relativeAngle]);
 
   const approachMode = distance !== null && distance <= 3;
@@ -125,7 +129,7 @@ export default function StakeoutPathOverlay({
   if (approachMode) {
     return (
       <div style={{ justifySelf: "center", width: "min(72vw, 300px)", aspectRatio: "1 / 1", borderRadius: 24, background: "rgba(15, 23, 42, 0.72)", border: "1px solid rgba(255,255,255,0.42)", boxShadow: "0 18px 36px rgba(2,6,23,0.32)", padding: 8, zIndex: 4 }}>
-        <svg viewBox="0 0 220 220" width="100%" height="100%" role="img" aria-label="Target-centered GNSS stakeout grid">
+        <svg viewBox="0 0 220 220" width="100%" height="100%" role="img" aria-label={`Target-centered GNSS stakeout grid for ${targetName}`}>
           <defs><marker id="grid-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="white" /></marker></defs>
           <circle cx="110" cy="110" r="92" fill="rgba(2,6,23,0.34)" stroke="rgba(255,255,255,0.32)" strokeWidth="1.5" />
           <line x1="110" y1="18" x2="110" y2="202" stroke="rgba(255,255,255,0.18)" strokeWidth="1" />
@@ -149,7 +153,7 @@ export default function StakeoutPathOverlay({
 
   return (
     <div style={{ justifySelf: "center", width: "min(92vw, 430px)", height: "min(62vh, 520px)", minHeight: 360, zIndex: 4 }}>
-      <svg viewBox="0 0 220 300" width="100%" height="100%" role="img" aria-label="AR world-bearing stakeout path">
+      <svg viewBox="0 0 220 300" width="100%" height="100%" role="img" aria-label={`AR world-bearing stakeout path for ${targetName}`}>
         <defs><filter id="target-shadow" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="3" stdDeviation="3" floodOpacity="0.45" /></filter></defs>
 
         {pathGeometry.isVisible && (
