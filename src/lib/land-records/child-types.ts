@@ -11,7 +11,13 @@ import type {
   DrawingGeometryType,
   DrawingLineStyle,
 } from "@/lib/drawing-types";
-import type { CloudDocumentType, CloudPointType } from "./types";
+import type {
+  CloudDocumentType,
+  CloudPointSource,
+  CloudPointTiltStatus,
+  CloudPointType,
+  CloudSignalIntegrityStatus,
+} from "./types";
 
 export type ChildErrorCode =
   | "unauthenticated"
@@ -123,7 +129,19 @@ export interface PointWritableFields {
   speed?: number | null;
   qualityGrade?: "A" | "B" | "C" | "D" | null;
   captureMethod?: "single" | "averaged" | "best-fix" | "manual-key-in" | null;
-  source?: "phone-gps" | "keyed-coordinate" | null;
+  source?: CloudPointSource | null;
+  sourceCrs?: string | null;
+  sourceDatum?: string | null;
+  instrumentMake?: string | null;
+  instrumentModel?: string | null;
+  instrumentSerial?: string | null;
+  firmwareVersion?: string | null;
+  correctionSource?: string | null;
+  correctionAgeSeconds?: number | null;
+  pdop?: number | null;
+  satelliteCount?: number | null;
+  tiltStatus?: CloudPointTiltStatus | null;
+  signalIntegrityStatus?: CloudSignalIntegrityStatus | null;
   sampleCount?: number | null;
   occupationSeconds?: number | null;
   distanceDifferenceM?: number | null;
