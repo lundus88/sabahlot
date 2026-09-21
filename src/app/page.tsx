@@ -1935,6 +1935,11 @@ export default function HomePage() {
   ] = useState("");
 
   const [
+    importDeclaredCrs,
+    setImportDeclaredCrs,
+  ] = useState("UNKNOWN");
+
+  const [
     isPreviewingImport,
     setIsPreviewingImport,
   ] = useState(false);
@@ -2642,6 +2647,7 @@ export default function HomePage() {
     setImportFile(file);
     setImportPreview(null);
     setImportError("");
+    setImportDeclaredCrs("UNKNOWN");
     setImportStatus(
       file
         ? "file_loaded"
@@ -2670,6 +2676,8 @@ export default function HomePage() {
             language,
             areaUnit:
               selectedAreaUnit,
+            sourceCrs:
+              importDeclaredCrs,
           },
         );
 
@@ -2775,7 +2783,7 @@ export default function HomePage() {
         coordinate.lat,
         coordinate.lng,
         importPreview.name || "Imported point",
-        `Imported from ${importPreview.format} file.`,
+        `Imported from ${importPreview.format} file; source CRS ${importPreview.crs.sourceCrs}; target CRS ${importPreview.crs.targetCrs}; transform applied: ${importPreview.crs.transformationApplied ? "yes" : "no"}.`,
       );
 
     window.dispatchEvent(
@@ -9083,6 +9091,42 @@ export default function HomePage() {
                 />
               </label>
 
+              <label className="sl-import-file">
+                <span>
+                  CSV source CRS
+                </span>
+                <select
+                  value={importDeclaredCrs}
+                  onChange={(event) => {
+                    setImportDeclaredCrs(event.target.value);
+                    setImportPreview(null);
+                    setImportError("");
+                    if (importFile) {
+                      setImportStatus("file_loaded");
+                    }
+                  }}
+                >
+                  <option value="UNKNOWN">
+                    Unknown / not verified
+                  </option>
+                  <option value="EPSG:4326">
+                    WGS84 / EPSG:4326
+                  </option>
+                  <option value="EPSG:29873">
+                    BRSO Timbalai / EPSG:29873
+                  </option>
+                  <option value="GDM2000_BORNEO_RSO">
+                    GDM2000 Borneo RSO
+                  </option>
+                  <option value="UTM_UNSPECIFIED">
+                    UTM (zone not verified)
+                  </option>
+                </select>
+                <small>
+                  Required for CSV. KML and RFC 7946 GeoJSON use their own geographic CRS contract.
+                </small>
+              </label>
+
               <div className="sl-import-actions">
                 <button
                   type="button"
@@ -9156,6 +9200,12 @@ export default function HomePage() {
                 <strong>
                   {importPreview.name}
                 </strong>
+
+                <small>
+                  CRS {importPreview.crs.sourceCrs} → {importPreview.crs.targetCrs}
+                  {" · "}{importPreview.crs.status}
+                  {" · "}transform: {importPreview.crs.transformationApplied ? "applied" : "none"}
+                </small>
 
                 <small>
                   {importPreview.pointCount} vertices

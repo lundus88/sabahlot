@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "baseUrl": "../..",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM"]
+  },
+  "files": [
+    "crs-datum-safety.ts",
+    "drawing-types.ts",
+    "import-geometries.ts",
+    "import-geometries.qa.ts"
+  ]
+}
