@@ -33,7 +33,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { ChildWriteResult, CreatePointInput } from "./child-types";
-import type { CloudLandPoint } from "./types";
+import type {
+  CloudLandPoint,
+  CloudPointSource,
+  CloudPointTiltStatus,
+  CloudSignalIntegrityStatus,
+} from "./types";
 import { createCloudPoint } from "./points-write-coordinator";
 import type { ParentSyncResult } from "./parent-ui-sync";
 
@@ -70,7 +75,19 @@ export interface PointCaptureInput {
   speed?: number | null;
   qualityGrade?: "A" | "B" | "C" | "D" | null;
   captureMethod?: "single" | "averaged" | "best-fix" | "manual-key-in" | null;
-  source?: "phone-gps" | "keyed-coordinate" | null;
+  source?: CloudPointSource | null;
+  sourceCrs?: string | null;
+  sourceDatum?: string | null;
+  instrumentMake?: string | null;
+  instrumentModel?: string | null;
+  instrumentSerial?: string | null;
+  firmwareVersion?: string | null;
+  correctionSource?: string | null;
+  correctionAgeSeconds?: number | null;
+  pdop?: number | null;
+  satelliteCount?: number | null;
+  tiltStatus?: CloudPointTiltStatus | null;
+  signalIntegrityStatus?: CloudSignalIntegrityStatus | null;
   sampleCount?: number | null;
   occupationSeconds?: number | null;
   note?: string | null;
@@ -171,6 +188,18 @@ export async function syncFieldGpsPointsToCloud(
         qualityGrade: point.qualityGrade,
         captureMethod: point.captureMethod,
         source: point.source,
+        sourceCrs: point.sourceCrs,
+        sourceDatum: point.sourceDatum,
+        instrumentMake: point.instrumentMake,
+        instrumentModel: point.instrumentModel,
+        instrumentSerial: point.instrumentSerial,
+        firmwareVersion: point.firmwareVersion,
+        correctionSource: point.correctionSource,
+        correctionAgeSeconds: point.correctionAgeSeconds,
+        pdop: point.pdop,
+        satelliteCount: point.satelliteCount,
+        tiltStatus: point.tiltStatus,
+        signalIntegrityStatus: point.signalIntegrityStatus,
         sampleCount: point.sampleCount,
         occupationSeconds: point.occupationSeconds,
         note: point.note,

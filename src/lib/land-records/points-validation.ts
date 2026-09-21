@@ -31,7 +31,27 @@ const POINT_TYPE_VALUES = [
 // pg_type to cross-reference the way POINT_TYPE_VALUES does.
 const QUALITY_GRADE_VALUES = ["A", "B", "C", "D"] as const;
 const CAPTURE_METHOD_VALUES = ["single", "averaged", "best-fix", "manual-key-in"] as const;
-const SOURCE_VALUES = ["phone-gps", "keyed-coordinate"] as const;
+const SOURCE_VALUES = [
+  "phone-gps",
+  "keyed-coordinate",
+  "rtk-gnss",
+  "total-station",
+  "image-measurement",
+  "drone",
+  "lidar",
+  "kml-import",
+  "dxf-import",
+  "csv-import",
+  "unknown",
+] as const;
+const TILT_STATUS_VALUES = ["unknown", "not-applicable", "disabled", "enabled"] as const;
+const SIGNAL_INTEGRITY_STATUS_VALUES = [
+  "unknown",
+  "normal",
+  "interference-suspected",
+  "jamming-suspected",
+  "spoofing-suspected",
+] as const;
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
@@ -137,11 +157,32 @@ function extractWritableFields(input: Record<string, unknown>): FieldExtractionR
   if (note !== undefined) fields.note = note;
 
   for (const key of [
+    "sourceCrs",
+    "sourceDatum",
+    "instrumentMake",
+    "instrumentModel",
+    "instrumentSerial",
+    "firmwareVersion",
+    "correctionSource",
+  ] as const) {
+    if (key in input) {
+      const stringValue = sanitizeOptionalString(input[key]);
+      if (stringValue === undefined && input[key] !== undefined) {
+        return { ok: false, error: `${key} must be a string or null.` };
+      }
+      fields[key] = stringValue ?? null;
+    }
+  }
+
+  for (const key of [
     "altitude",
     "accuracyM",
     "altitudeAccuracyM",
     "heading",
     "speed",
+    "correctionAgeSeconds",
+    "pdop",
+    "satelliteCount",
     "sampleCount",
     "occupationSeconds",
     "distanceDifferenceM",
@@ -154,6 +195,24 @@ function extractWritableFields(input: Record<string, unknown>): FieldExtractionR
       }
       fields[key] = numberValue ?? null;
     }
+  }
+
+  for (const key of ["correctionAgeSeconds", "pdop"] as const) {
+    const value = fields[key];
+    if (value !== undefined && value !== null && value < 0) {
+      return { ok: false, error: `${key} must be greater than or equal to 0, or null.` };
+    }
+  }
+
+  if (
+    fields.satelliteCount !== undefined &&
+    fields.satelliteCount !== null &&
+    (!Number.isInteger(fields.satelliteCount) || fields.satelliteCount < 0)
+  ) {
+    return {
+      ok: false,
+      error: "satelliteCount must be a non-negative integer or null.",
+    };
   }
 
   if ("qualityGrade" in input && input.qualityGrade !== undefined) {
@@ -196,6 +255,35 @@ function extractWritableFields(input: Record<string, unknown>): FieldExtractionR
       };
     }
     fields.source = input.source as PointWritableFields["source"];
+  }
+
+  if ("tiltStatus" in input && input.tiltStatus !== undefined) {
+    if (
+      input.tiltStatus !== null &&
+      (typeof input.tiltStatus !== "string" ||
+        !(TILT_STATUS_VALUES as readonly string[]).includes(input.tiltStatus))
+    ) {
+      return {
+        ok: false,
+        error: `tiltStatus must be one of: ${TILT_STATUS_VALUES.join(", ")}, or null.`,
+      };
+    }
+    fields.tiltStatus = input.tiltStatus as PointWritableFields["tiltStatus"];
+  }
+
+  if ("signalIntegrityStatus" in input && input.signalIntegrityStatus !== undefined) {
+    if (
+      input.signalIntegrityStatus !== null &&
+      (typeof input.signalIntegrityStatus !== "string" ||
+        !(SIGNAL_INTEGRITY_STATUS_VALUES as readonly string[]).includes(input.signalIntegrityStatus))
+    ) {
+      return {
+        ok: false,
+        error: `signalIntegrityStatus must be one of: ${SIGNAL_INTEGRITY_STATUS_VALUES.join(", ")}, or null.`,
+      };
+    }
+    fields.signalIntegrityStatus =
+      input.signalIntegrityStatus as PointWritableFields["signalIntegrityStatus"];
   }
 
   const capturedAt = validateCapturedAt(input.capturedAt);
@@ -248,6 +336,24 @@ export function validateCreatePointInput(
       ...(fields.qualityGrade !== undefined ? { qualityGrade: fields.qualityGrade } : {}),
       ...(fields.captureMethod !== undefined ? { captureMethod: fields.captureMethod } : {}),
       ...(fields.source !== undefined ? { source: fields.source } : {}),
+      ...(fields.sourceCrs !== undefined ? { sourceCrs: fields.sourceCrs } : {}),
+      ...(fields.sourceDatum !== undefined ? { sourceDatum: fields.sourceDatum } : {}),
+      ...(fields.instrumentMake !== undefined ? { instrumentMake: fields.instrumentMake } : {}),
+      ...(fields.instrumentModel !== undefined ? { instrumentModel: fields.instrumentModel } : {}),
+      ...(fields.instrumentSerial !== undefined ? { instrumentSerial: fields.instrumentSerial } : {}),
+      ...(fields.firmwareVersion !== undefined ? { firmwareVersion: fields.firmwareVersion } : {}),
+      ...(fields.correctionSource !== undefined ? { correctionSource: fields.correctionSource } : {}),
+      ...(fields.correctionAgeSeconds !== undefined
+        ? { correctionAgeSeconds: fields.correctionAgeSeconds }
+        : {}),
+      ...(fields.pdop !== undefined ? { pdop: fields.pdop } : {}),
+      ...(fields.satelliteCount !== undefined
+        ? { satelliteCount: fields.satelliteCount }
+        : {}),
+      ...(fields.tiltStatus !== undefined ? { tiltStatus: fields.tiltStatus } : {}),
+      ...(fields.signalIntegrityStatus !== undefined
+        ? { signalIntegrityStatus: fields.signalIntegrityStatus }
+        : {}),
       ...(fields.sampleCount !== undefined ? { sampleCount: fields.sampleCount } : {}),
       ...(fields.occupationSeconds !== undefined
         ? { occupationSeconds: fields.occupationSeconds }
@@ -283,6 +389,18 @@ const COMPARABLE_POINT_FIELDS = [
   "qualityGrade",
   "captureMethod",
   "source",
+  "sourceCrs",
+  "sourceDatum",
+  "instrumentMake",
+  "instrumentModel",
+  "instrumentSerial",
+  "firmwareVersion",
+  "correctionSource",
+  "correctionAgeSeconds",
+  "pdop",
+  "satelliteCount",
+  "tiltStatus",
+  "signalIntegrityStatus",
   "sampleCount",
   "occupationSeconds",
   "distanceDifferenceM",
@@ -328,6 +446,18 @@ const ROW_COLUMN_BY_FIELD: Record<ComparablePointFieldName, keyof CloudLandPoint
   qualityGrade: "quality_grade",
   captureMethod: "capture_method",
   source: "source",
+  sourceCrs: "source_crs",
+  sourceDatum: "source_datum",
+  instrumentMake: "instrument_make",
+  instrumentModel: "instrument_model",
+  instrumentSerial: "instrument_serial",
+  firmwareVersion: "firmware_version",
+  correctionSource: "correction_source",
+  correctionAgeSeconds: "correction_age_seconds",
+  pdop: "pdop",
+  satelliteCount: "satellite_count",
+  tiltStatus: "tilt_status",
+  signalIntegrityStatus: "signal_integrity_status",
   sampleCount: "sample_count",
   occupationSeconds: "occupation_seconds",
   distanceDifferenceM: "distance_difference_m",

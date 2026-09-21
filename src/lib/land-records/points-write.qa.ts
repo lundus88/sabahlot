@@ -181,6 +181,18 @@ function basePointRow(overrides: Partial<CloudLandPointRow> = {}): CloudLandPoin
     quality_grade: "B",
     capture_method: "averaged",
     source: "phone-gps",
+    source_crs: "EPSG:4326",
+    source_datum: "WGS 84",
+    instrument_make: null,
+    instrument_model: null,
+    instrument_serial: null,
+    firmware_version: null,
+    correction_source: null,
+    correction_age_seconds: null,
+    pdop: null,
+    satellite_count: null,
+    tilt_status: "not-applicable",
+    signal_integrity_status: "unknown",
     sample_count: 12,
     occupation_seconds: 30,
     distance_difference_m: null,
@@ -204,6 +216,9 @@ function basePointInput(overrides: Partial<CreatePointInput> = {}): CreatePointI
     qualityGrade: "B",
     captureMethod: "averaged",
     source: "phone-gps",
+    sourceCrs: "EPSG:4326",
+    sourceDatum: "WGS 84",
+    signalIntegrityStatus: "unknown",
     sampleCount: 12,
     occupationSeconds: 30,
     capturedAt: "2026-01-01T00:00:00.000Z",
@@ -450,7 +465,62 @@ async function test13_InvalidSourceRejected() {
   console.log("Test 13 (invalid source rejected): PASS [executed]");
 }
 
-async function test14_InvalidCapturedAtRejected() {
+async function test14_InvalidProvenanceNumericMetadataRejected() {
+  const negativePdop = validateCreatePointInput(
+    basePointInput({ pdop: -0.1 }),
+  );
+  assert(!negativePdop.ok, "negative PDOP must be rejected before database write");
+
+  const negativeCorrectionAge = validateCreatePointInput(
+    basePointInput({ correctionAgeSeconds: -1 }),
+  );
+  assert(
+    !negativeCorrectionAge.ok,
+    "negative correction age must be rejected before database write",
+  );
+
+  const fractionalSatellites = validateCreatePointInput(
+    basePointInput({ satelliteCount: 12.5 }),
+  );
+  assert(
+    !fractionalSatellites.ok,
+    "fractional satelliteCount must be rejected before database write",
+  );
+
+  const negativeSatellites = validateCreatePointInput(
+    basePointInput({ satelliteCount: -1 }),
+  );
+  assert(
+    !negativeSatellites.ok,
+    "negative satelliteCount must be rejected before database write",
+  );
+
+  console.log(
+    "Test 14 (invalid provenance numeric metadata rejected pre-DB): PASS [executed]",
+  );
+}
+
+async function test15_ValidRtkProvenanceAccepted() {
+  const valid = validateCreatePointInput(
+    basePointInput({
+      source: "rtk-gnss",
+      sourceCrs: "EPSG:4326",
+      sourceDatum: "WGS 84",
+      instrumentMake: "Example",
+      instrumentModel: "RTK",
+      correctionSource: "NTRIP",
+      correctionAgeSeconds: 1.2,
+      pdop: 1.4,
+      satelliteCount: 24,
+      tiltStatus: "enabled",
+      signalIntegrityStatus: "normal",
+    }),
+  );
+  assert(valid.ok, "valid RTK provenance metadata must pass app validation");
+  console.log("Test 15 (valid RTK provenance accepted): PASS [executed]");
+}
+
+async function test16_InvalidCapturedAtRejected() {
   const client = new FakeSupabaseClient();
   client.userId = USER_A;
 
@@ -459,10 +529,10 @@ async function test14_InvalidCapturedAtRejected() {
     basePointInput({ capturedAt: "not-a-date" }),
   );
   assert(!result.ok && result.code === "validation_failed", "expected invalid capturedAt to be rejected");
-  console.log("Test 14 (invalid capturedAt rejected): PASS [executed]");
+  console.log("Test 16 (invalid capturedAt rejected): PASS [executed]");
 }
 
-async function test15_InvalidParentIdRejected() {
+async function test17_InvalidParentIdRejected() {
   const client = new FakeSupabaseClient();
   client.userId = USER_A;
 
@@ -472,10 +542,10 @@ async function test15_InvalidParentIdRejected() {
   );
   assert(!result.ok && result.code === "invalid_parent_id", "expected non-UUID landRecordId to be rejected");
   assert(client.calls.every((c) => c.op !== "insert"), "no insert should be attempted for an invalid parent id");
-  console.log("Test 15 (invalid landRecordId rejected): PASS [executed]");
+  console.log("Test 17 (invalid landRecordId rejected): PASS [executed]");
 }
 
-async function test16_LegacyPointIdRejected() {
+async function test18_LegacyPointIdRejected() {
   const client = new FakeSupabaseClient();
   client.userId = USER_A;
 
@@ -488,10 +558,10 @@ async function test16_LegacyPointIdRejected() {
     "expected a non-UUID legacy point id to be rejected without an upload attempt",
   );
   assert(client.calls.every((c) => c.op !== "insert"), "no insert should be attempted for a legacy id");
-  console.log("Test 16 (legacy non-UUID point id rejected): PASS [executed]");
+  console.log("Test 18 (legacy non-UUID point id rejected): PASS [executed]");
 }
 
-async function test17_UnknownPayloadKeyStripped() {
+async function test19_UnknownPayloadKeyStripped() {
   const client = new FakeSupabaseClient();
   client.userId = USER_A;
   client.insertQueue.push({ data: basePointRow(), error: null });
@@ -512,10 +582,10 @@ async function test17_UnknownPayloadKeyStripped() {
     !("someRandomField" in (payload ?? {})) && !("some_random_field" in (payload ?? {})),
     "unknown payload key must never reach the database",
   );
-  console.log("Test 17 (unknown payload key never reaches the database): PASS [executed]");
+  console.log("Test 19 (unknown payload key never reaches the database): PASS [executed]");
 }
 
-async function test18_CapturedAtOmittedNotInvented() {
+async function test20_CapturedAtOmittedNotInvented() {
   const client = new FakeSupabaseClient();
   client.userId = USER_A;
   client.insertQueue.push({ data: basePointRow(), error: null });
@@ -536,12 +606,12 @@ async function test18_CapturedAtOmittedNotInvented() {
     !("captured_at" in (payload ?? {})),
     "captured_at must be omitted (letting the column default apply), not invented client-side",
   );
-  console.log("Test 18 (capturedAt omitted -> not invented, column default applies): PASS [executed]");
+  console.log("Test 20 (capturedAt omitted -> not invented, column default applies): PASS [executed]");
 }
 
 // ==== Idempotency / duplicate resolution ====================================
 
-async function test19_RetryIdenticalPayloadSucceeds() {
+async function test21_RetryIdenticalPayloadSucceeds() {
   const client = new FakeSupabaseClient();
   client.userId = USER_A;
   client.insertQueue.push({
@@ -559,10 +629,10 @@ async function test19_RetryIdenticalPayloadSucceeds() {
   if (result.ok) {
     assert(result.state === "points_synced", "expected points_synced on verified retry");
   }
-  console.log("Test 19 (retry, identical payload, verified success): PASS [executed]");
+  console.log("Test 21 (retry, identical payload, verified success): PASS [executed]");
 }
 
-async function test20_RetryDifferentPayloadConflicts() {
+async function test22_RetryDifferentPayloadConflicts() {
   const client = new FakeSupabaseClient();
   client.userId = USER_A;
   client.insertQueue.push({
@@ -580,10 +650,10 @@ async function test20_RetryDifferentPayloadConflicts() {
   if (!result.ok) {
     assert(result.code === "duplicate_conflict", "expected duplicate_conflict");
   }
-  console.log("Test 20 (retry, different payload, duplicate_conflict): PASS [executed]");
+  console.log("Test 22 (retry, different payload, duplicate_conflict): PASS [executed]");
 }
 
-async function test21_InaccessibleDuplicateNotTreatedAsSuccess() {
+async function test23_InaccessibleDuplicateNotTreatedAsSuccess() {
   const client = new FakeSupabaseClient();
   client.userId = USER_B;
   client.insertQueue.push({
@@ -602,10 +672,10 @@ async function test21_InaccessibleDuplicateNotTreatedAsSuccess() {
   if (!result.ok) {
     assert(result.code === "not_found_or_forbidden", "expected not_found_or_forbidden (no ownership leak)");
   }
-  console.log("Test 21 (inaccessible duplicate is not success, no ownership leak): PASS [executed]");
+  console.log("Test 23 (inaccessible duplicate is not success, no ownership leak): PASS [executed]");
 }
 
-async function test22_ConcurrentSamePayloadBothSucceed() {
+async function test24_ConcurrentSamePayloadBothSucceed() {
   // Conceptual/mock: single-threaded event loop, same pattern used by
   // geometry-write.qa.ts for its equivalent test.
   const client = new FakeSupabaseClient();
@@ -623,10 +693,10 @@ async function test22_ConcurrentSamePayloadBothSucceed() {
   ]);
 
   assert(result1.ok && result2.ok, "expected both concurrent identical-payload creates to report success");
-  console.log("Test 22 (concurrent same payload -> one row, both succeed) [conceptual/mock]: PASS");
+  console.log("Test 24 (concurrent same payload -> one row, both succeed) [conceptual/mock]: PASS");
 }
 
-async function test23_ConcurrentDifferentPayloadOneConflicts() {
+async function test25_ConcurrentDifferentPayloadOneConflicts() {
   const client = new FakeSupabaseClient();
   client.userId = USER_A;
   client.insertQueue.push({ data: basePointRow({ note: "first" }), error: null });
@@ -653,7 +723,7 @@ async function test23_ConcurrentDifferentPayloadOneConflicts() {
   assert(successes.length === 1, "expected exactly one success");
   assert(conflicts.length === 1, "expected exactly one duplicate_conflict");
   console.log(
-    "Test 23 (concurrent different payload -> one success, one duplicate_conflict) [conceptual/mock]: PASS",
+    "Test 25 (concurrent different payload -> one success, one duplicate_conflict) [conceptual/mock]: PASS",
   );
 }
 
@@ -677,7 +747,7 @@ function withCloudCacheStorage<T>(fn: () => T): T {
   return fn();
 }
 
-async function test24_SuccessfulCreateUpdatesOnlyCreatingUsersCache() {
+async function test26_SuccessfulCreateUpdatesOnlyCreatingUsersCache() {
   await withCloudCacheStorage(async () => {
     writeCloudCache(USER_A, [baseCachedRecord()], "2026-01-01T00:00:00.000Z");
     writeCloudCache(
@@ -706,10 +776,10 @@ async function test24_SuccessfulCreateUpdatesOnlyCreatingUsersCache() {
       "User B's cache must never be touched by User A's write",
     );
   });
-  console.log("Test 24 (successful create changes only the creating user's cache): PASS [executed]");
+  console.log("Test 26 (successful create changes only the creating user's cache): PASS [executed]");
 }
 
-async function test25_CloudFailureKeepsOldCache() {
+async function test27_CloudFailureKeepsOldCache() {
   await withCloudCacheStorage(async () => {
     writeCloudCache(USER_A, [baseCachedRecord()], "2026-01-01T00:00:00.000Z");
 
@@ -731,10 +801,10 @@ async function test25_CloudFailureKeepsOldCache() {
       "a failed cloud create must leave the existing cache unchanged",
     );
   });
-  console.log("Test 25 (cloud failure keeps old cache unchanged): PASS [executed]");
+  console.log("Test 27 (cloud failure keeps old cache unchanged): PASS [executed]");
 }
 
-async function test26_UnlinkedPointCacheIsNoOp() {
+async function test28_UnlinkedPointCacheIsNoOp() {
   await withCloudCacheStorage(async () => {
     writeCloudCache(USER_A, [baseCachedRecord()], "2026-01-01T00:00:00.000Z");
 
@@ -754,10 +824,10 @@ async function test26_UnlinkedPointCacheIsNoOp() {
       "an unlinked point has no cached parent to attach to -- this must be a documented no-op, not a crash",
     );
   });
-  console.log("Test 26 (unlinked point cache update is a documented no-op): PASS [executed]");
+  console.log("Test 28 (unlinked point cache update is a documented no-op): PASS [executed]");
 }
 
-async function test27_ConflictDoesNotChangeCache() {
+async function test29_ConflictDoesNotChangeCache() {
   await withCloudCacheStorage(async () => {
     writeCloudCache(USER_A, [baseCachedRecord()], "2026-01-01T00:00:00.000Z");
 
@@ -777,12 +847,12 @@ async function test27_ConflictDoesNotChangeCache() {
     const cache = readCloudCache(USER_A);
     assert(cache?.records[0]?.points.length === 0, "a duplicate_conflict must never touch the cache");
   });
-  console.log("Test 27 (duplicate conflict does not change cache): PASS [executed]");
+  console.log("Test 29 (duplicate conflict does not change cache): PASS [executed]");
 }
 
 // ==== Sync-state / scope invariants =========================================
 
-async function test28_PointSuccessProducesPointsSynced() {
+async function test30_PointSuccessProducesPointsSynced() {
   const client = new FakeSupabaseClient();
   client.userId = USER_A;
   client.insertQueue.push({ data: basePointRow(), error: null });
@@ -796,10 +866,10 @@ async function test28_PointSuccessProducesPointsSynced() {
     !(result as { state: string }).state.includes("core_record_synced"),
     "point success must never claim core_record_synced",
   );
-  console.log("Test 28 (point success produces points_synced, not core_record_synced): PASS [executed]");
+  console.log("Test 30 (point success produces points_synced, not core_record_synced): PASS [executed]");
 }
 
-async function test29_NoWriteToAnyOtherTable() {
+async function test31_NoWriteToAnyOtherTable() {
   const client = new FakeSupabaseClient();
   client.userId = USER_A;
   client.insertQueue.push({ data: basePointRow(), error: null });
@@ -813,10 +883,10 @@ async function test29_NoWriteToAnyOtherTable() {
     (c) => c.table !== "land_points" && (c.op === "insert" || c.op === "update" || c.op === "delete"),
   );
   assert(nonPointWrites.length === 0, "no write to any table other than land_points may occur");
-  console.log("Test 29 (no write to any other table): PASS [executed]");
+  console.log("Test 31 (no write to any other table): PASS [executed]");
 }
 
-async function test30_ReloadPersistenceTest() {
+async function test32_ReloadPersistenceTest() {
   await withCloudCacheStorage(async () => {
     writeCloudCache(USER_A, [baseCachedRecord()], "2026-01-01T00:00:00.000Z");
 
@@ -842,33 +912,33 @@ async function test30_ReloadPersistenceTest() {
       "reloaded point must match the originally synced coordinates",
     );
   });
-  console.log("Test 30 (reload persistence: point survives a simulated reload via cache): PASS [executed]");
+  console.log("Test 32 (reload persistence: point survives a simulated reload via cache): PASS [executed]");
 }
 
 // ==== Direct validation/mapping sanity (no coordinator involved) ===========
 
-async function test31_ValidateCreatePointInputDirectly() {
+async function test33_ValidateCreatePointInputDirectly() {
   const valid = validateCreatePointInput(basePointInput());
   assert(valid.ok, "a well-formed CreatePointInput must pass validateCreatePointInput directly");
 
   const invalid = validateCreatePointInput(basePointInput({ pointType: "bogus" as unknown as CreatePointInput["pointType"] }));
   assert(!invalid.ok, "an invalid pointType must fail validateCreatePointInput directly");
-  console.log("Test 31 (validateCreatePointInput direct sanity check): PASS [executed]");
+  console.log("Test 33 (validateCreatePointInput direct sanity check): PASS [executed]");
 }
 
-async function test32_MapCloudPointRoundTrip() {
+async function test34_MapCloudPointRoundTrip() {
   const row = basePointRow();
   const mapped: CloudLandPoint = mapCloudPoint(row);
   assert(mapped.id === row.id, "mapCloudPoint must preserve id");
   assert(mapped.pointType === row.point_type, "mapCloudPoint must preserve pointType");
   assert(mapped.latitude === row.latitude && mapped.longitude === row.longitude, "mapCloudPoint must preserve coordinates");
-  console.log("Test 32 (mapCloudPoint round-trip sanity check, pre-existing mapper reused unmodified): PASS [executed]");
+  console.log("Test 34 (mapCloudPoint round-trip sanity check, pre-existing mapper reused unmodified): PASS [executed]");
 }
 
-async function test33_IsStableCloudIdSanity() {
+async function test35_IsStableCloudIdSanity() {
   assert(isStableCloudId(POINT_ID), "a well-formed UUID must be recognized as a stable cloud id");
   assert(!isStableCloudId("local-123-abc"), "a legacy local id must not be recognized as a stable cloud id");
-  console.log("Test 33 (isStableCloudId sanity check, pre-existing helper reused unmodified): PASS [executed]");
+  console.log("Test 35 (isStableCloudId sanity check, pre-existing helper reused unmodified): PASS [executed]");
 }
 
 // ---- Runner -----------------------------------------------------------------
@@ -887,26 +957,28 @@ async function main() {
   await test11_InvalidQualityGradeRejected();
   await test12_InvalidCaptureMethodRejected();
   await test13_InvalidSourceRejected();
-  await test14_InvalidCapturedAtRejected();
-  await test15_InvalidParentIdRejected();
-  await test16_LegacyPointIdRejected();
-  await test17_UnknownPayloadKeyStripped();
-  await test18_CapturedAtOmittedNotInvented();
-  await test19_RetryIdenticalPayloadSucceeds();
-  await test20_RetryDifferentPayloadConflicts();
-  await test21_InaccessibleDuplicateNotTreatedAsSuccess();
-  await test22_ConcurrentSamePayloadBothSucceed();
-  await test23_ConcurrentDifferentPayloadOneConflicts();
-  await test24_SuccessfulCreateUpdatesOnlyCreatingUsersCache();
-  await test25_CloudFailureKeepsOldCache();
-  await test26_UnlinkedPointCacheIsNoOp();
-  await test27_ConflictDoesNotChangeCache();
-  await test28_PointSuccessProducesPointsSynced();
-  await test29_NoWriteToAnyOtherTable();
-  await test30_ReloadPersistenceTest();
-  await test31_ValidateCreatePointInputDirectly();
-  await test32_MapCloudPointRoundTrip();
-  await test33_IsStableCloudIdSanity();
+  await test14_InvalidProvenanceNumericMetadataRejected();
+  await test15_ValidRtkProvenanceAccepted();
+  await test16_InvalidCapturedAtRejected();
+  await test17_InvalidParentIdRejected();
+  await test18_LegacyPointIdRejected();
+  await test19_UnknownPayloadKeyStripped();
+  await test20_CapturedAtOmittedNotInvented();
+  await test21_RetryIdenticalPayloadSucceeds();
+  await test22_RetryDifferentPayloadConflicts();
+  await test23_InaccessibleDuplicateNotTreatedAsSuccess();
+  await test24_ConcurrentSamePayloadBothSucceed();
+  await test25_ConcurrentDifferentPayloadOneConflicts();
+  await test26_SuccessfulCreateUpdatesOnlyCreatingUsersCache();
+  await test27_CloudFailureKeepsOldCache();
+  await test28_UnlinkedPointCacheIsNoOp();
+  await test29_ConflictDoesNotChangeCache();
+  await test30_PointSuccessProducesPointsSynced();
+  await test31_NoWriteToAnyOtherTable();
+  await test32_ReloadPersistenceTest();
+  await test33_ValidateCreatePointInputDirectly();
+  await test34_MapCloudPointRoundTrip();
+  await test35_IsStableCloudIdSanity();
 
   console.log("\nSprint 02D-1B points cloud-write (create-only) QA: ALL PASS");
 }

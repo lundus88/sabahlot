@@ -35,7 +35,7 @@ function toChildRepositoryError(error: unknown): ChildRepositoryError {
 }
 
 const POINT_SELECT_COLUMNS =
-  "id, land_record_id, captured_by, point_type, label, latitude, longitude, altitude, accuracy_m, altitude_accuracy_m, heading, speed, quality_grade, capture_method, source, sample_count, occupation_seconds, distance_difference_m, bearing_degrees, note, captured_at, created_at";
+  "id, land_record_id, captured_by, point_type, label, latitude, longitude, altitude, accuracy_m, altitude_accuracy_m, heading, speed, quality_grade, capture_method, source, source_crs, source_datum, instrument_make, instrument_model, instrument_serial, firmware_version, correction_source, correction_age_seconds, pdop, satellite_count, tilt_status, signal_integrity_status, sample_count, occupation_seconds, distance_difference_m, bearing_degrees, note, captured_at, created_at";
 
 /**
  * Converts validated PointWritableFields into the snake_case columns
@@ -60,6 +60,20 @@ export function mapPointFieldsToDbPayload(
   if ("qualityGrade" in fields) payload.quality_grade = fields.qualityGrade;
   if ("captureMethod" in fields) payload.capture_method = fields.captureMethod;
   if ("source" in fields) payload.source = fields.source;
+  if ("sourceCrs" in fields) payload.source_crs = fields.sourceCrs;
+  if ("sourceDatum" in fields) payload.source_datum = fields.sourceDatum;
+  if ("instrumentMake" in fields) payload.instrument_make = fields.instrumentMake;
+  if ("instrumentModel" in fields) payload.instrument_model = fields.instrumentModel;
+  if ("instrumentSerial" in fields) payload.instrument_serial = fields.instrumentSerial;
+  if ("firmwareVersion" in fields) payload.firmware_version = fields.firmwareVersion;
+  if ("correctionSource" in fields) payload.correction_source = fields.correctionSource;
+  if ("correctionAgeSeconds" in fields) payload.correction_age_seconds = fields.correctionAgeSeconds;
+  if ("pdop" in fields) payload.pdop = fields.pdop;
+  if ("satelliteCount" in fields) payload.satellite_count = fields.satelliteCount;
+  if ("tiltStatus" in fields) payload.tilt_status = fields.tiltStatus;
+  if ("signalIntegrityStatus" in fields) {
+    payload.signal_integrity_status = fields.signalIntegrityStatus;
+  }
   if ("sampleCount" in fields) payload.sample_count = fields.sampleCount;
   if ("occupationSeconds" in fields) payload.occupation_seconds = fields.occupationSeconds;
   if ("distanceDifferenceM" in fields) payload.distance_difference_m = fields.distanceDifferenceM;
