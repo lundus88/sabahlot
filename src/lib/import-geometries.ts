@@ -14,6 +14,12 @@ import type {
   PolygonDrawingObject,
 } from "@/lib/drawing-types";
 
+import {
+  assessImportCrs,
+  assertImportCrsSafe,
+  type CrsSafetyDecision,
+} from "@/lib/crs-datum-safety";
+
 export type ImportGeometryKind =
   | "polygon"
   | "line"
@@ -34,6 +40,7 @@ export interface ImportedGeometryPreview {
   polygon: PolygonResult | null;
   pointCount: number;
   message: string;
+  crs: CrsSafetyDecision;
 }
 
 export interface ImportDisplayOptions {
@@ -41,6 +48,7 @@ export interface ImportDisplayOptions {
   areaUnit: AreaUnit;
   language: AppLanguage;
   baseMap: BaseMapId;
+  sourceCrs?: string | null;
 }
 
 const EARTH_RADIUS_METERS = 6378137;
@@ -267,6 +275,9 @@ function parseKml(
   fileName: string,
   options: Partial<ImportDisplayOptions>,
 ): ImportedGeometryPreview {
+  const crs = assessImportCrs("KML");
+  assertImportCrsSafe(crs);
+
   const parser = new DOMParser();
   const document = parser.parseFromString(source, "application/xml");
 
@@ -301,6 +312,7 @@ function parseKml(
         polygon: createImportedPolygonResult(coordinates, options),
         pointCount: coordinates.length,
         message: "Geometry preview ready.",
+        crs,
       };
     }
   }
@@ -375,6 +387,14 @@ function parseGeoJson(
     throw new Error("GeoJSON is not valid JSON.");
   }
 
+  if (isRecord(parsed) && "crs" in parsed) {
+    throw new Error(
+      "CRS_UNCONFIRMED: legacy GeoJSON CRS metadata is not accepted automatically. Convert and verify the file as RFC 7946 WGS84 before import.",
+    );
+  }
+
+  const crs = assessImportCrs("GeoJSON");
+  assertImportCrsSafe(crs);
   const geometry = firstGeoJsonGeometry(parsed);
 
   if (geometry.type === "Polygon") {
@@ -400,6 +420,7 @@ function parseGeoJson(
       polygon: createImportedPolygonResult(coordinates, options),
       pointCount: coordinates.length,
       message: "Geometry preview ready.",
+      crs,
     };
   }
 
@@ -422,6 +443,7 @@ function parseGeoJson(
       polygon: null,
       pointCount: coordinates.length,
       message: "LineString preview ready. Saving currently requires a polygon.",
+      crs,
     };
   }
 
@@ -440,6 +462,7 @@ function parseGeoJson(
       polygon: null,
       pointCount: 1,
       message: "Point preview ready.",
+      crs,
     };
   }
 
@@ -484,6 +507,9 @@ function parseCsv(
   fileName: string,
   options: Partial<ImportDisplayOptions>,
 ): ImportedGeometryPreview {
+  const crs = assessImportCrs("CSV", options.sourceCrs);
+  assertImportCrsSafe(crs);
+
   const rows = source
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -522,6 +548,7 @@ function parseCsv(
       polygon: null,
       pointCount: 1,
       message: "Point preview ready.",
+      crs,
     };
   }
 
@@ -537,6 +564,7 @@ function parseCsv(
     polygon: createImportedPolygonResult(coordinates, options),
     pointCount: coordinates.length,
     message: "Geometry preview ready.",
+    crs,
   };
 }
 
