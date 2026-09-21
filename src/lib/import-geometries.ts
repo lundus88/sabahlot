@@ -18,7 +18,7 @@ import {
   assessImportCrs,
   assertImportCrsSafe,
   type CrsSafetyDecision,
-} from "@/lib/crs-datum-safety";
+} from "./crs-datum-safety";
 
 export type ImportGeometryKind =
   | "polygon"
