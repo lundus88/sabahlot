@@ -39,6 +39,32 @@ export type CloudPointType =
   | "track_point"
   | "target_point";
 
+export type CloudPointSource =
+  | "phone-gps"
+  | "keyed-coordinate"
+  | "rtk-gnss"
+  | "total-station"
+  | "image-measurement"
+  | "drone"
+  | "lidar"
+  | "kml-import"
+  | "dxf-import"
+  | "csv-import"
+  | "unknown";
+
+export type CloudPointTiltStatus =
+  | "unknown"
+  | "not-applicable"
+  | "disabled"
+  | "enabled";
+
+export type CloudSignalIntegrityStatus =
+  | "unknown"
+  | "normal"
+  | "interference-suspected"
+  | "jamming-suspected"
+  | "spoofing-suspected";
+
 // Mirrors public.document_type in
 // supabase/migrations/202607110002_create_land_domain_enums.sql exactly.
 export type CloudDocumentType =
@@ -116,7 +142,19 @@ export interface CloudLandPointRow {
   speed: number | null;
   quality_grade: string | null;
   capture_method: string | null;
-  source: string | null;
+  source: CloudPointSource | null;
+  source_crs: string | null;
+  source_datum: string | null;
+  instrument_make: string | null;
+  instrument_model: string | null;
+  instrument_serial: string | null;
+  firmware_version: string | null;
+  correction_source: string | null;
+  correction_age_seconds: number | null;
+  pdop: number | null;
+  satellite_count: number | null;
+  tilt_status: CloudPointTiltStatus | null;
+  signal_integrity_status: CloudSignalIntegrityStatus | null;
   sample_count: number | null;
   occupation_seconds: number | null;
   distance_difference_m: number | null;
@@ -218,6 +256,26 @@ export interface CloudLandPoint {
   longitude: number;
   altitude: number | null;
   accuracyM: number | null;
+  altitudeAccuracyM: number | null;
+  heading: number | null;
+  speed: number | null;
+  qualityGrade: string | null;
+  captureMethod: string | null;
+  source: CloudPointSource | null;
+  sourceCrs: string | null;
+  sourceDatum: string | null;
+  instrumentMake: string | null;
+  instrumentModel: string | null;
+  instrumentSerial: string | null;
+  firmwareVersion: string | null;
+  correctionSource: string | null;
+  correctionAgeSeconds: number | null;
+  pdop: number | null;
+  satelliteCount: number | null;
+  tiltStatus: CloudPointTiltStatus | null;
+  signalIntegrityStatus: CloudSignalIntegrityStatus | null;
+  sampleCount: number | null;
+  occupationSeconds: number | null;
   note: string | null;
   capturedAt: string;
 }
