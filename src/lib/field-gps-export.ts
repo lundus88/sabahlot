@@ -7,6 +7,10 @@ import {
   FIELD_GPS_DISCLAIMER,
   KEYED_COORDINATE_DISCLAIMER,
 } from "./field-gps";
+import {
+  classifyEvidence,
+  evidenceLabel,
+} from "./evidence-confidence";
 
 export interface FieldGpsExportInput {
   recordName?: string;
@@ -58,6 +62,7 @@ export function buildFieldGpsCsv(
     "accuracyMeters",
     "qualityGrade",
     "source",
+    "evidenceClass",
     "captureMethod",
     "sampleCount",
     "occupationSeconds",
@@ -76,6 +81,7 @@ export function buildFieldGpsCsv(
           point.accuracyMeters,
           point.qualityGrade,
           point.source,
+          pointEvidenceClass(point),
           point.captureMethod,
           point.sampleCount,
           point.occupationSeconds,
@@ -190,6 +196,22 @@ function estimatedPerimeterMeters(
       ),
     0,
   );
+}
+
+function pointEvidenceClass(point: FieldGpsPoint): string {
+  return evidenceLabel(
+    classifyEvidence({
+      source: point.source,
+      sourceCrsVerified: true,
+      transformationVerified: true,
+      observationQualityKnown: true,
+    }),
+  );
+}
+
+function evidenceSummary(points: FieldGpsPoint[]): string {
+  const classes = [...new Set(points.map(pointEvidenceClass))];
+  return classes.length === 0 ? "Not provided" : classes.join(" + ");
 }
 
 function captureSourceSummary(
@@ -397,6 +419,7 @@ export function buildFieldGpsKml(
         [
           "Status: preliminary approximate WGS84 field reference only",
           `Source: ${point.source === "keyed-coordinate" ? "Keyed coordinate" : "Phone GPS"}`,
+          `Evidence class: ${pointEvidenceClass(point)}`,
           `Accuracy: ${point.source === "keyed-coordinate" ? "Not measured / user-entered" : `${point.accuracyMeters?.toFixed(1) ?? "unknown"} m`}`,
           `Quality grade: ${point.qualityGrade}`,
           `Capture method: ${point.captureMethod}`,
@@ -524,6 +547,10 @@ export async function exportFieldGpsPdf(
       captureMethodSummary(
         input.points,
       ),
+    ],
+    [
+      "Evidence class",
+      evidenceSummary(input.points),
     ],
     [
       "Points observed",
@@ -756,6 +783,7 @@ export async function exportFieldGpsPdf(
           `Lat ${point.latitude.toFixed(7)}`,
           `Lng ${point.longitude.toFixed(7)}`,
           `Source ${point.source === "keyed-coordinate" ? "Keyed coordinate" : "Phone GPS"}`,
+          `Evidence ${pointEvidenceClass(point)}`,
           `Accuracy ${point.source === "keyed-coordinate" ? "Not measured / user-entered" : `${point.accuracyMeters?.toFixed(1) ?? "unknown"} m`}`,
           `Grade ${point.qualityGrade}`,
           point.captureMethod,
