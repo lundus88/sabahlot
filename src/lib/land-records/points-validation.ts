@@ -197,6 +197,24 @@ function extractWritableFields(input: Record<string, unknown>): FieldExtractionR
     }
   }
 
+  for (const key of ["correctionAgeSeconds", "pdop"] as const) {
+    const value = fields[key];
+    if (value !== undefined && value !== null && value < 0) {
+      return { ok: false, error: `${key} must be greater than or equal to 0, or null.` };
+    }
+  }
+
+  if (
+    fields.satelliteCount !== undefined &&
+    fields.satelliteCount !== null &&
+    (!Number.isInteger(fields.satelliteCount) || fields.satelliteCount < 0)
+  ) {
+    return {
+      ok: false,
+      error: "satelliteCount must be a non-negative integer or null.",
+    };
+  }
+
   if ("qualityGrade" in input && input.qualityGrade !== undefined) {
     if (
       input.qualityGrade !== null &&
