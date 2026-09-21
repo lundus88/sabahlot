@@ -561,7 +561,7 @@ async function test18_LegacyPointIdRejected() {
   console.log("Test 18 (legacy non-UUID point id rejected): PASS [executed]");
 }
 
-async function test21_UnknownPayloadKeyStripped() {
+async function test19_UnknownPayloadKeyStripped() {
   const client = new FakeSupabaseClient();
   client.userId = USER_A;
   client.insertQueue.push({ data: basePointRow(), error: null });
@@ -582,10 +582,10 @@ async function test21_UnknownPayloadKeyStripped() {
     !("someRandomField" in (payload ?? {})) && !("some_random_field" in (payload ?? {})),
     "unknown payload key must never reach the database",
   );
-  console.log("Test 21 (unknown payload key never reaches the database): PASS [executed]");
+  console.log("Test 19 (unknown payload key never reaches the database): PASS [executed]");
 }
 
-async function test22_CapturedAtOmittedNotInvented() {
+async function test20_CapturedAtOmittedNotInvented() {
   const client = new FakeSupabaseClient();
   client.userId = USER_A;
   client.insertQueue.push({ data: basePointRow(), error: null });
@@ -606,7 +606,7 @@ async function test22_CapturedAtOmittedNotInvented() {
     !("captured_at" in (payload ?? {})),
     "captured_at must be omitted (letting the column default apply), not invented client-side",
   );
-  console.log("Test 22 (capturedAt omitted -> not invented, column default applies): PASS [executed]");
+  console.log("Test 20 (capturedAt omitted -> not invented, column default applies): PASS [executed]");
 }
 
 // ==== Idempotency / duplicate resolution ====================================
