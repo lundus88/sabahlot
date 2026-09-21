@@ -38,11 +38,11 @@ Documents the actual, migrated schema (`supabase/migrations/202607110001` throug
 - **Purpose:** Consolidates `FieldGpsPoint`/`FieldGpsTrackPoint`/`FoundPointRecord` client shapes into one table.
 - **Owner relationship:** Two-branch. `land_record_id` is **nullable** (`ON DELETE SET NULL`) — a point may exist before being attached to a saved record. `captured_by → auth.users.id` (`ON DELETE SET NULL`).
 - **RLS:** `(land_record_id IS NOT NULL AND EXISTS(...owner_id = auth.uid()))` OR `(land_record_id IS NULL AND captured_by = auth.uid())`. **Known gap:** the linked branch does not itself constrain `captured_by` — the app layer must always set it from session (ADR-005), RLS alone does not.
-- **Writable fields:** `point_type`, `label`, `latitude`, `longitude`, `altitude`, `accuracy_m`, `altitude_accuracy_m`, `heading`, `speed`, `quality_grade`, `capture_method`, `source`, `sample_count`, `occupation_seconds`, `distance_difference_m`, `bearing_degrees`, `note`, `captured_at`.
+- **Writable fields:** `point_type`, `label`, `latitude`, `longitude`, `altitude`, `accuracy_m`, `altitude_accuracy_m`, `heading`, `speed`, `quality_grade`, `capture_method`, `source`, provenance metadata (`source_crs`, `source_datum`, instrument make/model/serial, firmware, correction source/age, PDOP, satellite count, tilt status, signal-integrity status), `sample_count`, `occupation_seconds`, `distance_difference_m`, `bearing_degrees`, `note`, `captured_at`. New provenance fields are nullable by design: unavailable receiver/device metadata must remain null, never fabricated.
 - **DB-controlled:** `id`, `land_record_id` (set at create), `captured_by` (session-derived, never accepted from caller), `created_at`.
 - **ID strategy:** Client-generated stable UUID.
 - **Conflict strategy:** **None — no `updated_at` column and no update trigger exist on this table.** Points are create-only until an explicit future migration adds conflict-control columns (ADR-011).
-- **Current implementation status:** Not implemented. Design approved (Sprint 02D-0A) as create-only.
+- **Current implementation status:** Create-only point write path is implemented. Observation Provenance v1 is prepared on branch `p1/observation-provenance-v1` as an additive migration + type/validation/repository plumbing; it does not populate metadata the active phone-GPS API does not provide and is not applied to Production.
 
 ## `land_parties`
 - **Purpose:** Named people tied to a land record (owner/applicant/heir/surveyor/witness/village head) — normalizes previously-flat client fields.
