@@ -19,6 +19,10 @@ import {
   assertImportCrsSafe,
   type CrsSafetyDecision,
 } from "./crs-datum-safety";
+import {
+  classifyEvidence,
+  type EvidenceDecision,
+} from "./evidence-confidence";
 
 export type ImportGeometryKind =
   | "polygon"
@@ -41,6 +45,7 @@ export interface ImportedGeometryPreview {
   pointCount: number;
   message: string;
   crs: CrsSafetyDecision;
+  evidence: EvidenceDecision;
 }
 
 export interface ImportDisplayOptions {
@@ -58,6 +63,25 @@ const METERS_PER_FOOT = 0.3048;
 const METERS_PER_LINK = 0.201168;
 const METERS_PER_CHAIN = 20.1168;
 const MIN_SEGMENT_METERS = 0.5;
+
+function importEvidence(
+  format: "KML" | "GeoJSON" | "CSV",
+  crs: CrsSafetyDecision,
+): EvidenceDecision {
+  const source =
+    format === "KML"
+      ? "kml-import"
+      : format === "GeoJSON"
+        ? "geojson-import"
+        : "csv-import";
+
+  return classifyEvidence({
+    source,
+    sourceCrsVerified: crs.status === "VERIFIED_NATIVE",
+    transformationVerified:
+      crs.status === "VERIFIED_NATIVE" && !crs.transformationApplied,
+  });
+}
 
 const DEFAULT_IMPORT_OPTIONS: ImportDisplayOptions = {
   distanceUnit: "m",
@@ -277,6 +301,7 @@ function parseKml(
 ): ImportedGeometryPreview {
   const crs = assessImportCrs("KML");
   assertImportCrsSafe(crs);
+  const evidence = importEvidence("KML", crs);
 
   const parser = new DOMParser();
   const document = parser.parseFromString(source, "application/xml");
@@ -313,6 +338,7 @@ function parseKml(
         pointCount: coordinates.length,
         message: "Geometry preview ready.",
         crs,
+        evidence,
       };
     }
   }
@@ -395,6 +421,7 @@ function parseGeoJson(
 
   const crs = assessImportCrs("GeoJSON");
   assertImportCrsSafe(crs);
+  const evidence = importEvidence("GeoJSON", crs);
   const geometry = firstGeoJsonGeometry(parsed);
 
   if (geometry.type === "Polygon") {
@@ -421,6 +448,7 @@ function parseGeoJson(
       pointCount: coordinates.length,
       message: "Geometry preview ready.",
       crs,
+      evidence,
     };
   }
 
@@ -444,6 +472,7 @@ function parseGeoJson(
       pointCount: coordinates.length,
       message: "LineString preview ready. Saving currently requires a polygon.",
       crs,
+      evidence,
     };
   }
 
@@ -463,6 +492,7 @@ function parseGeoJson(
       pointCount: 1,
       message: "Point preview ready.",
       crs,
+      evidence,
     };
   }
 
@@ -509,6 +539,7 @@ function parseCsv(
 ): ImportedGeometryPreview {
   const crs = assessImportCrs("CSV", options.sourceCrs);
   assertImportCrsSafe(crs);
+  const evidence = importEvidence("CSV", crs);
 
   const rows = source
     .split(/\r?\n/)
@@ -549,6 +580,7 @@ function parseCsv(
       pointCount: 1,
       message: "Point preview ready.",
       crs,
+      evidence,
     };
   }
 
@@ -565,6 +597,7 @@ function parseCsv(
     pointCount: coordinates.length,
     message: "Geometry preview ready.",
     crs,
+    evidence,
   };
 }
 

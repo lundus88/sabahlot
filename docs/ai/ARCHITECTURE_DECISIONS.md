@@ -212,3 +212,13 @@ Each decision is recorded once and never silently overridden. If a later sprint 
 **Consequences:** (1) CSV imports that previously worked without a declared CRS now fail closed until the user selects and verifies one; (2) legacy GeoJSON carrying an explicit `crs` member is blocked instead of guessed, because it may represent a pre-RFC-7946 alternate CRS; (3) BRSO/GDM2000/UTM are recognized for intent only in P0 — no projection or datum transformation is enabled yet; (4) any future transformation engine must record source CRS, target CRS, method/grid/parameters, whether transformation was applied, and evidence/version, and must ship with Golden Dataset regression before this ADR can be superseded.
 
 **Status:** Accepted and implemented by `p0/crs-datum-safety-engine` (2026-09-21). No database migration and no Production activation are part of this ADR.
+
+
+### ADR-033
+**Decision:** SabahLot classifies evidence using discrete evidence classes, not a numeric confidence score. P0 classes are `OFFICIAL_RECORD`, `SURVEY_OBSERVATION`, `IMPORTED_REFERENCE`, `FIELD_REFERENCE`, `APPROXIMATE`, and `UNVERIFIED`. Evidence class is derived from source/provenance/authority evidence and always carries reasons and restrictions. `OFFICIAL_RECORD` may only be produced when an authoritative source type is paired with an explicit traceable authority reference; instrument accuracy, RTK fix quality, total-station observation, GNSS metadata, or CRS correctness alone can never promote evidence to official/cadastral authority.
+
+**Reason:** A single numeric score would imply a precision and ordering that the underlying legal/evidential questions do not support. Coordinate quality, source provenance, CRS correctness, instrument quality, and legal/official authority are separate dimensions. Collapsing them into one confidence number risks making highly precise observations appear legally authoritative.
+
+**Consequences:** Phone/browser GPS is classified `APPROXIMATE`; manually keyed coordinates are `FIELD_REFERENCE`; RTK GNSS/total-station/survey-mark observations are `SURVEY_OBSERVATION`; verified-CRS KML/GeoJSON/CSV imports are `IMPORTED_REFERENCE`; unknown/inadequate provenance is `UNVERIFIED`. All P0 decisions return `officialUseAllowed: false` because SabahLot does not itself authorize official use. A future official-submission workflow would require a separately scoped authority/review gate and cannot reinterpret this field silently.
+
+**Status:** Accepted and implemented by `p0/evidence-confidence-engine` (2026-09-21). No database migration and no Production activation are part of this ADR.

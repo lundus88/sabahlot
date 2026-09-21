@@ -27,6 +27,8 @@ assert.equal(csvWgs84.crs.sourceCrs, "EPSG:4326");
 assert.equal(csvWgs84.crs.status, "VERIFIED_NATIVE");
 assert.equal(csvWgs84.crs.transformationApplied, false);
 assert.equal(csvWgs84.kind, "polygon");
+assert.equal(csvWgs84.evidence.evidenceClass, "IMPORTED_REFERENCE");
+assert.equal(csvWgs84.evidence.officialUseAllowed, false);
 
 const geoJson = JSON.stringify({
   type: "Feature",
@@ -39,6 +41,8 @@ const geoJson = JSON.stringify({
 const geo = parseImportedGeometry("point.geojson", geoJson);
 assert.equal(geo.crs.sourceCrs, "EPSG:4326");
 assert.equal(geo.crs.status, "VERIFIED_NATIVE");
+assert.equal(geo.evidence.evidenceClass, "IMPORTED_REFERENCE");
+assert.equal(geo.evidence.officialUseAllowed, false);
 
 const legacyGeoJson = JSON.stringify({
   type: "Feature",

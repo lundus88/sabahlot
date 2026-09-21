@@ -2783,7 +2783,7 @@ export default function HomePage() {
         coordinate.lat,
         coordinate.lng,
         importPreview.name || "Imported point",
-        `Imported from ${importPreview.format} file; source CRS ${importPreview.crs.sourceCrs}; target CRS ${importPreview.crs.targetCrs}; transform applied: ${importPreview.crs.transformationApplied ? "yes" : "no"}.`,
+        `Imported from ${importPreview.format} file; evidence class ${importPreview.evidence.evidenceClass}; source CRS ${importPreview.crs.sourceCrs}; target CRS ${importPreview.crs.targetCrs}; transform applied: ${importPreview.crs.transformationApplied ? "yes" : "no"}.`,
       );
 
     window.dispatchEvent(
@@ -9205,6 +9205,11 @@ export default function HomePage() {
                   CRS {importPreview.crs.sourceCrs} → {importPreview.crs.targetCrs}
                   {" · "}{importPreview.crs.status}
                   {" · "}transform: {importPreview.crs.transformationApplied ? "applied" : "none"}
+                </small>
+
+                <small>
+                  Evidence: {importPreview.evidence.evidenceClass.replaceAll("_", " ")}
+                  {" · "}official use: {importPreview.evidence.officialUseAllowed ? "allowed" : "not established"}
                 </small>
 
                 <small>
