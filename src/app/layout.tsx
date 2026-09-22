@@ -8,6 +8,7 @@ import type {
 } from "react";
 
 import AccountSessionBoundary from "@/components/AccountSessionBoundary";
+import GpsResumeBridge from "@/components/GpsResumeBridge";
 import PWARegister from "@/components/PWARegister";
 
 import "./globals.css";
@@ -89,6 +90,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <AccountSessionBoundary>
+          <GpsResumeBridge />
           {children}
           <PWARegister />
         </AccountSessionBoundary>
