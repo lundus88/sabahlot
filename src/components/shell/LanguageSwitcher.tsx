@@ -11,7 +11,7 @@ const LANGUAGE_LABELS: Record<AppLanguage, string> = {
   zh: "中文",
 };
 
-const LANGUAGE_ORDER: readonly AppLanguage[] = ["en", "ms", "zh"];
+const LANGUAGE_ORDER: readonly AppLanguage[] = ["en", "ms"];
 
 export default function LanguageSwitcher({
   language,
