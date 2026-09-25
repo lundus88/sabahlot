@@ -130,6 +130,8 @@ import CategoryDrawer from "@/components/shell/CategoryDrawer";
 import NcrScreen from "@/components/ncr/NcrScreen";
 import ServiceRequestScreen from "@/components/serviceRequest/ServiceRequestScreen";
 import DocumentGuideScreen from "@/components/documentGuide/DocumentGuideScreen";
+import SmartNextPanel from "@/components/smartNext/SmartNextPanel";
+import type { SmartNextActionId } from "@/lib/smart-next";
 import FeedbackModal from "@/components/feedback/FeedbackModal";
 import LotFormWizard from "./components/LotFormWizard";
 
@@ -2628,6 +2630,31 @@ export default function HomePage() {
         }
         break;
 
+      default:
+        break;
+    }
+  };
+
+  const handleSmartNextAction = (action: SmartNextActionId) => {
+    switch (action) {
+      case "upload_document":
+        setDocumentGuideOpen(true);
+        break;
+      case "mark_land":
+        setMapToolsRevealToken((token) => token + 1);
+        break;
+      case "prepare_application":
+        if (!formData.landRecord.landCaseType) {
+          updateLandRecordField("landCaseType", "land_application");
+        }
+        openLotPanel();
+        break;
+      case "professional_help":
+        setServiceRequestOpen(true);
+        break;
+      case "review_land_summary":
+        openLotPanel();
+        break;
       default:
         break;
     }
@@ -8528,6 +8555,20 @@ export default function HomePage() {
         onRegionChange={setRegion}
         mapToolsRevealToken={mapToolsRevealToken}
       />
+
+      {appMode === "public" && (
+        <SmartNextPanel
+          language={language}
+          context={{
+            hasPolygon: Boolean(polygon),
+            queuedDocumentCount: documentUploads.length,
+            recordsAvailable: formData.landRecord.recordsAvailable,
+            landCaseType: formData.landRecord.landCaseType,
+            issueTags: formData.landRecord.issueTags,
+          }}
+          onAction={handleSmartNextAction}
+        />
+      )}
 
       <CategoryDrawer
         open={categoryDrawerOpen}
