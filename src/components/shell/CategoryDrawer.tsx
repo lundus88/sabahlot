@@ -10,6 +10,13 @@ import ModeToggle from "@/components/shell/ModeToggle";
 import { useAppBrandLabel } from "@/lib/branding/appBrandLabel";
 
 const MODULE_ICON_PATHS: Record<ModuleId, ReactNode> = {
+  document_guide: (
+    <>
+      <path d="M7 3h7l4 4v14H7z" />
+      <path d="M14 3v4h4" />
+      <path d="M9 13h6M12 10v6" />
+    </>
+  ),
   ncr: (
     <>
       <path d="M4 21V9l8-6 8 6v12" />
@@ -223,7 +230,7 @@ export default function CategoryDrawer({
                 key={id}
                 type="button"
                 className={`sl-category-item ${
-                  id === "ncr" ? "is-primary" : ""
+                  id === "document_guide" ? "is-primary" : ""
                 }`}
                 onClick={() => onSelectCategory(id)}
               >
