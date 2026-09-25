@@ -108,7 +108,11 @@ export default function DocumentGuideScreen({
   }
 
   const copy = language === "ms" ? COPY.ms : COPY.en;
-  const guideDocumentType: GuideDocumentType = GUIDE_DOCUMENT_TYPES.includes(documentType as GuideDocumentType)\n    ? (documentType as GuideDocumentType)\n    : "other";\n  const guidance = copy.guides[guideDocumentType];
+  const guideDocumentType: GuideDocumentType =
+    GUIDE_DOCUMENT_TYPES.includes(documentType as GuideDocumentType)
+      ? (documentType as GuideDocumentType)
+      : "other";
+  const guidance = copy.guides[guideDocumentType];
 
   return (
     <div className="sl-document-guide-backdrop" role="presentation" onClick={onClose}>
