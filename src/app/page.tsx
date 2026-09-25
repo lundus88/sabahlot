@@ -129,6 +129,7 @@ import { getAppText, type ModuleId } from "@/lib/i18n/appText";
 import CategoryDrawer from "@/components/shell/CategoryDrawer";
 import NcrScreen from "@/components/ncr/NcrScreen";
 import ServiceRequestScreen from "@/components/serviceRequest/ServiceRequestScreen";
+import DocumentGuideScreen from "@/components/documentGuide/DocumentGuideScreen";
 import FeedbackModal from "@/components/feedback/FeedbackModal";
 import LotFormWizard from "./components/LotFormWizard";
 
@@ -1620,6 +1621,11 @@ export default function HomePage() {
   ] = useState(false);
 
   const [
+    documentGuideOpen,
+    setDocumentGuideOpen,
+  ] = useState(false);
+
+  const [
     feedbackModalOpen,
     setFeedbackModalOpen,
   ] = useState(false);
@@ -2577,6 +2583,10 @@ export default function HomePage() {
     closeCategoryDrawer();
 
     switch (categoryId) {
+      case "document_guide":
+        setDocumentGuideOpen(true);
+        break;
+
       case "ncr":
         setNcrScreenOpen(true);
         break;
@@ -8563,6 +8573,24 @@ export default function HomePage() {
         onRequestReview={() => {
           setNcrScreenOpen(false);
           openFeedback(getAppText(language).modules.ncr.label);
+        }}
+      />
+
+      <DocumentGuideScreen
+        open={documentGuideOpen}
+        onClose={() => setDocumentGuideOpen(false)}
+        language={language}
+        documentType={pendingDocumentType}
+        onDocumentTypeChange={setPendingDocumentType}
+        queuedCount={documentUploads.length}
+        onFilesSelected={handleDocumentFilesSelected}
+        onOpenLandRecord={() => {
+          setDocumentGuideOpen(false);
+          openLotPanel();
+        }}
+        onGetProfessionalHelp={() => {
+          setDocumentGuideOpen(false);
+          setServiceRequestOpen(true);
         }}
       />
 
