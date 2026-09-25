@@ -6,6 +6,17 @@ import { Icon } from "@/app/components/Map";
 import type { AppLanguage } from "@/lib/i18n/appLanguageStorage";
 import type { CloudDocumentType } from "@/lib/land-records/types";
 
+const GUIDE_DOCUMENT_TYPES = [
+  "site_photo",
+  "title_deed",
+  "official_receipt",
+  "application_letter",
+  "plan_or_sketch",
+  "other",
+] as const satisfies readonly CloudDocumentType[];
+
+type GuideDocumentType = (typeof GUIDE_DOCUMENT_TYPES)[number];
+
 const COPY = {
   en: {
     title: "Upload a Land Document",
@@ -27,7 +38,7 @@ const COPY = {
       application_letter: "Land application letter / form",
       plan_or_sketch: "Plan or sketch",
       other: "Other land document",
-    } as Record<CloudDocumentType, string>,
+    } as Record<GuideDocumentType, string>,
     guides: {
       site_photo: ["Use clear photos that show the site or boundary evidence.", "Add the photo to the same land record so it can be reviewed with the map and notes."],
       title_deed: ["Check the lot/title reference, district and registered details shown on the document.", "Use the document together with your SabahLot map before requesting professional help."],
@@ -35,7 +46,7 @@ const COPY = {
       application_letter: ["Check the application reference, applicant details, location and purpose.", "SabahLot can help you organise supporting documents before you continue through the official channel."],
       plan_or_sketch: ["Check whether the plan shows useful lot, boundary, coordinate or location information.", "Compare it with your SabahLot map and mark anything that needs clarification."],
       other: ["Add the document to the correct land record.", "Use Get Professional Help if you are unsure what the document means or what action should follow."],
-    } as Record<CloudDocumentType, string[]>,
+    } as Record<GuideDocumentType, string[]>,
   },
   ms: {
     title: "Muat Naik Dokumen Tanah",
@@ -57,7 +68,7 @@ const COPY = {
       application_letter: "Surat / borang permohonan tanah",
       plan_or_sketch: "Pelan atau lakaran",
       other: "Dokumen tanah lain",
-    } as Record<CloudDocumentType, string>,
+    } as Record<GuideDocumentType, string>,
     guides: {
       site_photo: ["Gunakan gambar yang jelas untuk menunjukkan keadaan tapak atau bukti sempadan.", "Simpan gambar bersama rekod tanah yang sama supaya boleh dirujuk bersama peta dan nota."],
       title_deed: ["Semak rujukan lot/hakmilik, daerah dan butiran berdaftar pada dokumen.", "Gunakan dokumen bersama peta SabahLot sebelum mendapatkan bantuan profesional."],
@@ -65,7 +76,7 @@ const COPY = {
       application_letter: ["Semak rujukan permohonan, butiran pemohon, lokasi dan tujuan.", "SabahLot boleh membantu menyusun dokumen sokongan sebelum anda meneruskan melalui saluran rasmi."],
       plan_or_sketch: ["Semak sama ada pelan menunjukkan maklumat lot, sempadan, koordinat atau lokasi yang berguna.", "Bandingkan dengan peta SabahLot dan tandakan perkara yang perlu diperjelaskan."],
       other: ["Masukkan dokumen ke rekod tanah yang betul.", "Gunakan Dapatkan Bantuan Profesional jika anda tidak pasti maksud dokumen atau tindakan seterusnya."],
-    } as Record<CloudDocumentType, string[]>,
+    } as Record<GuideDocumentType, string[]>,
   },
 } as const;
 
@@ -97,7 +108,7 @@ export default function DocumentGuideScreen({
   }
 
   const copy = language === "ms" ? COPY.ms : COPY.en;
-  const guidance = copy.guides[documentType];
+  const guideDocumentType: GuideDocumentType = GUIDE_DOCUMENT_TYPES.includes(documentType as GuideDocumentType)\n    ? (documentType as GuideDocumentType)\n    : "other";\n  const guidance = copy.guides[guideDocumentType];
 
   return (
     <div className="sl-document-guide-backdrop" role="presentation" onClick={onClose}>
@@ -135,7 +146,7 @@ export default function DocumentGuideScreen({
                 onDocumentTypeChange(event.target.value as CloudDocumentType)
               }
             >
-              {(Object.keys(copy.options) as CloudDocumentType[]).map((type) => (
+              {GUIDE_DOCUMENT_TYPES.map((type) => (
                 <option key={type} value={type}>
                   {copy.options[type]}
                 </option>
