@@ -1,6 +1,7 @@
 import type { AppLanguage } from "@/lib/i18n/appLanguageStorage";
 
 export type ModuleId =
+  | "document_guide"
   | "ncr"
   | "land_management"
   | "map_drawing"
@@ -13,6 +14,7 @@ export type ModuleId =
   | "advanced_mode";
 
 export const MODULE_ORDER: readonly ModuleId[] = [
+  "document_guide",
   "ncr",
   "land_management",
   "map_drawing",
@@ -78,6 +80,10 @@ export const APP_TEXT: Record<AppLanguage, AppTextShape> = {
     regionPickerTitle: "Region",
     languagePickerTitle: "Language",
     modules: {
+      document_guide: {
+        label: "Upload a Land Document",
+        description: "Understand your document, prepare what is missing, and decide what to do next",
+      },
       ncr: {
         label: "NCR / Native Customary Land",
         description: "Native customary land records and boundary claims",
@@ -158,6 +164,10 @@ export const APP_TEXT: Record<AppLanguage, AppTextShape> = {
     regionPickerTitle: "Wilayah",
     languagePickerTitle: "Bahasa",
     modules: {
+      document_guide: {
+        label: "Muat Naik Dokumen Tanah",
+        description: "Fahami dokumen anda, sediakan perkara yang masih kurang dan tentukan tindakan seterusnya",
+      },
       ncr: {
         label: "NCR / Tanah Adat",
         description: "Rekod tanah adat dan tuntutan sempadan",
@@ -238,6 +248,10 @@ export const APP_TEXT: Record<AppLanguage, AppTextShape> = {
     regionPickerTitle: "地区",
     languagePickerTitle: "语言",
     modules: {
+      document_guide: {
+        label: "Upload a Land Document",
+        description: "Understand your document and decide what to do next",
+      },
       ncr: {
         label: "NCR / 原住民习惯地",
         description: "原住民习惯地记录与边界申请",
