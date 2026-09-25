@@ -2,7 +2,7 @@ export type AppLanguage = "en" | "ms" | "zh";
 
 export const APP_LANGUAGE_STORAGE_KEY = "sabahlot_app_language";
 
-const VALID_LANGUAGES: readonly AppLanguage[] = ["en", "ms", "zh"];
+const VALID_LANGUAGES: readonly AppLanguage[] = ["en", "ms"];
 
 export function getStoredLanguage(): AppLanguage {
   if (typeof window === "undefined") {
