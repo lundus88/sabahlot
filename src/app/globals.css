@@ -8650,3 +8650,158 @@ select:focus-visible {
     flex: 0 0 min(78vw, 290px);
   }
 }
+
+
+/* SabahLot 2.1 P0-B2 — Professional Help handoff */
+.sl-professional-help-screen {
+  width: min(620px, calc(100vw - 28px));
+  max-height: min(88vh, 820px);
+  overflow-y: auto;
+}
+
+.sl-professional-help-eyebrow {
+  display: inline-block;
+  margin-bottom: 2px;
+  color: #2563eb;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.sl-professional-help-form {
+  display: grid;
+  gap: 14px;
+}
+
+.sl-professional-help-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.sl-professional-help-form label {
+  display: grid;
+  gap: 6px;
+  color: #334155;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.sl-professional-help-form input,
+.sl-professional-help-form select,
+.sl-professional-help-form textarea {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #0f172a;
+  font: inherit;
+  font-weight: 500;
+  padding: 10px 12px;
+}
+
+.sl-professional-help-form textarea {
+  min-height: 104px;
+  resize: vertical;
+}
+
+.sl-professional-help-context,
+.sl-professional-help-notice,
+.sl-professional-help-verification,
+.sl-professional-help-status {
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #f8fafc;
+  padding: 12px;
+}
+
+.sl-professional-help-context strong,
+.sl-professional-help-verification strong {
+  color: #0f172a;
+  font-size: 0.78rem;
+}
+
+.sl-professional-help-context ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: #475569;
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.sl-professional-help-context p {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 0.76rem;
+}
+
+.sl-professional-help-consent {
+  grid-template-columns: 22px 1fr;
+  align-items: start;
+  gap: 10px !important;
+  font-weight: 600 !important;
+  line-height: 1.45;
+}
+
+.sl-professional-help-consent input {
+  width: 18px;
+  min-height: 18px;
+  margin-top: 2px;
+  padding: 0;
+}
+
+.sl-professional-help-privacy {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.sl-professional-help-verification {
+  display: grid;
+  gap: 10px;
+}
+
+.sl-turnstile-widget {
+  min-height: 65px;
+}
+
+.sl-professional-help-status {
+  color: #334155;
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.sl-professional-help-status.is-success,
+.sl-professional-help-status.is-duplicate {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.sl-professional-help-status.is-failed,
+.sl-professional-help-status.is-required,
+.sl-professional-help-status.is-unavailable {
+  border-color: #fed7aa;
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+@media (max-width: 640px) {
+  .sl-professional-help-screen {
+    width: calc(100vw - 16px);
+    max-height: 94vh;
+  }
+
+  .sl-professional-help-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sl-professional-help-form input,
+  .sl-professional-help-form select,
+  .sl-professional-help-form textarea {
+    min-height: 48px;
+  }
+}

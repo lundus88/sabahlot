@@ -8639,9 +8639,18 @@ export default function HomePage() {
         open={serviceRequestOpen}
         onClose={() => setServiceRequestOpen(false)}
         language={language}
-        onSendFeedback={() => {
-          setServiceRequestOpen(false);
-          openFeedback(getAppText(language).modules.service_request.label);
+        context={{
+          landCaseType: formData.landRecord.landCaseType,
+          district: formData.district,
+          village: formData.village,
+          estimatedAreaM2: polygon?.areaM2 ?? null,
+          issueTags: formData.landRecord.issueTags,
+          documentTypes: Array.from(
+            new Set([
+              ...formData.landRecord.recordsAvailable,
+              ...documentUploads.map((item) => item.documentType),
+            ]),
+          ),
         }}
       />
 
