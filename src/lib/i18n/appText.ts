@@ -105,8 +105,8 @@ export const APP_TEXT: Record<AppLanguage, AppTextShape> = {
         description: "Generate PDF plans and export KML/DXF",
       },
       service_request: {
-        label: "Service Request",
-        description: "Request assistance from a land officer or surveyor",
+        label: "Professional Help",
+        description: "Share your land context with consent for professional follow-up",
       },
       help_guide: {
         label: "Help & Guide",
@@ -189,8 +189,8 @@ export const APP_TEXT: Record<AppLanguage, AppTextShape> = {
         description: "Jana pelan PDF dan eksport KML/DXF",
       },
       service_request: {
-        label: "Permohonan Perkhidmatan",
-        description: "Mohon bantuan daripada pegawai tanah atau juruukur",
+        label: "Bantuan Profesional",
+        description: "Kongsi konteks tanah dengan persetujuan untuk susulan profesional",
       },
       help_guide: {
         label: "Bantuan & Panduan",
@@ -273,8 +273,8 @@ export const APP_TEXT: Record<AppLanguage, AppTextShape> = {
         description: "生成PDF图纸并导出KML/DXF",
       },
       service_request: {
-        label: "服务申请",
-        description: "向土地官员或测量员申请协助",
+        label: "Professional Help",
+        description: "Share land context with consent for professional follow-up",
       },
       help_guide: {
         label: "帮助与指南",
