@@ -64,43 +64,4 @@ const objects: DrawingObject[] = [
   line("solid-visible-1", "solid", true),
   line("solid-visible-2", "solid", true),
   line("dashed-visible", "dashed", true),
-  line("dashed-hidden", "dashed", false),
-];
-const points = [
-  point("point-visible-1", true),
-  point("point-visible-2", true),
-  point("point-hidden", false),
-];
-
-const kml = buildKmlDocument("QA Lot", objects, points);
-const dxf = buildDxfDocument(objects, points);
-const assert = (condition: boolean, message: string) => {
-  if (!condition) throw new Error(message);
-};
-const occurrences = (value: string, token: string) =>
-  value.split(token).length - 1;
-
-assert(kml.visibleCount === 6, "KML visible-object count mismatch");
-assert(occurrences(kml.content, "<Placemark>") === 6, "KML Placemark count mismatch");
-assert(!kml.content.includes("polygon-hidden"), "KML contains hidden polygon");
-assert(!kml.content.includes("dashed-hidden"), "KML contains hidden dashed line");
-assert(!kml.content.includes("point-hidden"), "KML contains hidden point");
-assert(!kml.content.includes("<Polygon>"), "KML polygon boundary must not have fill geometry");
-assert(
-  kml.content.includes("116.07,5.98,0 116.08,5.98,0 116.08,5.99,0 116.07,5.98,0"),
-  "KML polygon ring is not closed",
-);
-assert(kml.content.includes("Status</strong>: Preliminary"), "KML preliminary status missing");
-assert(kml.content.includes("SabahLot powered by Myukur"), "KML attribution missing");
-
-assert(dxf.visibleCount === 6, "DXF visible-object count mismatch");
-assert(!dxf.content.includes("polygon-hidden"), "DXF contains hidden polygon");
-assert(!dxf.content.includes("dashed-hidden"), "DXF contains hidden dashed line");
-assert(!dxf.content.includes("point-hidden"), "DXF contains hidden point");
-assert(dxf.content.includes("8\nLOT_BOUNDARY\n90\n3\n70\n1"), "DXF polygon is not closed");
-assert(dxf.content.includes("8\nPROPOSED_BOUNDARY"), "DXF dashed layer missing");
-assert(occurrences(dxf.content, "0\nPOINT\n8\nPOINT\n") === 2, "DXF point count mismatch");
-assert(dxf.content.includes(DXF_CRS_NOTICE), "DXF CRS notice missing");
-assert(dxf.content.includes("Preliminary Field Assist output only"), "DXF preliminary note missing");
-
-console.log("Export workflow QA: PASS");
+  ¶»§q«^

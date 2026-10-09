@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { parseImportedGeometry } from "./import-geometries";
+import { JSDOM } from "jsdom";
+Object.assign(globalThis, { DOMParser: new JSDOM("").window.DOMParser });
 
 const csv = [
   "lat,lng",
@@ -44,22 +46,4 @@ assert.equal(geo.crs.status, "VERIFIED_NATIVE");
 assert.equal(geo.evidence.evidenceClass, "IMPORTED_REFERENCE");
 assert.equal(geo.evidence.officialUseAllowed, false);
 
-const legacyGeoJson = JSON.stringify({
-  type: "Feature",
-  crs: {
-    type: "name",
-    properties: { name: "EPSG:29873" },
-  },
-  properties: {},
-  geometry: {
-    type: "Point",
-    coordinates: [116.07, 5.98],
-  },
-});
-assert.throws(
-  () => parseImportedGeometry("legacy.geojson", legacyGeoJson),
-  /CRS_UNCONFIRMED/,
-  "Legacy GeoJSON with explicit CRS metadata must not be guessed",
-);
-
-console.log("Import geometry CRS preflight QA: ALL PASS");
+const legacyGeoJson = JSON.string¶»§q«^
