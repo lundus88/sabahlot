@@ -46,4 +46,34 @@ assert.equal(geo.crs.status, "VERIFIED_NATIVE");
 assert.equal(geo.evidence.evidenceClass, "IMPORTED_REFERENCE");
 assert.equal(geo.evidence.officialUseAllowed, false);
 
-const legacyGeoJson = JSON.string¶»§q«^
+const legacyGeoJson = JSON.stringify({
+  type: "Feature",
+  crs: {
+    type: "name",
+    properties: { name: "EPSG:29873" },
+  },
+  properties: {},
+  geometry: {
+    type: "Point",
+    coordinates: [116.07, 5.98],
+  },
+});
+assert.throws(
+  () => parseImportedGeometry("legacy.geojson", legacyGeoJson),
+  /CRS_UNCONFIRMED/,
+  "Legacy GeoJSON with explicit CRS metadata must not be guessed",
+);
+
+const ring = "116.07,5.98,0 116.08,5.98,0 116.08,5.99,0 116.07,5.98,0";
+const pk = "<Placemark><Polygon><outerBoundaryIs><LinearRing><coordinates>"+ring+"</coordinates></LinearRing></outerBoundaryIs></Polygon></Placemark>";
+const kml = (body: string) => "<kml><Document>"+body+"</Document></kml>";
+assert.equal(parseImportedGeometry("one.kml",kml(pk)).kind,"polygon");
+assert.throws(()=>parseImportedGeometry("two.kml",kml(pk+pk)),/MULTI_GEOMETRY_UNSUPPORTED/);
+assert.throws(()=>parseImportedGeometry("mixed.kml",kml(pk+"<Placemark><Point><coordinates>116,5,0</coordinates></Point></Placemark>")) ,/MULTI_GEOMETRY_UNSUPPORTED/);
+assert.throws(()=>parseImportedGeometry("hole.kml",kml(pk.replace("</Polygon>","<innerBoundaryIs><LinearRing><coordinates>"+ring+"</coordinates></LinearRing></innerBoundaryIs></Polygon>"))),/POLYGON_HOLES_UNSUPPORTED/);
+const coordinates = [[[116.07,5.98],[116.08,5.98],[116.08,5.99],[116.07,5.98]]];
+const ft={type:"Feature",geometry:{type:"Polygon",coordinates}};
+assert.equal(parseImportedGeometry("one.geojson",JSON.stringify({type:"FeatureCollection",features:[ft]})).kind,"polygon");
+assert.throws(()=>parseImportedGeometry("two.geojson",JSON.stringify({type:"FeatureCollection",features:[ft,ft]})),/MULTI_GEOMETRY_UNSUPPORTED/);
+assert.throws(()=>parseImportedGeometry("hole.geojson",JSON.stringify({type:"Feature",geometry:{type:"Polygon",coordinates:[...coordinates, coordinates[0]]}})),/POLYGON_HOLES_UNSUPPORTED/);
+console.log("Import geometry CRS and integrity QA: ALL PASS");
