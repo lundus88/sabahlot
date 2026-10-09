@@ -10,7 +10,7 @@ export interface ExportPoint {
 }
 
 export const DXF_CRS_NOTICE =
-  "DXF Alpha output uses WGS84 longitude/latitude coordinates. Metric projected coordinate export will be handled in a later CRS enhancement phase.";
+  "DXF CRS WARNING: EPSG:4326 WGS84 X=longitude and Y=latitude are DECIMAL DEGREES, NOT METRES. This is not metric CAD or survey-grade output. $INSUNITS=0 (unitless). Do not interpret DXF lengths or areas as metres.";
 
 const PRELIMINARY_NOTICE =
   "Preliminary Field Assist output only. Measurements are user-created estimates for field reference and should be checked through the proper Sabah land and survey procedures before formal use.";

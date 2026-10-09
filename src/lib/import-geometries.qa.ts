@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { parseImportedGeometry } from "./import-geometries";
+import { JSDOM } from "jsdom";
+Object.assign(globalThis, { DOMParser: new JSDOM("").window.DOMParser });
 
 const csv = [
   "lat,lng",
@@ -62,4 +64,16 @@ assert.throws(
   "Legacy GeoJSON with explicit CRS metadata must not be guessed",
 );
 
-console.log("Import geometry CRS preflight QA: ALL PASS");
+const ring = "116.07,5.98,0 116.08,5.98,0 116.08,5.99,0 116.07,5.98,0";
+const pk = "<Placemark><Polygon><outerBoundaryIs><LinearRing><coordinates>"+ring+"</coordinates></LinearRing></outerBoundaryIs></Polygon></Placemark>";
+const kml = (body: string) => "<kml><Document>"+body+"</Document></kml>";
+assert.equal(parseImportedGeometry("one.kml",kml(pk)).kind,"polygon");
+assert.throws(()=>parseImportedGeometry("two.kml",kml(pk+pk)),/MULTI_GEOMETRY_UNSUPPORTED/);
+assert.throws(()=>parseImportedGeometry("mixed.kml",kml(pk+"<Placemark><Point><coordinates>116,5,0</coordinates></Point></Placemark>")) ,/MULTI_GEOMETRY_UNSUPPORTED/);
+assert.throws(()=>parseImportedGeometry("hole.kml",kml(pk.replace("</Polygon>","<innerBoundaryIs><LinearRing><coordinates>"+ring+"</coordinates></LinearRing></innerBoundaryIs></Polygon>"))),/POLYGON_HOLES_UNSUPPORTED/);
+const coordinates = [[[116.07,5.98],[116.08,5.98],[116.08,5.99],[116.07,5.98]]];
+const ft={type:"Feature",geometry:{type:"Polygon",coordinates}};
+assert.equal(parseImportedGeometry("one.geojson",JSON.stringify({type:"FeatureCollection",features:[ft]})).kind,"polygon");
+assert.throws(()=>parseImportedGeometry("two.geojson",JSON.stringify({type:"FeatureCollection",features:[ft,ft]})),/MULTI_GEOMETRY_UNSUPPORTED/);
+assert.throws(()=>parseImportedGeometry("hole.geojson",JSON.stringify({type:"Feature",geometry:{type:"Polygon",coordinates:[...coordinates, coordinates[0]]}})),/POLYGON_HOLES_UNSUPPORTED/);
+console.log("Import geometry CRS and integrity QA: ALL PASS");

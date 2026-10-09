@@ -26,6 +26,7 @@ import {
 import {
   buildDxfDocument,
   buildKmlDocument,
+  DXF_CRS_NOTICE,
 } from "@/lib/export-workflows";
 import {
   buildPreliminaryCsv,
@@ -8044,6 +8045,12 @@ export default function HomePage() {
         return;
       }
 
+      // Used by the map toolbar and output-format selector.
+      if (!window.confirm(DXF_CRS_NOTICE)) {
+        setSaveMessage("DXF export cancelled; no file was downloaded.");
+        return;
+      }
+
       const lotName =
         formData.lotNumber.trim() ||
         "sabahlot";
@@ -9474,7 +9481,7 @@ export default function HomePage() {
                   </option>
 
                   <option value="dxf">
-                    DXF
+                    DXF (WGS84 degrees)
                   </option>
                 </select>
               </label>

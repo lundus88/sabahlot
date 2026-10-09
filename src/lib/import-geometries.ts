@@ -311,6 +311,16 @@ function parseKml(
   }
 
   const placemarks = Array.from(document.getElementsByTagName("Placemark"));
+  const polygons = Array.from(document.getElementsByTagName("Polygon"));
+  const hasOtherGeometry = ["Point", "LineString", "MultiGeometry"].some(
+    (tag) => document.getElementsByTagName(tag).length > 0,
+  );
+  if (placemarks.length > 1 || polygons.length > 1 || hasOtherGeometry) {
+    throw new Error("MULTI_GEOMETRY_UNSUPPORTED: KML has multiple geometries; nothing imported.");
+  }
+  if (polygons.some((polygon) => polygon.getElementsByTagName("innerBoundaryIs").length > 0)) {
+    throw new Error("POLYGON_HOLES_UNSUPPORTED: KML holes are not supported.");
+  }
   const searchRoots = placemarks.length > 0 ? placemarks : [document];
 
   for (const root of searchRoots) {
@@ -380,7 +390,10 @@ function firstGeoJsonGeometry(value: unknown): Record<string, unknown> {
 
   if (value.type === "FeatureCollection") {
     const features = Array.isArray(value.features) ? value.features : [];
-    const feature = features.find(isRecord);
+    if (features.length !== 1) {
+      throw new Error("MULTI_GEOMETRY_UNSUPPORTED: GeoJSON requires one feature; nothing imported.");
+    }
+    const feature = features[0];
 
     if (!feature || !isRecord(feature.geometry)) {
       throw new Error("GeoJSON FeatureCollection has no geometry.");
@@ -428,6 +441,9 @@ function parseGeoJson(
     const rings = Array.isArray(geometry.coordinates)
       ? geometry.coordinates
       : [];
+    if (rings.length > 1) {
+      throw new Error("POLYGON_HOLES_UNSUPPORTED: GeoJSON holes are not supported.");
+    }
     const outerRing = Array.isArray(rings[0]) ? rings[0] : [];
     const coordinates = sanitizeCoordinates(
       outerRing
